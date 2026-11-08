@@ -1,0 +1,89 @@
+name: 'Tape: Windows'
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['tape/**', '.github/workflows/tape_windows.yml']
+
+concurrency:
+  group: tape-windows-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CI_DIR: buildscripts/ci
+
+defaults:
+  run:
+    working-directory: tape
+
+jobs:
+  windows_x64:
+    runs-on: windows-2022
+    steps:
+    - name: Clone repository
+      uses: actions/checkout@v6
+
+    - name: Configure workflow
+      shell: bash
+      run: |
+        cmake -DEVENT=workflow_dispatch -DBUILD_MODE=devel_build -DARTIFACT_INFO="Win_x86_64" -P ${CI_DIR}/common/ci_configure.cmake
+        echo "UPLOAD_ARTIFACT_NAME=Tape_$(cat ./build.artifacts/env/artifact_name.env)" >> $GITHUB_ENV
+
+    - name: Restore ccache files
+      id: restore-ccache
+      uses: actions/cache/restore@v5
+      with:
+        path: ${{ github.workspace }}/.ccache
+        key: tape-${{runner.os}}-ccache-
+        restore-keys: tape-${{runner.os}}-ccache-
+
+    - name: Setup ccache
+      run: |
+        choco install -y ccache
+        bash ./buildscripts/ci/tools/setup_ccache_config.sh
+
+    - name: Install Qt
+      uses: jurplel/install-qt-action@v4
+      with:
+        version: '6.10.1'
+        host: windows
+        target: 'desktop'
+        arch: win64_msvc2022_64
+        modules: 'qt5compat qtnetworkauth qtshadertools qtwebsockets qtgraphs qtquick3d'
+        cache: true
+
+    - name: Setup environment
+      shell: bash
+      run: |
+        cmake -P ${CI_DIR}/windows/setup.cmake
+
+    - name: Build
+      shell: bash
+      run: |
+        source /c/build_tools/environment.sh
+        cmake -DCRASH_REPORT_URL="''" -DAUDIOPLUGINS_CRASHREPORT_URL="''" -P ${CI_DIR}/windows/ci_build.cmake
+
+    - name: Package
+      shell: bash
+      env:
+        WIN_MSI_TESTING_AU4_GUID: 6E3D7B4A-2C1F-4B8E-9A51-7D0C3F2E8B61
+        WIN_MSI_STABLE_AU4_GUID: 6E3D7B4A-2C1F-4B8E-9A51-7D0C3F2E8B61
+      run: |
+        cmake -DPACKARCH=x86_64 -P ${CI_DIR}/windows/package.cmake
+
+    - name: Upload installer
+      if: always()
+      uses: actions/upload-artifact@v7
+      with:
+        name: ${{ env.UPLOAD_ARTIFACT_NAME }}
+        path: |
+          tape/build.artifacts/
+          !tape/build.artifacts/symbols/**
+
+    - name: Save ccache files
+      if: always()
+      uses: actions/cache/save@v5
+      with:
+        key: tape-${{runner.os}}-ccache-${{ github.run_id }}
+        path: ${{ github.workspace }}/.ccache

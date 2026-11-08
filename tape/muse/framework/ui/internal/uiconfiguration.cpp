@@ -90,7 +90,7 @@ void UiConfiguration::init()
 {
     m_config = ConfigReader::read(":/configs/ui.cfg");
 
-    settings()->setDefaultValue(UI_CURRENT_THEME_CODE_KEY, Val(LIGHT_THEME_CODE));
+    settings()->setDefaultValue(UI_CURRENT_THEME_CODE_KEY, Val(DARK_THEME_CODE)); // Studio: dark grey by default
     settings()->setDefaultValue(UI_CUSTOM_COLORS_KEY, Val(readLegacyCustomColors()));
     settings()->setDefaultValue(UI_FOLLOW_SYSTEM_THEME_KEY, Val(false));
     settings()->setDefaultValue(UI_FONT_FAMILY_KEY, Val(defaultFontFamily()));

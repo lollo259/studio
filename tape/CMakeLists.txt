@@ -73,7 +73,7 @@ option(AU_BUILD_APPSHELL_MODULE "Build appshell module" ON)
 option(AU_BUILD_APPSHELL_TESTS "Build appshell tests" ${MUSE_ENABLE_UNIT_TESTS})
 option(AU_BUILD_AU3AUDIO_TESTS "Build au3audio tests" ${MUSE_ENABLE_UNIT_TESTS})
 option(AU_BUILD_AUTOMATION_TESTS "Build automation tests" ${MUSE_ENABLE_UNIT_TESTS})
-option(AU_BUILD_CLOUD_AUDIOCOM "Build cloud audiocom module" ON)
+option(AU_BUILD_CLOUD_AUDIOCOM "Build cloud audiocom module" OFF) # Tape: offline
 option(AU_BUILD_CONTEXT_TESTS "Build context tests" ${MUSE_ENABLE_UNIT_TESTS})
 option(AU_BUILD_EFFECTS_MODULE "Build effects module" ON)
 option(AU_BUILD_EFFECTS_TESTS "Build effects tests" ${MUSE_ENABLE_UNIT_TESTS})
@@ -90,7 +90,7 @@ option(AU_BUILD_RECORD_TESTS "Build record tests" ${MUSE_ENABLE_UNIT_TESTS})
 option(AU_BUILD_SHARED_TESTS "Build shared tests" ${MUSE_ENABLE_UNIT_TESTS})
 option(AU_BUILD_TRACKEDIT_TESTS "Build trackedit tests" ${MUSE_ENABLE_UNIT_TESTS})
 option(AU_BUILD_UICOMPONENTS_TESTS "Build uicomponents tests" ${MUSE_ENABLE_UNIT_TESTS})
-option(AU_BUILD_USAGEINFO_MODULE "Build usage info module" ON)
+option(AU_BUILD_USAGEINFO_MODULE "Build usage info module" OFF) # Tape: no usage tracking
 
 option(AU_MODULE_EFFECTS_VST "Build audacity vst module" ON)
 option(AU_MODULE_EFFECTS_NYQUIST "Build audacity nyquist module" ON)

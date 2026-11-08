@@ -120,9 +120,9 @@ if (AU4_GENERAL_APP)
     endif()
 endif()
 
-if (WIN_PORTABLE)
-    set(MUSE_MODULE_UPDATE OFF)
-endif()
+# Tape (Laurence Who Studio): offline, never checks for updates
+set(MUSE_MODULE_UPDATE OFF)
+add_compile_definitions(STUDIO_OFFLINE)
 if (OS_IS_FBSD)
     message(WARNING "Not building unsupported chrashpad client on FreeBSD")
     set(MUSE_MODULE_DIAGNOSTICS_CRASHPAD_CLIENT OFF)

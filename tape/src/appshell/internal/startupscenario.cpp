@@ -247,6 +247,10 @@ void StartupScenario::showStartupDialogsIfNeed(StartupModeType)
     if (!multiwindowsProvider()->isFirstWindow()) {
         return;
     }
+#ifdef STUDIO_OFFLINE
+    //! Tape (Laurence Who Studio): no first-launch tour, no welcome carousel
+    return;
+#endif
 
     // Delay popups until update check finished
     if (appUpdateScenario() && appUpdateScenario()->checkInProgress()) {
