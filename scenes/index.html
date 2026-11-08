@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#3A3A40">
+<title>Scenes</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Jost:wght@300;400;500&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#3A3A40;--up:5px 5px 12px #2A2A2E,-5px -5px 12px #4A4A51;--upS:3px 3px 7px #2A2A2E,-3px -3px 7px #4A4A51;--down:inset 4px 4px 9px #28282C,inset -4px -4px 9px #4C4C53;--acc:#FF6A13;--txt:#E8E8E6;--mut:#A9A9AE}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--txt);font-family:'IBM Plex Mono',monospace;-webkit-tap-highlight-color:transparent;overscroll-behavior:none}
+button{font:inherit;color:inherit;border:none;background:var(--bg);cursor:pointer}
+.k{box-shadow:var(--upS);border-radius:10px;transition:box-shadow .12s, transform .08s, color .2s}
+.k:active{transform:translateY(1px);box-shadow:var(--down)}
+.k.on{box-shadow:var(--down);color:var(--acc)}
+#app{display:flex;flex-direction:column;height:100%;padding:calc(12px + env(safe-area-inset-top)) 14px calc(12px + env(safe-area-inset-bottom))}
+header{display:flex;align-items:center;gap:12px;height:48px;flex:none}
+.logo{font-family:Jost,sans-serif;font-weight:300;font-size:24px}
+.dot{width:9px;height:9px;border-radius:5px;background:#6E6E72;transition:background .15s, box-shadow .15s}
+.dot.hit{background:var(--acc);box-shadow:0 0 10px var(--acc)}
+.lbl{font-size:11px;color:var(--mut);letter-spacing:.06em}
+.sp{flex:1}
+main{flex:1;min-height:0;display:flex;gap:16px;margin-top:12px}
+#stage{flex:1;min-width:0;border-radius:22px;box-shadow:var(--down);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:20px;position:relative;text-align:center;user-select:none}
+#stage .num{font-size:14px;color:var(--mut)}
+#stage .name{font-family:Jost,sans-serif;font-weight:300;font-size:clamp(44px,9vw,120px);line-height:1;color:var(--txt)}
+#stage .layers{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+.chip{font-size:12px;padding:6px 10px;border-radius:8px;box-shadow:var(--upS);color:var(--txt)}
+#stage .next{position:absolute;bottom:16px;font-size:12px;color:var(--mut)}
+#stage .flash{animation:flash .35s ease}
+@keyframes flash{from{transform:scale(.97);opacity:.3}to{transform:scale(1);opacity:1}}
+#side{width:320px;flex:none;display:flex;flex-direction:column;gap:12px;min-height:0}
+#list{flex:1;min-height:0;overflow:auto;display:flex;flex-direction:column;gap:10px;padding:6px}
+.sc{display:flex;align-items:center;gap:12px;min-height:58px;padding:0 14px;text-align:left;width:100%}
+.sc .n{width:28px;font-size:12px;color:var(--mut)}
+.sc .t{flex:1;font-size:14px}
+.sc.cur .n,.sc.cur .t{color:var(--acc)}
+.row{display:flex;gap:10px}
+.row>button{flex:1;height:52px;font-size:12px}
+.big{height:64px !important;font-size:20px !important}
+dialog{background:var(--bg);color:var(--txt);border:none;border-radius:20px;box-shadow:0 20px 60px rgba(0,0,0,.6);padding:20px;width:min(560px,94vw);max-height:90vh;overflow:auto}
+dialog::backdrop{background:rgba(0,0,0,.5)}
+label{display:block;font-size:11px;color:var(--mut);margin:12px 0 6px}
+input,select{width:100%;height:42px;border-radius:10px;border:none;background:var(--bg);box-shadow:var(--down);color:var(--txt);font:inherit;padding:0 12px}
+.layer{border-radius:14px;box-shadow:var(--upS);padding:12px;margin-top:12px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);padding:10px 16px;border-radius:12px;background:#2A2A2E;font-size:12px;opacity:0;transition:opacity .25s;pointer-events:none;max-width:90vw}
+.toast.show{opacity:1}
+.bar{height:4px;border-radius:2px;background:#2A2A2E;overflow:hidden;width:220px}
+.bar>div{height:100%;width:0;background:var(--acc);transition:width .2s}
+@media (max-width:520px){#audioState{display:none}}
+@media (max-width:760px){main{flex-direction:column}#side{width:auto;flex:none;max-height:42%}#stage{min-height:46%}}
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <span class="logo">scenes</span><span class="dot" id="midiDot" title="MIDI activity"></span>
+    <span class="lbl" id="midiName">no keyboard</span>
+    <span class="sp"></span>
+    <span class="lbl" id="audioState">tap to start sound</span>
+    <button class="k" id="editBtn" style="height:40px;padding:0 14px;font-size:12px">edit</button>
+    <button class="k" id="setBtn" style="height:40px;padding:0 14px;font-size:12px">setup</button>
+  </header>
+  <main>
+    <section id="stage" aria-live="polite"></section>
+    <aside id="side">
+      <div id="list"></div>
+      <div class="row">
+        <button class="k big" id="prevBtn" aria-label="Previous scene">‹</button>
+        <button class="k big" id="nextBtn" aria-label="Next scene">›</button>
+      </div>
+      <div class="row">
+        <button class="k" id="addBtn">+ scene</button>
+        <button class="k" id="panicBtn">all notes off</button>
+      </div>
+    </aside>
+  </main>
+</div>
+
+<dialog id="editDlg">
+  <div style="display:flex;align-items:center;gap:10px"><span class="logo" style="font-size:20px">scene</span><span class="sp"></span><button class="k" id="delScene" style="height:36px;padding:0 12px;font-size:11px">delete</button><button class="k on" id="closeEdit" style="height:36px;padding:0 14px;font-size:12px">done</button></div>
+  <label for="scName">name</label><input id="scName">
+  <div id="layers"></div>
+  <div class="row" style="margin-top:12px"><button class="k" id="addLayer" style="height:44px">+ layer</button></div>
+  <p class="lbl" style="line-height:1.6;margin-top:14px">A layer is one sound on a range of keys. Two layers on the same keys = stacked. Different ranges = split.</p>
+</dialog>
+
+<dialog id="setDlg">
+  <div style="display:flex;align-items:center"><span class="logo" style="font-size:20px">setup</span><span class="sp"></span><button class="k on" id="closeSet" style="height:36px;padding:0 14px;font-size:12px">done</button></div>
+  <label>sounds folder (your Studio\Sounds)</label>
+  <div class="row"><button class="k" id="pickFolder" style="height:44px">choose folder</button></div>
+  <input type="file" id="folderIn" webkitdirectory directory multiple hidden>
+  <p class="lbl" id="libStat" style="line-height:1.6"></p>
+  <div class="bar" id="loadBar" style="display:none"><div></div></div>
+  <label for="quality">sample quality (memory)</label>
+  <select id="quality"><option value="2">light, 2 velocity layers (phones)</option><option value="4" selected>medium, 4 layers</option><option value="99">full</option></select>
+  <label>switch scenes with</label>
+  <p class="lbl" style="line-height:1.8">tap a scene · arrows / space / enter / page up-down (pedal) · MIDI program change · <span id="learnInfo">no MIDI key learned</span></p>
+  <div class="row"><button class="k" id="learnNext" style="height:44px">learn "next" key</button><button class="k" id="learnPrev" style="height:44px">learn "previous" key</button></div>
+  <label>setlist</label>
+  <div class="row"><button class="k" id="exportBtn" style="height:44px">copy setlist</button><button class="k" id="importBtn" style="height:44px">paste setlist</button></div>
+  <textarea id="setText" style="width:100%;min-height:80px;margin-top:10px;border-radius:10px;border:none;background:var(--bg);box-shadow:var(--down);color:var(--txt);font:inherit;font-size:11px;padding:10px;display:none"></textarea>
+</dialog>
+<div class="toast" id="toast"></div>
+
+<script>
+'use strict';
+const $ = id => document.getElementById(id);
+const toast = (t, ms = 2200) => { const e = $('toast'); e.textContent = t; e.classList.add('show'); clearTimeout(toast.h); toast.h = setTimeout(() => e.classList.remove('show'), ms); };
+const NOTE = n => ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'][((n % 12) + 12) % 12] + (Math.floor(n / 12) - 1);
+const parseNote = s => { if (s == null) return null; s = String(s).trim(); if (/^-?\d+$/.test(s)) return +s; const m = s.match(/^([a-gA-G])([#b]?)(-?\d)$/); if (!m) return null; const b = {c:0,d:2,e:4,f:5,g:7,a:9,b:11}[m[1].toLowerCase()]; return b + (m[2] === '#' ? 1 : m[2] === 'b' ? -1 : 0) + (+m[3] + 1) * 12; };
+
+/* ---------- storage ---------- */
+const store = {
+  get(k, d) { try { const v = localStorage.getItem('scenes.' + k); return v ? JSON.parse(v) : d; } catch (e) { return d; } },
+  set(k, v) { try { localStorage.setItem('scenes.' + k, JSON.stringify(v)); } catch (e) {} }
+};
+
+/* ---------- built-in sounds (always available, no files needed) ---------- */
+const BUILTIN = [
+  { id: 'b:epiano', name: 'Electric piano', family: 'Keys' },
+  { id: 'b:pad', name: 'Warm pad', family: 'Synth' },
+  { id: 'b:organ', name: 'Organ', family: 'Keys' },
+  { id: 'b:bass', name: 'Synth bass', family: 'Synth' },
+  { id: 'b:bell', name: 'Glass bells', family: 'Keys' }
+];
+
+/* ---------- state ---------- */
+let S = store.get('state', null) || {
+  cur: 0,
+  scenes: [
+    { name: 'Piano', layers: [{ sound: 'b:epiano', lo: 0, hi: 127, vol: 0.9, tr: 0 }] },
+    { name: 'Pad + bells', layers: [{ sound: 'b:pad', lo: 0, hi: 127, vol: 0.6, tr: 0 }, { sound: 'b:bell', lo: 72, hi: 127, vol: 0.5, tr: 12 }] },
+    { name: 'Split bass / organ', layers: [{ sound: 'b:bass', lo: 0, hi: 54, vol: 0.9, tr: -12 }, { sound: 'b:organ', lo: 55, hi: 127, vol: 0.6, tr: 0 }] }
+  ],
+  learnNext: null, learnPrev: null
+};
+const save = () => store.set('state', S);
+
+/* ---------- audio ---------- */
+let ctx = null, master = null;
+function audio() {
+  if (!ctx) {
+    ctx = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: 'interactive' });
+    master = ctx.createDynamicsCompressor(); master.threshold.value = -10; master.ratio.value = 4; master.connect(ctx.destination);
+  }
+  if (ctx.state !== 'running') ctx.resume();
+  $('audioState').textContent = 'sound on · ' + Math.round(((ctx.baseLatency || 0) + (ctx.outputLatency || 0)) * 1000) + ' ms';
+  return ctx;
+}
+document.addEventListener('pointerdown', () => audio(), { once: false });
+
+const active = new Map(); // key -> [voice...]
+function stopVoice(v, t) { try { v.gain.gain.cancelScheduledValues(t); v.gain.gain.setValueAtTime(v.gain.gain.value, t); v.gain.gain.linearRampToValueAtTime(0, t + v.rel); v.srcs.forEach(s => s.stop(t + v.rel + 0.05)); } catch (e) {} }
+const freq = n => 440 * Math.pow(2, (n - 69) / 12);
+
+function builtinVoice(id, note, vel, vol) {
+  const c = audio(), t = c.currentTime, g = c.createGain(), out = c.createGain(), f = freq(note), srcs = [];
+  out.gain.value = vol * (0.25 + 0.75 * vel / 127) * 0.35; g.connect(out); out.connect(master);
+  const osc = (type, fr, gain) => { const o = c.createOscillator(); o.type = type; o.frequency.value = fr; const gg = c.createGain(); gg.gain.value = gain; o.connect(gg); gg.connect(g); o.start(t); srcs.push(o); return o; };
+  let rel = 0.3;
+  if (id === 'b:epiano') { osc('sine', f, 1); osc('sine', f * 2, 0.25); osc('triangle', f * 4, 0.05); g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(1, t + 0.005); g.gain.exponentialRampToValueAtTime(0.25, t + 1.8); rel = 0.35; }
+  else if (id === 'b:pad') { osc('sawtooth', f, 0.3); osc('sawtooth', f * 1.006, 0.3); osc('triangle', f / 2, 0.3); const lp = c.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 1800; g.disconnect(); g.connect(lp); lp.connect(out); g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(1, t + 0.6); rel = 1.2; }
+  else if (id === 'b:organ') { [1, 2, 3, 4, 6].forEach((m, i) => osc('sine', f * m, [1, .6, .4, .25, .15][i])); g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(0.7, t + 0.01); rel = 0.08; }
+  else if (id === 'b:bass') { osc('sawtooth', f, 0.6); osc('square', f / 2, 0.3); const lp = c.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.setValueAtTime(2400, t); lp.frequency.exponentialRampToValueAtTime(400, t + 0.4); g.disconnect(); g.connect(lp); lp.connect(out); g.gain.setValueAtTime(1, t); rel = 0.12; }
+  else { osc('sine', f, 0.8); osc('sine', f * 3.01, 0.3); osc('sine', f * 5.4, 0.12); g.gain.setValueAtTime(1, t); g.gain.exponentialRampToValueAtTime(0.001, t + 2.5); rel = 0.6; }
+  return { gain: g, srcs, rel };
+}
+
+/* ---------- SFZ libraries (from the chosen folder) ---------- */
+let FILES = new Map();          // relative path (lowercase) -> File
+const LIB = new Map();          // sound id -> {name, family, path, regions?, loaded?}
+const famOf = p => { p = p.toLowerCase(); const has = a => a.some(w => p.includes(w));
+  if (has(['piano', 'grand', 'upright'])) return 'Piano'; if (has(['organ', 'harpsichord', 'celesta', 'keys', 'glock', 'marimba', 'xylo', 'vibra'])) return 'Keys';
+  if (has(['violin', 'viola', 'cello', 'bass', 'string', 'harp', 'pizz', 'guitar'])) return 'Strings'; if (has(['flute', 'piccolo', 'oboe', 'clarinet', 'bassoon', 'sax', 'wind'])) return 'Winds';
+  if (has(['horn', 'trumpet', 'trombone', 'tuba', 'brass'])) return 'Brass'; if (has(['drum', 'perc', 'timpani', 'snare', 'cymbal', 'bell'])) return 'Percussion';
+  if (has(['choir', 'voice', 'vocal'])) return 'Voice'; return 'Other'; };
+
+$('pickFolder').onclick = () => $('folderIn').click();
+$('folderIn').onchange = e => {
+  FILES = new Map();
+  for (const f of e.target.files) FILES.set((f.webkitRelativePath || f.name).toLowerCase().replace(/\\/g, '/'), f);
+  LIB.clear(); let n = 0;
+  for (const [p, f] of FILES) if (p.endsWith('.sfz')) {
+    const parts = p.split('/'); const lib = (f.webkitRelativePath || f.name).split('/')[1] || '';
+    const id = 's:' + p; LIB.set(id, { name: f.name.replace(/\.sfz$/i, '').replace(/[_-]/g, ' '), family: famOf(p), library: lib, path: p }); n++;
+  }
+  $('libStat').textContent = n ? n + ' instruments found. They load when a scene uses them.' : 'No .sfz instruments found in that folder.';
+  renderAll(); loadScene(S.cur);
+};
+
+function dirOf(p) { return p.includes('/') ? p.slice(0, p.lastIndexOf('/') + 1) : ''; }
+function resolve(base, rel) {
+  const out = []; (base + rel.replace(/\\/g, '/')).toLowerCase().split('/').forEach(s => { if (s === '..') out.pop(); else if (s !== '.' && s !== '') out.push(s); });
+  return out.join('/');
+}
+async function readText(p) { const f = FILES.get(p); return f ? await f.text() : ''; }
+
+async function preprocess(path, defines, root, depth = 0) {
+  let txt = await readText(path); if (depth > 12) return '';
+  txt = txt.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
+  const sub = t => t.replace(/\$\w+/g, m => defines[m] ?? m);
+  const re = /#define\s+(\$\w+)\s+(\S+)|#include\s+"([^"]+)"/g; let out = '', last = 0, m;
+  while ((m = re.exec(txt))) {
+    out += sub(txt.slice(last, m.index)); last = re.lastIndex;
+    if (m[1]) defines[m[1]] = m[2];
+    else out += '\n' + await preprocess(resolve(root, m[3]), defines, root, depth + 1) + '\n';
+  }
+  return out + sub(txt.slice(last));
+}
+
+function parseSfz(text) {
+  const regions = []; let control = {}, global = {}, master = {}, group = {}, cur = null, header = null;
+  const tokens = text.replace(/\r/g, '').split(/(<\w+>)/);
+  for (const tk of tokens) {
+    const h = tk.match(/^<(\w+)>$/);
+    if (h) { header = h[1]; if (header === 'region') { cur = {}; regions.push(() => null); regions[regions.length - 1] = { g: { ...global, ...master, ...group }, r: cur }; } else if (header === 'group') group = {}, cur = group; else if (header === 'master') master = {}, group = {}, cur = master; else if (header === 'global') global = {}, cur = global; else if (header === 'control') cur = control; else cur = {}; continue; }
+    if (!cur) continue;
+    // opcodes: key=value where value may contain spaces (sample paths) up to next key=
+    const re = /([A-Za-z0-9_]+)=([\s\S]*?)(?=\s+[A-Za-z0-9_]+=|$)/g; let m;
+    while ((m = re.exec(tk))) cur[m[1]] = m[2].trim();
+  }
+  return { control, regions: regions.map(x => ({ ...x.g, ...x.r })) };
+}
+
+async function loadInstrument(id, layersMax) {
+  const it = LIB.get(id); if (!it) return null; if (it.loaded && it.loadedQ === layersMax) return it;
+  const text = await preprocess(it.path, {}, dirOf(it.path)); const { control, regions } = parseSfz(text);
+  const base = dirOf(it.path) + (control.default_path || '').replace(/\\/g, '/');
+  // keep only regions playable on note-on (skip release triggers, keyswitches, cc-only)
+  const swDefault = regions.find(r => r.sw_default)?.sw_default ?? regions.find(r => r.sw_last)?.sw_last;
+  let regs = regions.filter(r => r.sample && !/release/i.test(r.trigger || '') && !(r.locc && Object.keys(r).some(k => /^locc/.test(k))) && (!r.sw_last || r.sw_last === swDefault) && (r.lokey || r.key || r.hikey || r.pitch_keycenter)).map(r => ({
+    sample: resolve(base, r.sample),
+    lo: parseNote(r.lokey ?? r.key) ?? 0, hi: parseNote(r.hikey ?? r.key) ?? 127,
+    lovel: +(r.lovel ?? 1), hivel: +(r.hivel ?? 127),
+    center: parseNote(r.pitch_keycenter ?? r.key) ?? 60,
+    vol: +(r.volume ?? 0) + +(r.amp_velcurve_1 ? 0 : 0), tune: +(r.tune ?? 0), trans: +(r.transpose ?? 0),
+    rel: +(r.ampeg_release ?? 0.4)
+  }));
+  // thin velocity layers for memory
+  const vlayers = [...new Set(regs.map(r => r.hivel))].sort((a, b) => a - b);
+  if (vlayers.length > layersMax) {
+    const keep = new Set(Array.from({ length: layersMax }, (_, i) => vlayers[Math.round((i + 1) * vlayers.length / layersMax) - 1]));
+    regs = regs.filter(r => keep.has(r.hivel));
+    const ks = [...keep].sort((a, b) => a - b); regs.forEach(r => { const i = ks.indexOf(r.hivel); r.lovel = i === 0 ? 1 : ks[i - 1] + 1; });
+  }
+  // decode samples
+  const need = [...new Set(regs.map(r => r.sample))]; const buffers = new Map(); const bar = $('loadBar'); bar.style.display = 'block';
+  let done = 0;
+  await Promise.all(need.map(async p => {
+    const f = FILES.get(p); if (f) { try { buffers.set(p, await audio().decodeAudioData(await f.arrayBuffer())); } catch (e) {} }
+    done++; bar.firstElementChild.style.width = (100 * done / need.length) + '%';
+  }));
+  bar.style.display = 'none';
+  regs = regs.filter(r => buffers.has(r.sample)); regs.forEach(r => r.buf = buffers.get(r.sample));
+  Object.assign(it, { loaded: true, loadedQ: layersMax, regions: regs });
+  return it;
+}
+
+function sampleVoice(it, note, vel, vol) {
+  const r = it.regions.find(x => note >= x.lo && note <= x.hi && vel >= x.lovel && vel <= x.hivel) || it.regions.find(x => note >= x.lo && note <= x.hi);
+  if (!r) return null;
+  const c = audio(), t = c.currentTime, src = c.createBufferSource(), g = c.createGain();
+  src.buffer = r.buf; src.playbackRate.value = Math.pow(2, (note - r.center + r.trans + r.tune / 100) / 12);
+  g.gain.value = vol * Math.pow(10, r.vol / 20) * (0.2 + 0.8 * vel / 127);
+  src.connect(g); g.connect(master); src.start(t);
+  return { gain: g, srcs: [src], rel: Math.min(1.5, r.rel || 0.4) };
+}
+
+/* ---------- playing ---------- */
+const sustain = { on: false, held: new Set() };
+function noteOn(note, vel) {
+  const sc = S.scenes[S.cur]; if (!sc) return; const vs = [];
+  for (const L of sc.layers) {
+    if (note < L.lo || note > L.hi) continue;
+    const n = note + (+L.tr || 0);
+    let v = null;
+    if (L.sound.startsWith('b:')) v = builtinVoice(L.sound, n, vel, L.vol);
+    else { const it = LIB.get(L.sound); if (it && it.loaded) v = sampleVoice(it, n, vel, L.vol); }
+    if (v) vs.push(v);
+  }
+  if (active.has(note)) active.get(note).forEach(v => stopVoice(v, audio().currentTime));
+  active.set(note, vs);
+}
+function noteOff(note) {
+  if (sustain.on) { sustain.held.add(note); return; }
+  const vs = active.get(note); if (!vs) return; vs.forEach(v => stopVoice(v, audio().currentTime)); active.delete(note);
+}
+function allOff() { if (!ctx) return; for (const vs of active.values()) vs.forEach(v => stopVoice(v, ctx.currentTime)); active.clear(); sustain.held.clear(); }
+
+/* ---------- MIDI ---------- */
+let learning = null;
+function onMidi(ev) {
+  const [st, d1, d2] = ev.data; const type = st & 0xf0;
+  $('midiDot').classList.add('hit'); clearTimeout(onMidi.h); onMidi.h = setTimeout(() => $('midiDot').classList.remove('hit'), 90);
+  if (learning && (type === 0x90 && d2 > 0 || type === 0xB0 && d2 > 0)) {
+    S[learning] = { type, d1 }; save(); toast((learning === 'learnNext' ? 'next' : 'previous') + ' = ' + (type === 0x90 ? 'key ' + NOTE(d1) : 'control ' + d1)); learning = null; renderLearn(); return;
+  }
+  const match = L => L && L.type === type && L.d1 === d1 && d2 > 0;
+  if (match(S.learnNext)) return go(S.cur + 1);
+  if (match(S.learnPrev)) return go(S.cur - 1);
+  if (type === 0x90 && d2 > 0) noteOn(d1, d2);
+  else if (type === 0x80 || type === 0x90) noteOff(d1);
+  else if (type === 0xC0) go(d1);
+  else if (type === 0xB0 && d1 === 64) { sustain.on = d2 >= 64; if (!sustain.on) { const h = [...sustain.held]; sustain.held.clear(); h.forEach(noteOff); } }
+  else if (type === 0xB0 && d1 === 123) allOff();
+}
+async function initMidi() {
+  if (!navigator.requestMIDIAccess) { $('midiName').textContent = 'this browser has no MIDI (use Chrome or Edge)'; return; }
+  try {
+    const acc = await navigator.requestMIDIAccess();
+    const hook = () => { const names = []; acc.inputs.forEach(i => { i.onmidimessage = onMidi; names.push(i.name); }); $('midiName').textContent = names.length ? names.join(' · ') : 'no keyboard'; };
+    acc.onstatechange = hook; hook();
+  } catch (e) { $('midiName').textContent = 'MIDI not allowed'; }
+}
+initMidi();
+
+/* ---------- keyboard (computer) ---------- */
+document.addEventListener('keydown', e => {
+  if (document.querySelector('dialog[open]')) return;
+  if (['ArrowRight', 'ArrowDown', 'PageDown', ' ', 'Enter'].includes(e.key)) { e.preventDefault(); go(S.cur + 1); }
+  else if (['ArrowLeft', 'ArrowUp', 'PageUp', 'Backspace'].includes(e.key)) { e.preventDefault(); go(S.cur - 1); }
+  else if (/^[1-9]$/.test(e.key)) go(+e.key - 1);
+  else if (e.key === 'Escape') allOff();
+});
+
+/* ---------- scenes ---------- */
+const soundName = id => (id.startsWith('b:') ? (BUILTIN.find(b => b.id === id) || {}).name : (LIB.get(id) || {}).name) || 'missing sound';
+async function loadScene(i) {
+  const sc = S.scenes[i]; if (!sc) return; const q = +$('quality').value;
+  for (const L of sc.layers) if (!L.sound.startsWith('b:') && LIB.has(L.sound)) { toast('loading ' + soundName(L.sound) + '…', 8000); await loadInstrument(L.sound, q); toast(soundName(L.sound) + ' ready'); }
+  // preload the next one in the background
+  const nx = S.scenes[i + 1]; if (nx) nx.layers.forEach(L => { if (!L.sound.startsWith('b:') && LIB.has(L.sound)) loadInstrument(L.sound, q); });
+}
+function go(i) {
+  if (!S.scenes.length) return;
+  i = Math.max(0, Math.min(S.scenes.length - 1, i)); if (i === S.cur) { renderStage(true); return; }
+  allOff(); S.cur = i; save(); renderAll(true); loadScene(i);
+}
+function renderStage(flash) {
+  const sc = S.scenes[S.cur], nx = S.scenes[S.cur + 1], st = $('stage');
+  st.innerHTML = '';
+  if (!sc) { st.innerHTML = '<div class="lbl">no scenes · press + scene</div>'; return; }
+  const box = document.createElement('div'); box.className = flash ? 'flash' : '';
+  box.innerHTML = `<div class="num">${String(S.cur + 1).padStart(2, '0')} / ${String(S.scenes.length).padStart(2, '0')}</div><div class="name"></div><div class="layers" style="margin-top:18px"></div>`;
+  box.querySelector('.name').textContent = sc.name;
+  sc.layers.forEach(L => { const c = document.createElement('span'); c.className = 'chip'; c.textContent = soundName(L.sound) + ' · ' + (L.lo <= 0 && L.hi >= 127 ? 'all keys' : NOTE(L.lo) + '–' + NOTE(L.hi)) + (L.tr ? ' · ' + (L.tr > 0 ? '+' : '') + L.tr : ''); box.querySelector('.layers').appendChild(c); });
+  st.appendChild(box);
+  const n = document.createElement('div'); n.className = 'next'; n.textContent = nx ? 'next › ' + nx.name : 'last scene'; st.appendChild(n);
+}
+function renderList() {
+  const l = $('list'); l.innerHTML = '';
+  S.scenes.forEach((sc, i) => {
+    const b = document.createElement('button'); b.className = 'k sc' + (i === S.cur ? ' cur on' : '');
+    b.innerHTML = `<span class="n">${String(i + 1).padStart(2, '0')}</span><span class="t"></span>`; b.querySelector('.t').textContent = sc.name;
+    b.onclick = () => go(i); b.ondblclick = () => openEdit(i); l.appendChild(b);
+  });
+  const cur = l.children[S.cur]; if (cur) cur.scrollIntoView({ block: 'nearest' });
+}
+function renderAll(flash) { renderStage(flash); renderList(); }
+
+$('nextBtn').onclick = () => go(S.cur + 1);
+$('prevBtn').onclick = () => go(S.cur - 1);
+$('panicBtn').onclick = () => { allOff(); toast('all notes off'); };
+$('addBtn').onclick = () => { S.scenes.splice(S.cur + 1, 0, { name: 'New scene', layers: [{ sound: 'b:epiano', lo: 0, hi: 127, vol: 0.9, tr: 0 }] }); save(); S.cur++; renderAll(); openEdit(S.cur); };
+
+/* ---------- editor ---------- */
+let editing = 0;
+function soundOptions(sel) {
+  const groups = {}; BUILTIN.forEach(b => (groups['Built-in · ' + b.family] ||= []).push(b));
+  for (const [id, it] of LIB) (groups[it.family + ' · ' + it.library] ||= []).push({ id, name: it.name });
+  return Object.entries(groups).sort().map(([g, xs]) => `<optgroup label="${g}">${xs.map(x => `<option value="${x.id.replace(/"/g, '&quot;')}" ${x.id === sel ? 'selected' : ''}>${x.name}</option>`).join('')}</optgroup>`).join('');
+}
+function openEdit(i) {
+  editing = i; const sc = S.scenes[i]; $('scName').value = sc.name; renderLayers(); $('editDlg').showModal();
+}
+function renderLayers() {
+  const sc = S.scenes[editing], box = $('layers'); box.innerHTML = '';
+  sc.layers.forEach((L, j) => {
+    const d = document.createElement('div'); d.className = 'layer';
+    d.innerHTML = `<div style="display:flex;align-items:center"><span class="lbl">layer ${j + 1}</span><span class="sp"></span><button class="k" data-x style="height:30px;padding:0 10px;font-size:11px">remove</button></div>
+      <label>sound</label><select data-k="sound">${soundOptions(L.sound)}</select>
+      <div class="grid3"><div><label>lowest key</label><input data-k="lo" value="${NOTE(L.lo)}"></div><div><label>highest key</label><input data-k="hi" value="${NOTE(L.hi)}"></div><div><label>transpose</label><input data-k="tr" type="number" value="${L.tr || 0}"></div></div>
+      <label>volume</label><input data-k="vol" type="range" min="0" max="1" step="0.01" value="${L.vol}" style="box-shadow:none;accent-color:var(--acc)">`;
+    d.querySelectorAll('[data-k]').forEach(inp => inp.onchange = () => {
+      const k = inp.dataset.k; let v = inp.value;
+      if (k === 'lo' || k === 'hi') { const n = parseNote(v); if (n == null) { toast('use a note like C3 or a number 0–127'); return; } v = n; }
+      else if (k === 'tr' || k === 'vol') v = +v;
+      L[k] = v; save(); renderAll(); if (k === 'sound') loadScene(S.cur);
+    });
+    d.querySelector('[data-x]').onclick = () => { sc.layers.splice(j, 1); save(); renderLayers(); renderAll(); };
+    box.appendChild(d);
+  });
+}
+$('scName').oninput = () => { S.scenes[editing].name = $('scName').value || 'Scene'; save(); renderAll(); };
+$('addLayer').onclick = () => { S.scenes[editing].layers.push({ sound: 'b:pad', lo: 0, hi: 127, vol: 0.7, tr: 0 }); save(); renderLayers(); renderAll(); };
+$('delScene').onclick = () => { S.scenes.splice(editing, 1); S.cur = Math.min(S.cur, S.scenes.length - 1); save(); $('editDlg').close(); renderAll(); };
+$('closeEdit').onclick = () => $('editDlg').close();
+$('editBtn').onclick = () => S.scenes.length && openEdit(S.cur);
+
+/* ---------- setup ---------- */
+function renderLearn() {
+  const f = L => L ? (L.type === 0x90 ? 'key ' + NOTE(L.d1) : 'control ' + L.d1) : '—';
+  $('learnInfo').textContent = 'MIDI next: ' + f(S.learnNext) + ' · previous: ' + f(S.learnPrev);
+}
+$('setBtn').onclick = () => { renderLearn(); $('setDlg').showModal(); };
+$('closeSet').onclick = () => $('setDlg').close();
+$('learnNext').onclick = () => { learning = 'learnNext'; toast('press the key or pedal for "next"…', 6000); };
+$('learnPrev').onclick = () => { learning = 'learnPrev'; toast('press the key or pedal for "previous"…', 6000); };
+$('quality').onchange = () => { store.set('quality', $('quality').value); loadScene(S.cur); };
+$('quality').value = store.get('quality', /Android|iPhone/i.test(navigator.userAgent) ? '2' : '4');
+$('exportBtn').onclick = async () => { const t = JSON.stringify({ scenes: S.scenes }); try { await navigator.clipboard.writeText(t); toast('setlist copied'); } catch (e) { $('setText').style.display = 'block'; $('setText').value = t; $('setText').select(); toast('copy it from the box'); } };
+$('importBtn').onclick = () => {
+  const ta = $('setText'); if (ta.style.display !== 'block' || !ta.value.trim()) { ta.style.display = 'block'; ta.value = ''; ta.placeholder = 'paste a setlist here, then press paste setlist again'; ta.focus(); return; }
+  try { const d = JSON.parse(ta.value); if (!Array.isArray(d.scenes)) throw 0; S.scenes = d.scenes; S.cur = 0; save(); renderAll(); ta.style.display = 'none'; toast('setlist loaded'); } catch (e) { toast('that is not a setlist'); }
+};
+
+renderAll();
+if ('wakeLock' in navigator) { const wl = () => navigator.wakeLock.request('screen').catch(() => {}); wl(); document.addEventListener('visibilitychange', () => document.visibilityState === 'visible' && wl()); }
+</script>
+</body>
+</html>
