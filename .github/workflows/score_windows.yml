@@ -1,0 +1,93 @@
+name: 'Score: Windows'
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['score/**', '.github/workflows/score_windows.yml']
+
+concurrency:
+  group: score-windows-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    working-directory: score
+
+jobs:
+  windows_x64:
+    runs-on: windows-2025
+    steps:
+    - name: Clone repository
+      uses: actions/checkout@v7
+
+    - name: Configure workflow
+      shell: bash
+      run: |
+        bash ./buildscripts/ci/tools/make_build_mode_env.sh -e workflow_dispatch -m devel
+        bash ./buildscripts/ci/tools/make_build_number.sh
+        BUILD_NUMBER=$(cat ./build.artifacts/env/build_number.env)
+        echo "BUILD_NUMBER=$BUILD_NUMBER" | tee -a $GITHUB_ENV
+        echo "UPLOAD_ARTIFACT_NAME=Score_${BUILD_NUMBER}_Windows" | tee -a $GITHUB_ENV
+
+    - name: Restore ccache files
+      id: restore-ccache
+      uses: actions/cache/restore@v6
+      with:
+        path: ${{ github.workspace }}/.ccache
+        key: score-${{runner.os}}-ccache-
+        restore-keys: score-${{runner.os}}-ccache-
+
+    - name: Setup ccache
+      run: |
+        choco install -y ccache
+        bash ./muse/buildscripts/ci/tools/setup_ccache_config.sh
+
+    - name: Install Qt
+      uses: jurplel/install-qt-action@v4
+      with:
+        version: 6.11.2
+        host: 'windows'
+        target: 'desktop'
+        arch: 'win64_msvc2022_64'
+        modules: 'qt5compat qtnetworkauth qtshadertools qtwebsockets'
+        cache: true
+        aqtsource: 'git+https://github.com/miurahr/aqtinstall.git'
+        py7zrversion: '@git+https://github.com/miurahr/py7zr.git'
+
+    - name: Setup environment
+      run: |
+        buildscripts\ci\windows\setup.bat
+
+    - name: Generate translation sources
+      shell: bash
+      env:
+        LUPDATE_ARGS: ""
+        POSTPROCESS_ARGS: "--warn-only --generate-placeholder-translations"
+        POSTPROCESS_LAUNCHER: "python3 -X utf8"
+      run: |
+        bash ./tools/translations/run_lupdate.sh
+
+    - name: Build
+      shell: cmd
+      run: |
+        buildscripts\ci\windows\build.bat -n %BUILD_NUMBER% --dockwidgets_v2 ON --debug_info OFF
+
+    - name: Package
+      shell: cmd
+      run: |
+        buildscripts\ci\windows\package.bat --guid 89336549-1624-486A-9260-903B9B13B699
+
+    - name: Upload installer
+      if: ${{ always() }}
+      uses: actions/upload-artifact@v7
+      with:
+        name: ${{ env.UPLOAD_ARTIFACT_NAME }}
+        path: score\build.artifacts\
+
+    - name: Save ccache files
+      if: always()
+      uses: actions/cache/save@v6
+      with:
+        key: score-${{runner.os}}-ccache-${{ github.run_id }}
+        path: ${{ github.workspace }}/.ccache
