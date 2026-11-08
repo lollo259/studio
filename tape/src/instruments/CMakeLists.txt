@@ -22,6 +22,7 @@ set(PLUGIN_LV2_UI OFF CACHE BOOL "" FORCE)
 set(PLUGIN_VST3 OFF CACHE BOOL "" FORCE)
 set(PLUGIN_AU OFF CACHE BOOL "" FORCE)
 set(PLUGIN_PUREDATA OFF CACHE BOOL "" FORCE)
+set(WAVPACK_ENABLE_ASM OFF CACHE BOOL "" FORCE) # no MASM on the Windows build machine
 FetchContent_Declare(sfizz
     URL https://github.com/sfztools/sfizz/releases/download/1.2.3/sfizz-1.2.3.tar.gz
     URL_HASH SHA256=a9339eac7620d7f0f6b44bdfe860680fab73e66efad4b5f15b21198dd9436822
@@ -29,6 +30,11 @@ FetchContent_Declare(sfizz
 FetchContent_GetProperties(sfizz)
 if (NOT sfizz_POPULATED)
     FetchContent_Populate(sfizz)
+    # wavpack (inside sfizz) switches on assembler languages, which breaks Tape's Ninja/MSVC build: turn them off
+    set(_wv "${sfizz_SOURCE_DIR}/external/st_audiofile/thirdparty/wavpack/CMakeLists.txt")
+    file(READ "${_wv}" _wv_text)
+    string(REPLACE "enable_language(" "#enable_language(" _wv_text "${_wv_text}")
+    file(WRITE "${_wv}" "${_wv_text}")
     add_subdirectory(${sfizz_SOURCE_DIR} ${sfizz_BINARY_DIR} EXCLUDE_FROM_ALL)
 endif()
 
