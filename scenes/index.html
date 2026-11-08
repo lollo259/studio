@@ -172,11 +172,11 @@ const save = () => store.set('state', S);
 let ctx = null, master = null;
 function audio() {
   if (!ctx) {
-    ctx = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: 'interactive' });
+    ctx = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: 0 });
     master = ctx.createDynamicsCompressor(); master.threshold.value = -10; master.ratio.value = 4; master.connect(ctx.destination);
   }
   if (ctx.state !== 'running') ctx.resume();
-  $('audioState').textContent = 'sound on · ' + Math.round(((ctx.baseLatency || 0) + (ctx.outputLatency || 0)) * 1000) + ' ms delay';
+  $('audioState').textContent = 'sound on';
   return ctx;
 }
 document.addEventListener('pointerdown', () => audio(), { once: false });
