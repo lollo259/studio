@@ -168,6 +168,9 @@ qt_add_resources(muse_ui "muse_ui_resources"
         "data/WorkSans-Medium.ttf"
         "data/WorkSans-SemiBold.ttf"
         "data/WorkSans-Bold.ttf"
+        "data/Jost-Regular.ttf"
+        "data/Jost-Bold.ttf"
+        "data/Jost-Italic.ttf"
 )
 
 if (MUSE_LOAD_QML_FROM_SOURCE)

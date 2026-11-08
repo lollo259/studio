@@ -667,7 +667,7 @@ Notification UiConfiguration::musicalTextFontChanged() const
 
 std::string UiConfiguration::defaultFontFamily() const
 {
-    return "Work Sans"; // Muse: brand interface font
+    return "Jost"; // Studio: Jost is the standard font everywhere
 }
 
 int UiConfiguration::defaultFontSize() const

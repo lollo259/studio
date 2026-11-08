@@ -1,3 +1,5 @@
+#include <QFont>
+#include <QFontDatabase>
 /*
  * SPDX-License-Identifier: GPL-3.0-only
  * MuseScore-Studio-CLA-applies
@@ -181,6 +183,9 @@ void EngravingModule::onInit(const IApplication::RunMode&)
         fdb->addFont(FontDataKey(u"Jost", false, true), ":/fonts/jost/Jost-Italic.ttf");
         fdb->addFont(FontDataKey(u"Jost", true, false), ":/fonts/jost/Jost-Bold.ttf");
         fdb->addFont(FontDataKey(u"Jost", true, true), ":/fonts/jost/Jost-BoldItalic.ttf");
+        for (const char* jf : { ":/fonts/jost/Jost-Regular.ttf", ":/fonts/jost/Jost-Italic.ttf", ":/fonts/jost/Jost-Bold.ttf", ":/fonts/jost/Jost-BoldItalic.ttf" }) {
+            QFontDatabase::addApplicationFont(jf); // so Qt itself can fall back to Jost
+        }
 
         // MusicSymbol[Text]
         auto addMusicFont = [this, fdb](const std::string& name, const FontDataKey& fontDataKey, const muse::io::path_t& filePath){
@@ -242,6 +247,11 @@ void EngravingModule::onInit(const IApplication::RunMode&)
         m_engravingfonts->setFallbackFont("Bravura");
 
         //! NOTE Used for Qt font provider
+        // Studio: if Futura isn't installed, score text falls back to Jost (never to a serif)
+        for (const char16_t* fut : { u"Futura PT", u"Futura", u"Futura Medium Condensed", u"Futura PT Book", u"Futura Std" }) {
+            fdb->insertSubstitution(fut, u"Jost");
+            QFont::insertSubstitution(QString::fromUtf16(fut), QStringLiteral("Jost"));
+        }
         fdb->insertSubstitution(u"Leland Text",    u"Bravura Text");
         fdb->insertSubstitution(u"Bravura Text",   u"Leland Text");
         fdb->insertSubstitution(u"MScore Text",    u"Leland Text");
