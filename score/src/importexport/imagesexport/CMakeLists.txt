@@ -37,6 +37,8 @@ target_sources(iex_imagesexport PRIVATE
     internal/pngwriter.h
     internal/pdfwriter.cpp
     internal/pdfwriter.h
+    internal/inkprint.cpp
+    internal/inkprint.h
 )
 
 target_link_libraries(iex_imagesexport PRIVATE engraving)
