@@ -7,6 +7,7 @@
         <file alias="engraving/styles/legacy-style-defaults-v2.mss">data/styles/legacy-style-defaults-v2.mss</file>
         <file alias="engraving/styles/legacy-style-defaults-v3.mss">data/styles/legacy-style-defaults-v3.mss</file>
         <file alias="engraving/styles/migration-306-style-Leland.mss">data/styles/migration-306-style-Leland.mss</file>
+        <file alias="engraving/styles/Laurence.mss">data/styles/Laurence.mss</file>
         <file alias="engraving/styles/migration-306-style-Edwin.mss">data/styles/migration-306-style-Edwin.mss</file>
         <file alias="engraving/styles/legacy-style-defaults-v302.mss">data/styles/legacy-style-defaults-v302.mss</file>
         <file alias="engraving/styles/gp-style.mss">data/styles/gp-style.mss</file>

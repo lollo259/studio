@@ -82,7 +82,7 @@ void EngravingConfiguration::init()
 
     #ifdef STUDIO_OFFLINE
     //! Score: Laurence Who's personal style is the default for every new score
-    settings()->setDefaultValue(DEFAULT_STYLE_FILE_PATH, Val(appDataPath() + "/styles/Laurence.mss"));
+    settings()->setDefaultValue(DEFAULT_STYLE_FILE_PATH, Val(muse::io::path_t(":/engraving/styles/Laurence.mss")));
 #else
     settings()->setDefaultValue(DEFAULT_STYLE_FILE_PATH, Val(muse::io::path_t()));
 #endif

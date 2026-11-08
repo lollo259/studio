@@ -64,11 +64,40 @@ static MigrationType migrationTypeFromMscVersion(int mscVersion)
     return MigrationType::Unknown;
 }
 
+#ifdef STUDIO_OFFLINE
+//! Score: every score opens in the house style (Laurence font, layout, Futura text).
+//! Applied as one undoable step, so Ctrl+Z gives the file's own style back.
+static void applyHouseStyle(mu::engraving::MasterScore* score, const muse::io::path_t& stylePath)
+{
+    if (!score || stylePath.empty() || !muse::io::File::exists(stylePath)) {
+        return;
+    }
+    if (score->style().styleSt(mu::engraving::Sid::musicalSymbolFont) == u"Laurence") {
+        return; // already in house style
+    }
+    muse::io::File styleFile(stylePath);
+    score->startCmd(TranslatableString("undoableAction", "Apply house style"));
+    mu::engraving::Transaction& tx = score->transactionManager()->currentOrDummyTransaction();
+    for (mu::engraving::Excerpt* excerpt : score->excerpts()) {
+        mu::engraving::EditStyle::loadStyle(tx, excerpt->excerptScore(), styleFile, /*ign*/ true, /*overlap*/ true);
+    }
+    mu::engraving::EditStyle::loadStyle(tx, score, styleFile, /*ign*/ true, /*overlap*/ true);
+    score->endCmd();
+}
+#endif
+
 Ret ProjectMigrator::migrateEngravingProjectIfNeed(engraving::EngravingProjectPtr project)
 {
+#ifdef STUDIO_OFFLINE
+    if (project->mscVersion() >= 400) {
+        applyHouseStyle(project->masterScore(), engravingConfiguration()->defaultStyleFilePath());
+        return true;
+    }
+#else
     if (project->mscVersion() >= 400) {
         return true;
     }
+#endif
     //! NOTE If the migration is not done, then the default style for the score is determined by the version.
     //! When migrating, the version becomes the current one, so remember the version of the default style before migrating
     project->masterScore()->style().setDefaultStyleVersion(ReadStyleHook::styleDefaultByMscVersion(project->mscVersion()));
@@ -99,6 +128,9 @@ Ret ProjectMigrator::migrateEngravingProjectIfNeed(engraving::EngravingProjectPt
     }
 
     Ret ret = migrateProject(project, migrationOptions);
+#ifdef STUDIO_OFFLINE
+    applyHouseStyle(project->masterScore(), engravingConfiguration()->defaultStyleFilePath());
+#endif
     if (!ret) {
         LOGE() << "failed migration";
     } else {

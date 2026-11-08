@@ -26,11 +26,13 @@
 #include "modularity/ioc.h"
 #include "interactive/iinteractive.h"
 #include "iprojectconfiguration.h"
+#include "engraving/iengravingconfiguration.h"
 
 namespace mu::project {
 class ProjectMigrator : public IProjectMigrator, public muse::Contextable
 {
     muse::GlobalInject<IProjectConfiguration> configuration;
+    muse::GlobalInject<mu::engraving::IEngravingConfiguration> engravingConfiguration;
     muse::ContextInject<muse::IInteractive> interactive = { this };
 public:
     ProjectMigrator(const muse::modularity::ContextPtr& iocCtx)
