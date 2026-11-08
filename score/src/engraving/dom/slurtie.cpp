@@ -1,0 +1,489 @@
+/*
+ * SPDX-License-Identifier: GPL-3.0-only
+ * MuseScore-Studio-CLA-applies
+ *
+ * MuseScore Studio
+ * Music Composition & Notation
+ *
+ * Copyright (C) 2021 MuseScore Limited and others
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 3 as
+ * published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
+#include "slurtie.h"
+
+#include "iengravingconfiguration.h" // IWYU pragma: keep
+
+#include "../editing/elementeditdata.h"
+#include "../editing/mscoreview.h"
+#include "../rendering/iscorerenderer.h"
+
+#include "note.h"
+#include "page.h"
+#include "score.h"
+#include "system.h"
+
+#include "log.h"
+
+using namespace mu;
+using namespace muse::draw;
+using namespace mu::engraving;
+
+namespace mu::engraving {
+//---------------------------------------------------------
+//   SlurTieSegment
+//---------------------------------------------------------
+
+SlurTieSegment::SlurTieSegment(const ElementType& type, SlurTie* sp)
+    : SpannerSegment(type, sp)
+{
+    setFlag(ElementFlag::ON_STAFF, true);
+}
+
+SlurTieSegment::SlurTieSegment(const SlurTieSegment& b)
+    : SpannerSegment(b)
+{
+    for (int i = 0; i < int(Grip::GRIPS); ++i) {
+        m_ups[i]   = b.m_ups[i];
+        m_ups[i].p = PointF();
+    }
+}
+
+bool SlurTieSegment::isEditAllowed(EditData& ed) const
+{
+    if (ed.key == Key_Home && !(ed.modifiers & ~KeyboardModifier::KeypadModifier) && ed.hasCurrentGrip()) {
+        return true;
+    }
+
+    return false;
+}
+
+//---------------------------------------------------------
+//   edit
+//    return true if event is accepted
+//---------------------------------------------------------
+
+bool SlurTieSegment::edit(EditData& ed)
+{
+    if (!isEditAllowed(ed)) {
+        return false;
+    }
+
+    if (ed.key == Key_Home && !(ed.modifiers & ~KeyboardModifier::KeypadModifier)) {
+        if (ed.hasCurrentGrip()) {
+            startDragGrip(ed);
+            if (ed.curGrip == Grip::SHOULDER) {
+                ups(Grip::BEZIER1).off = PointF();
+                ups(Grip::BEZIER2).off = PointF();
+            } else {
+                ups(ed.curGrip).off = PointF();
+            }
+            renderer()->layoutItem(spanner());
+            endDragGrip(ed);
+        }
+        return true;
+    }
+    return false;
+}
+
+//---------------------------------------------------------
+//   gripAnchorLines
+//---------------------------------------------------------
+
+std::vector<LineF> SlurTieSegment::gripAnchorLines(Grip grip) const
+{
+    std::vector<LineF> result;
+
+    if (!system() || (grip != Grip::START && grip != Grip::END)) {
+        return result;
+    }
+
+    PointF sp(system()->pagePos());
+    PointF pp(pagePos());
+    PointF p1(ups(Grip::START).p + pp);
+    PointF p2(ups(Grip::END).p + pp);
+
+    PointF anchorPosition;
+    int gripIndex = static_cast<int>(grip);
+
+    switch (spannerSegmentType()) {
+    case SpannerSegmentType::SINGLE:
+        anchorPosition = (grip == Grip::START ? p1 : p2);
+        break;
+
+    case SpannerSegmentType::BEGIN:
+        anchorPosition = (grip == Grip::START ? p1 : system()->pageBoundingRect().topRight());
+        break;
+
+    case SpannerSegmentType::MIDDLE:
+        anchorPosition = (grip == Grip::START ? sp : system()->pageBoundingRect().topRight());
+        break;
+
+    case SpannerSegmentType::END:
+        anchorPosition = (grip == Grip::START ? sp : p2);
+        break;
+    }
+
+    const Page* p = system()->page();
+    const PointF pageOffset = p ? p->pos() : PointF();
+    result.push_back(LineF(anchorPosition, gripsPositions().at(gripIndex)).translated(pageOffset));
+
+    return result;
+}
+
+//---------------------------------------------------------
+//   move
+//---------------------------------------------------------
+
+void SlurTieSegment::move(const PointF& s)
+{
+    EngravingItem::move(s);
+    for (int k = 0; k < int(Grip::GRIPS); ++k) {
+        m_ups[k].p += s;
+    }
+}
+
+//---------------------------------------------------------
+//   spatiumChanged
+//---------------------------------------------------------
+
+void SlurTieSegment::spatiumChanged(double oldValue, double newValue)
+{
+    EngravingItem::spatiumChanged(oldValue, newValue);
+    double diff = newValue / oldValue;
+    for (UP& u : m_ups) {
+        u.off *= diff;
+    }
+}
+
+//---------------------------------------------------------
+//   gripsPositions
+//---------------------------------------------------------
+
+std::vector<PointF> SlurTieSegment::gripsPositions(const EditData&) const
+{
+    const int ngrips = gripsCount();
+    std::vector<PointF> grips(ngrips);
+
+    const PointF p(pagePos());
+    for (int i = 0; i < ngrips; ++i) {
+        grips[i] = m_ups[i].p + m_ups[i].off + p;
+    }
+
+    return grips;
+}
+
+bool SlurTieSegment::isUserModified() const
+{
+    return SpannerSegment::isUserModified() || !(visible() && autoplace()
+                                                 && color() == configuration()->defaultColor()
+                                                 && offset().isNull()
+                                                 && ups(Grip::START).off.isNull()
+                                                 && ups(Grip::BEZIER1).off.isNull()
+                                                 && ups(Grip::BEZIER2).off.isNull()
+                                                 && ups(Grip::END).off.isNull());
+}
+
+//---------------------------------------------------------
+//   startDragGrip
+//---------------------------------------------------------
+
+void SlurTieSegment::startDragGrip(EditData& ed)
+{
+    ElementEditDataPtr eed = ed.getData(this);
+    IF_ASSERT_FAILED(eed) {
+        return;
+    }
+    for (Pid i : { Pid::BEZIER_OFFSET1, Pid::BEZIER_OFFSET2, Pid::BEZIER_OFFSET3, Pid::BEZIER_OFFSET4, Pid::OFFSET }) {
+        eed->pushProperty(i);
+    }
+}
+
+//---------------------------------------------------------
+//   endDragGrip
+//---------------------------------------------------------
+
+void SlurTieSegment::endDragGrip(EditData& ed)
+{
+    EngravingItem::endDragGrip(ed);
+    triggerLayout();
+}
+
+//---------------------------------------------------------
+//   propertyDelegate
+//---------------------------------------------------------
+
+EngravingObject* SlurTieSegment::propertyDelegate(Pid pid) const
+{
+    switch (pid) {
+    case Pid::SLUR_STYLE_TYPE:
+    case Pid::SLUR_DIRECTION:
+    case Pid::MASK_SLURTIE:
+        return slurTie();
+    default:
+        return SpannerSegment::propertyDelegate(pid);
+    }
+}
+
+//---------------------------------------------------------
+//   getProperty
+//---------------------------------------------------------
+
+PropertyValue SlurTieSegment::getProperty(Pid propertyId) const
+{
+    if (EngravingObject* e = const_cast<SlurTieSegment*>(this)->propertyDelegate(propertyId)) {
+        return e->getProperty(propertyId);
+    }
+
+    switch (propertyId) {
+    case Pid::BEZIER_OFFSET1:
+        return ups(Grip::START).off;
+    case Pid::BEZIER_OFFSET2:
+        return ups(Grip::BEZIER1).off;
+    case Pid::BEZIER_OFFSET3:
+        return ups(Grip::BEZIER2).off;
+    case Pid::BEZIER_OFFSET4:
+        return ups(Grip::END).off;
+    default:
+        return SpannerSegment::getProperty(propertyId);
+    }
+}
+
+//---------------------------------------------------------
+//   setProperty
+//---------------------------------------------------------
+
+bool SlurTieSegment::setProperty(Pid propertyId, const PropertyValue& v)
+{
+    if (EngravingObject* e = const_cast<SlurTieSegment*>(this)->propertyDelegate(propertyId)) {
+        return e->setProperty(propertyId, v);
+    }
+
+    switch (propertyId) {
+    case Pid::BEZIER_OFFSET1:
+        ups(Grip::START).off = v.value<PointF>();
+        break;
+    case Pid::BEZIER_OFFSET2:
+        ups(Grip::BEZIER1).off = v.value<PointF>();
+        break;
+    case Pid::BEZIER_OFFSET3:
+        ups(Grip::BEZIER2).off = v.value<PointF>();
+        break;
+    case Pid::BEZIER_OFFSET4:
+        ups(Grip::END).off = v.value<PointF>();
+        break;
+    default:
+        return SpannerSegment::setProperty(propertyId, v);
+    }
+    triggerLayout();
+    return true;
+}
+
+//---------------------------------------------------------
+//   propertyDefault
+//---------------------------------------------------------
+
+PropertyValue SlurTieSegment::propertyDefault(Pid id) const
+{
+    if (EngravingObject* e = const_cast<SlurTieSegment*>(this)->propertyDelegate(id)) {
+        return e->propertyDefault(id);
+    }
+
+    switch (id) {
+    case Pid::BEZIER_OFFSET1:
+    case Pid::BEZIER_OFFSET2:
+    case Pid::BEZIER_OFFSET3:
+    case Pid::BEZIER_OFFSET4:
+        return PointF();
+    default:
+        return SpannerSegment::propertyDefault(id);
+    }
+}
+
+//---------------------------------------------------------
+//   reset
+//---------------------------------------------------------
+
+void SlurTieSegment::reset()
+{
+    EngravingItem::reset();
+    undoResetProperty(Pid::BEZIER_OFFSET1);
+    undoResetProperty(Pid::BEZIER_OFFSET2);
+    undoResetProperty(Pid::BEZIER_OFFSET3);
+    undoResetProperty(Pid::BEZIER_OFFSET4);
+    slurTie()->reset();
+}
+
+//---------------------------------------------------------
+//   undoChangeProperty
+//---------------------------------------------------------
+
+void SlurTieSegment::undoChangeProperty(Pid pid, const PropertyValue& val, PropertyFlags ps)
+{
+    if (pid == Pid::AUTOPLACE && (val.toBool() == true && !autoplace())) {
+        // Switching autoplacement on. Save user-defined
+        // placement properties to undo stack.
+        undoPushProperty(Pid::BEZIER_OFFSET1);
+        undoPushProperty(Pid::BEZIER_OFFSET2);
+        undoPushProperty(Pid::BEZIER_OFFSET3);
+        undoPushProperty(Pid::BEZIER_OFFSET4);
+        // other will be saved in base classes.
+    }
+    SpannerSegment::undoChangeProperty(pid, val, ps);
+}
+
+//---------------------------------------------------------
+//   SlurTie
+//---------------------------------------------------------
+
+SlurTie::SlurTie(const ElementType& type, EngravingObject* parent)
+    : Spanner(type, parent)
+{
+    m_slurDirection = DirectionV::AUTO;
+    m_up            = true;
+    m_styleType     = SlurStyleType::Solid;
+    m_maskSlurTie   = AutoOnOff::AUTO;
+}
+
+SlurTie::SlurTie(const SlurTie& t)
+    : Spanner(t)
+{
+    m_up            = t.m_up;
+    m_slurDirection = t.m_slurDirection;
+    m_styleType     = t.m_styleType;
+    m_maskSlurTie   = t.m_maskSlurTie;
+}
+
+//---------------------------------------------------------
+//   SlurTie
+//---------------------------------------------------------
+
+SlurTie::~SlurTie()
+{
+}
+
+//---------------------------------------------------------
+//   undoSetSlurDirection
+//---------------------------------------------------------
+
+void SlurTie::undoSetSlurDirection(DirectionV d)
+{
+    undoChangeProperty(Pid::SLUR_DIRECTION, PropertyValue::fromValue<DirectionV>(d));
+}
+
+//---------------------------------------------------------
+//   getProperty
+//---------------------------------------------------------
+
+PropertyValue SlurTie::getProperty(Pid propertyId) const
+{
+    switch (propertyId) {
+    case Pid::SLUR_STYLE_TYPE:
+        return styleType();
+    case Pid::SLUR_DIRECTION:
+        return PropertyValue::fromValue<DirectionV>(slurDirection());
+    case Pid::MASK_SLURTIE:
+        return maskSlurTie();
+    default:
+        return Spanner::getProperty(propertyId);
+    }
+}
+
+//---------------------------------------------------------
+//   setProperty
+//---------------------------------------------------------
+
+bool SlurTie::setProperty(Pid propertyId, const PropertyValue& v)
+{
+    switch (propertyId) {
+    case Pid::SLUR_STYLE_TYPE:
+        setStyleType(v.value<SlurStyleType>());
+        break;
+    case Pid::SLUR_DIRECTION:
+        setSlurDirection(v.value<DirectionV>());
+        break;
+    case Pid::MASK_SLURTIE:
+        setMaskSlurTie(v.value<AutoOnOff>());
+        break;
+    default:
+        return Spanner::setProperty(propertyId, v);
+    }
+    triggerLayout();
+    return true;
+}
+
+//---------------------------------------------------------
+//   propertyDefault
+//---------------------------------------------------------
+
+PropertyValue SlurTie::propertyDefault(Pid id) const
+{
+    switch (id) {
+    case Pid::SLUR_STYLE_TYPE:
+        return SlurStyleType::Solid;
+    case Pid::SLUR_DIRECTION:
+        return PropertyValue::fromValue<DirectionV>(DirectionV::AUTO);
+    case Pid::MASK_SLURTIE:
+        return AutoOnOff::AUTO;
+    default:
+        return Spanner::propertyDefault(id);
+    }
+}
+
+//---------------------------------------------------------
+//   fixupSegments
+//---------------------------------------------------------
+
+void SlurTie::fixupSegments(unsigned nsegs)
+{
+    Spanner::fixupSegments(nsegs, [this]() { return newSlurTieSegment(); });
+}
+
+//---------------------------------------------------------
+//   reset
+//---------------------------------------------------------
+
+void SlurTie::reset()
+{
+    EngravingItem::reset();
+    undoResetProperty(Pid::SLUR_DIRECTION);
+    undoResetProperty(Pid::SLUR_STYLE_TYPE);
+    undoResetProperty(Pid::MASK_SLURTIE);
+}
+
+muse::TranslatableString SlurTie::subtypeUserName() const
+{
+    switch (m_styleType) {
+    case SlurStyleType::Solid:
+        return TranslatableString("engraving/slurstyletype", "Solid");
+    case SlurStyleType::Dotted:
+        return TranslatableString("engraving/slurstyletype", "Dotted");
+    case SlurStyleType::Dashed:
+        return TranslatableString("engraving/slurstyletype", "Dashed");
+    case SlurStyleType::WideDashed:
+        return TranslatableString("engraving/slurstyletype", "Wide dashed");
+    default:
+        return TranslatableString("engraving/slurstyletype", "Undefined");
+    }
+}
+
+int SlurTieSegment::subtype() const
+{
+    return slurTie()->subtype();
+}
+
+muse::TranslatableString SlurTieSegment::subtypeUserName() const
+{
+    return slurTie()->subtypeUserName();
+}
+}

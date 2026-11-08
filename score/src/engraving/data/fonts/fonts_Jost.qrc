@@ -1,0 +1,8 @@
+<RCC>
+    <qresource prefix="/">
+        <file alias="fonts/jost/Jost-Regular.ttf">../../../../fonts/jost/Jost-Regular.ttf</file>
+        <file alias="fonts/jost/Jost-Italic.ttf">../../../../fonts/jost/Jost-Italic.ttf</file>
+        <file alias="fonts/jost/Jost-Bold.ttf">../../../../fonts/jost/Jost-Bold.ttf</file>
+        <file alias="fonts/jost/Jost-BoldItalic.ttf">../../../../fonts/jost/Jost-BoldItalic.ttf</file>
+    </qresource>
+</RCC>

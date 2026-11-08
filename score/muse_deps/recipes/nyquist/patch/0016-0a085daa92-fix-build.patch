@@ -1,0 +1,16 @@
+Audacity commit 0a085daa92
+Subject: Fix build
+
+diff --git a/nyquist/nyqsrc/samples.c b/nyquist/nyqsrc/samples.c
+index e426c31..3fc9788 100644
+--- a/nyquist/nyqsrc/samples.c
++++ b/nyquist/nyqsrc/samples.c
+@@ -109,7 +109,7 @@ double snd_maxsamp(sound_type s)
+ 
+ /* snd_samples -- convert sound (prefix) to lisp array */
+ /**/
+-LVAL snd_samples(sound_type s, long len)
++LVAL snd_samples(sound_type s, int64_t len)
+ {
+     LVAL v;
+     long vx = 0;

@@ -1,0 +1,308 @@
+-- C:   GNU 14.2.0
+-- CXX: GNU 14.2.0
+-- Detected CPU Architecture: x86_64
+-- MUSE_APP_RELEASE_CHANNEL stable
+-- MUSE_APP_VERSION 5.0.0
+-- MUSESCORE_BUILD_CONFIGURATION: app
+-- MUSE_APP_BUILD_MODE: release
+-- MUSESCORE_BUILD_NUMBER: 0
+CMake Warning at muse/buildscripts/cmake/SetupCompilerCache.cmake:22 (message):
+  CMAKE_C_COMPILER_LAUNCHER or CMAKE_CXX_COMPILER_LAUNCHER have already been
+  set; not setting up compiler cache in order not to override them.
+Call Stack (most recent call first):
+  CMakeLists.txt:215 (include)
+
+
+-- Could NOT find Qt6TaskTree (missing: Qt6TaskTree_DIR)
+CMake Warning at /usr/share/cmake-3.28/Modules/CMakeFindDependencyMacro.cmake:76 (find_package):
+  Found package configuration file:
+
+    /home/claude/Qt/6.11.2/gcc_64/lib/cmake/Qt6QmlAssetDownloaderPrivate/Qt6QmlAssetDownloaderPrivateConfig.cmake
+
+  but it set Qt6QmlAssetDownloaderPrivate_FOUND to FALSE so package
+  "Qt6QmlAssetDownloaderPrivate" is considered to be NOT FOUND.  Reason given
+  by package:
+
+  Qt6QmlAssetDownloaderPrivate could not be found because dependency
+  Qt6TaskTree could not be found.
+
+  Configuring with --debug-find-pkg=Qt6TaskTree might reveal details why the
+  package was not found.
+
+  Configuring with -DQT_DEBUG_FIND_PACKAGE=ON will print the values of some
+  of the path variables that find_package uses to try and find the package.
+
+Call Stack (most recent call first):
+  /home/claude/Qt/6.11.2/gcc_64/lib/cmake/Qt6/QtPublicDependencyHelpers.cmake:142 (find_dependency)
+  /home/claude/Qt/6.11.2/gcc_64/lib/cmake/Qt6Qml/QmlPlugins/Qt6QmlAssetDownloaderPrivatepluginDependencies.cmake:22 (_qt_internal_find_qt_dependencies)
+  /home/claude/Qt/6.11.2/gcc_64/lib/cmake/Qt6Qml/QmlPlugins/Qt6QmlAssetDownloaderPrivatepluginConfig.cmake:40 (include)
+  /home/claude/Qt/6.11.2/gcc_64/lib/cmake/Qt6/QtPublicPluginHelpers.cmake:638 (include)
+  /home/claude/Qt/6.11.2/gcc_64/lib/cmake/Qt6Qml/Qt6QmlPlugins.cmake:6 (__qt_internal_include_qml_plugin_packages)
+  /home/claude/Qt/6.11.2/gcc_64/lib/cmake/Qt6Qml/Qt6QmlConfig.cmake:199 (include)
+  /home/claude/Qt/6.11.2/gcc_64/lib/cmake/Qt6/Qt6Config.cmake:257 (find_package)
+  muse/buildscripts/cmake/SetupQt6.cmake:90 (find_package)
+  CMakeLists.txt:225 (include)
+
+
+Detected locale "C" with character encoding "ANSI_X3.4-1968", which is not UTF-8.
+Qt depends on a UTF-8 locale, and has switched to "C.UTF-8" instead.
+If this causes problems, reconfigure your locale. See the locale(1) manual
+for more information.
+-- Qt version: 6.11.2
+-- [ogg] bundle: /home/claude/src/MuseScore/build.studio/_deps/ogg/lib/libogg.so;/home/claude/src/MuseScore/build.studio/_deps/ogg/lib/libogg.so.0;/home/claude/src/MuseScore/build.studio/_deps/ogg/lib/libogg.so.0.8.5
+-- [vorbis] bundle: /home/claude/src/MuseScore/build.studio/_deps/vorbis/lib/libvorbis.so;/home/claude/src/MuseScore/build.studio/_deps/vorbis/lib/libvorbis.so.0;/home/claude/src/MuseScore/build.studio/_deps/vorbis/lib/libvorbis.so.0.4.9;/home/claude/src/MuseScore/build.studio/_deps/vorbis/lib/libvorbisenc.so;/home/claude/src/MuseScore/build.studio/_deps/vorbis/lib/libvorbisenc.so.2;/home/claude/src/MuseScore/build.studio/_deps/vorbis/lib/libvorbisenc.so.2.0.12;/home/claude/src/MuseScore/build.studio/_deps/vorbis/lib/libvorbisfile.so;/home/claude/src/MuseScore/build.studio/_deps/vorbis/lib/libvorbisfile.so.3;/home/claude/src/MuseScore/build.studio/_deps/vorbis/lib/libvorbisfile.so.3.3.8
+-- [flac] bundle: /home/claude/src/MuseScore/build.studio/_deps/flac/lib/libFLAC.so;/home/claude/src/MuseScore/build.studio/_deps/flac/lib/libFLAC.so.12;/home/claude/src/MuseScore/build.studio/_deps/flac/lib/libFLAC.so.12.1.0;/home/claude/src/MuseScore/build.studio/_deps/flac/lib/libFLAC++.so;/home/claude/src/MuseScore/build.studio/_deps/flac/lib/libFLAC++.so.10;/home/claude/src/MuseScore/build.studio/_deps/flac/lib/libFLAC++.so.10.0.1
+-- [opus] bundle: /home/claude/src/MuseScore/build.studio/_deps/opus/lib/libopus.so;/home/claude/src/MuseScore/build.studio/_deps/opus/lib/libopus.so.0;/home/claude/src/MuseScore/build.studio/_deps/opus/lib/libopus.so.0.10.1
+-- [libsndfile] bundle: /home/claude/src/MuseScore/build.studio/_deps/libsndfile/lib/libsndfile.so;/home/claude/src/MuseScore/build.studio/_deps/libsndfile/lib/libsndfile.so.1;/home/claude/src/MuseScore/build.studio/_deps/libsndfile/lib/libsndfile.so.1.0.37
+-- [nlohmann_json] bundle: 
+-- [json_schema_validator] bundle: 
+-- [zlib] bundle: /home/claude/src/MuseScore/build.studio/_deps/zlib/lib/libz.so;/home/claude/src/MuseScore/build.studio/_deps/zlib/lib/libz.so.1;/home/claude/src/MuseScore/build.studio/_deps/zlib/lib/libz.so.1.3.1
+-- [libpng] bundle: /home/claude/src/MuseScore/build.studio/_deps/libpng/lib/libpng16.so;/home/claude/src/MuseScore/build.studio/_deps/libpng/lib/libpng16.so.16;/home/claude/src/MuseScore/build.studio/_deps/libpng/lib/libpng16.so.16.50.0
+-- [freetype] bundle: /home/claude/src/MuseScore/build.studio/_deps/freetype/lib/libfreetype.so;/home/claude/src/MuseScore/build.studio/_deps/freetype/lib/libfreetype.so.6;/home/claude/src/MuseScore/build.studio/_deps/freetype/lib/libfreetype.so.6.20.4
+-- [harfbuzz] bundle: /home/claude/src/MuseScore/build.studio/_deps/harfbuzz/lib/libharfbuzz.so
+-- [ogg] bundle: /home/claude/src/MuseScore/build.studio/_deps/ogg/lib/libogg.so;/home/claude/src/MuseScore/build.studio/_deps/ogg/lib/libogg.so.0;/home/claude/src/MuseScore/build.studio/_deps/ogg/lib/libogg.so.0.8.5
+-- [fdk-aac] bundle: /home/claude/src/MuseScore/build.studio/_deps/fdk-aac/lib/libfdk-aac.so;/home/claude/src/MuseScore/build.studio/_deps/fdk-aac/lib/libfdk-aac.so.2;/home/claude/src/MuseScore/build.studio/_deps/fdk-aac/lib/libfdk-aac.so.2.0.3
+-- [flac] bundle: /home/claude/src/MuseScore/build.studio/_deps/flac/lib/libFLAC.so;/home/claude/src/MuseScore/build.studio/_deps/flac/lib/libFLAC.so.12;/home/claude/src/MuseScore/build.studio/_deps/flac/lib/libFLAC.so.12.1.0;/home/claude/src/MuseScore/build.studio/_deps/flac/lib/libFLAC++.so;/home/claude/src/MuseScore/build.studio/_deps/flac/lib/libFLAC++.so.10;/home/claude/src/MuseScore/build.studio/_deps/flac/lib/libFLAC++.so.10.0.1
+-- [lame] bundle: /home/claude/src/MuseScore/build.studio/_deps/lame/lib/libmp3lame.so;/home/claude/src/MuseScore/build.studio/_deps/lame/lib/libmp3lame.so.0;/home/claude/src/MuseScore/build.studio/_deps/lame/lib/libmp3lame.so.0.0.0
+-- [opus] bundle: /home/claude/src/MuseScore/build.studio/_deps/opus/lib/libopus.so;/home/claude/src/MuseScore/build.studio/_deps/opus/lib/libopus.so.0;/home/claude/src/MuseScore/build.studio/_deps/opus/lib/libopus.so.0.10.1
+-- [opusenc] bundle: 
+-- Configuring muse_pch
+-- Configuring muse_global <muse::global>
+-- Configuring muse_ui <muse::ui>
+-- Configuring muse_ui_qml <muse::ui_qml>
+-- Configuring muse_uicomponents <muse::uicomponents>
+-- Configuring muse_uicomponents_qml <muse::uicomponents_qml>
+-- Configuring muse_legacytreeview_qml <muse::legacytreeview_qml>
+-- Configuring muse_graphicaleffects_qml <muse::graphicaleffects_qml>
+shaders/roundcorners.frag -> shaders/roundcorners.frag.qsb exposed as :/qt/qml/Muse/GraphicalEffects/shaders/roundcorners.frag.qsb
+-- Configuring muse_uicomponents_qmlapi <muse::uicomponents_qmlapi>
+-- Configuring muse_interactive <muse::interactive>
+-- Configuring muse_interactive_qml <muse::interactive_qml>
+-- Configuring muse_toast <muse::toast>
+-- Configuring muse_toast_qml <muse::toast_qml>
+-- Configuring muse_dockwindow <muse::dockwindow>
+Detected locale "C" with character encoding "ANSI_X3.4-1968", which is not UTF-8.
+Qt depends on a UTF-8 locale, and has switched to "C.UTF-8" instead.
+If this causes problems, reconfigure your locale. See the locale(1) manual
+for more information.
+-- nlohmann_json not found in system. Using our own bundled one
+-- Configuring muse_dockwindow_qml <muse::dockwindow_qml>
+CMake Warning at /home/claude/Qt/6.11.2/gcc_64/lib/cmake/Qt6/QtPublicWalkLibsHelpers.cmake:287 (message):
+  The GuiPrivate target is mentioned as a dependency for kddockwidgets, but
+  not declared.  The linking might be incomplete.
+Call Stack (most recent call first):
+  /home/claude/Qt/6.11.2/gcc_64/lib/cmake/Qt6/QtPublicWalkLibsHelpers.cmake:251 (__qt_internal_walk_libs)
+  /home/claude/Qt/6.11.2/gcc_64/lib/cmake/Qt6/QtPublicWalkLibsHelpers.cmake:251 (__qt_internal_walk_libs)
+  /home/claude/Qt/6.11.2/gcc_64/lib/cmake/Qt6/QtPublicWalkLibsHelpers.cmake:339 (__qt_internal_walk_libs)
+  /home/claude/Qt/6.11.2/gcc_64/lib/cmake/Qt6Qml/Qt6QmlMacros.cmake:5519 (__qt_internal_collect_all_target_dependencies)
+  /home/claude/Qt/6.11.2/gcc_64/lib/cmake/Qt6Qml/Qt6QmlMacros.cmake:3075:EVAL:1 (_qt_internal_add_static_qml_plugin_dependencies)
+  muse/framework/dockwindow_v2/qml/Muse/Dock/CMakeLists.txt:DEFERRED
+
+
+CMake Warning at /home/claude/Qt/6.11.2/gcc_64/lib/cmake/Qt6/QtPublicWalkLibsHelpers.cmake:287 (message):
+  The QuickPrivate target is mentioned as a dependency for kddockwidgets, but
+  not declared.  The linking might be incomplete.
+Call Stack (most recent call first):
+  /home/claude/Qt/6.11.2/gcc_64/lib/cmake/Qt6/QtPublicWalkLibsHelpers.cmake:251 (__qt_internal_walk_libs)
+  /home/claude/Qt/6.11.2/gcc_64/lib/cmake/Qt6/QtPublicWalkLibsHelpers.cmake:251 (__qt_internal_walk_libs)
+  /home/claude/Qt/6.11.2/gcc_64/lib/cmake/Qt6/QtPublicWalkLibsHelpers.cmake:339 (__qt_internal_walk_libs)
+  /home/claude/Qt/6.11.2/gcc_64/lib/cmake/Qt6Qml/Qt6QmlMacros.cmake:5519 (__qt_internal_collect_all_target_dependencies)
+  /home/claude/Qt/6.11.2/gcc_64/lib/cmake/Qt6Qml/Qt6QmlMacros.cmake:3075:EVAL:1 (_qt_internal_add_static_qml_plugin_dependencies)
+  muse/framework/dockwindow_v2/qml/Muse/Dock/CMakeLists.txt:DEFERRED
+
+
+CMake Warning at /home/claude/Qt/6.11.2/gcc_64/lib/cmake/Qt6/QtPublicWalkLibsHelpers.cmake:287 (message):
+  The GuiPrivate target is mentioned as a dependency for kddockwidgets, but
+  not declared.  The linking might be incomplete.
+Call Stack (most recent call first):
+  /home/claude/Qt/6.11.2/gcc_64/lib/cmake/Qt6/QtPublicWalkLibsHelpers.cmake:251 (__qt_internal_walk_libs)
+  /home/claude/Qt/6.11.2/gcc_64/lib/cmake/Qt6/QtPublicWalkLibsHelpers.cmake:251 (__qt_internal_walk_libs)
+  /home/claude/Qt/6.11.2/gcc_64/lib/cmake/Qt6/QtPublicWalkLibsHelpers.cmake:339 (__qt_internal_walk_libs)
+  /home/claude/Qt/6.11.2/gcc_64/lib/cmake/Qt6Qml/Qt6QmlMacros.cmake:5519 (__qt_internal_collect_all_target_dependencies)
+  /home/claude/Qt/6.11.2/gcc_64/lib/cmake/Qt6Qml/Qt6QmlMacros.cmake:3075:EVAL:1 (_qt_internal_add_static_qml_plugin_dependencies)
+  muse/framework/dockwindow_v2/qml/Muse/Dock/CMakeLists.txt:DEFERRED
+
+
+CMake Warning at /home/claude/Qt/6.11.2/gcc_64/lib/cmake/Qt6/QtPublicWalkLibsHelpers.cmake:287 (message):
+  The QuickPrivate target is mentioned as a dependency for kddockwidgets, but
+  not declared.  The linking might be incomplete.
+Call Stack (most recent call first):
+  /home/claude/Qt/6.11.2/gcc_64/lib/cmake/Qt6/QtPublicWalkLibsHelpers.cmake:251 (__qt_internal_walk_libs)
+  /home/claude/Qt/6.11.2/gcc_64/lib/cmake/Qt6/QtPublicWalkLibsHelpers.cmake:251 (__qt_internal_walk_libs)
+  /home/claude/Qt/6.11.2/gcc_64/lib/cmake/Qt6/QtPublicWalkLibsHelpers.cmake:339 (__qt_internal_walk_libs)
+  /home/claude/Qt/6.11.2/gcc_64/lib/cmake/Qt6Qml/Qt6QmlMacros.cmake:5519 (__qt_internal_collect_all_target_dependencies)
+  /home/claude/Qt/6.11.2/gcc_64/lib/cmake/Qt6Qml/Qt6QmlMacros.cmake:3075:EVAL:1 (_qt_internal_add_static_qml_plugin_dependencies)
+  muse/framework/dockwindow_v2/qml/Muse/Dock/CMakeLists.txt:DEFERRED
+
+
+-- Configuring muse_accessibility <muse::accessibility>
+-- Configuring muse_actions <muse::actions>
+-- Configuring muse_audio <muse::audio>
+-- Configuring muse_audio_common
+-- Configuring muse_audio_main
+-- Configuring muse_audio_engine
+-- Configuring fluidsynth
+-- Configuring muse_audio_driver
+-- Configuring muse_audioplugins <muse::audioplugins>
+-- Configuring muse_testflow <muse::testflow>
+-- Configuring muse_testflow_qml <muse::testflow_qml>
+-- Configuring muse_automation <muse::automation>
+-- Configuring muse_automation_qml <muse::automation_qml>
+-- Configuring muse_diagnostics <muse::diagnostics>
+-- Configuring muse_diagnostics_qml <muse::diagnostics_qml>
+-- Configuring muse_draw <muse::draw>
+-- Configuring muse_midi <muse::midi>
+-- Configuring muse_midiremote <muse::midiremote>
+-- Configuring muse_midiremote_qml <muse::midiremote_qml>
+-- Configuring muse_mpe <muse::mpe>
+-- Configuring muse_mpe_qml <muse::mpe_qml>
+-- Configuring muse_musesampler <muse::musesampler>
+-- Configuring muse_network <muse::network>
+-- Configuring muse_rcommand <muse::rcommand>
+-- Configuring muse_rcommand_qml <muse::rcommand_qml>
+-- Configuring muse_rcontrol <muse::rcontrol>
+-- Configuring muse_shortcuts <muse::shortcuts>
+-- Configuring muse_shortcuts_qml <muse::shortcuts_qml>
+-- Configuring muse_tours <muse::tours>
+-- Configuring muse_tours_qml <muse::tours_qml>
+-- Configuring muse_multiwindows <muse::multiwindows>
+-- Configuring muse_multiwindows_qml <muse::multiwindows_qml>
+-- Configuring muse_languages <muse::languages>
+-- Configuring muse_media <muse::media>
+-- Configuring muse_extensions <muse::extensions>
+-- Configuring muse_extensions_qml <muse::extensions_qml>
+-- Configuring muse_workspace <muse::workspace>
+-- Configuring muse_workspace_qml <muse::workspace_qml>
+-- Configuring muse_cloud <muse::cloud> [stub]
+-- Configuring muse_cloud_qml <muse::cloud_qml> [stub]
+-- Configuring muse_learn <muse::learn> [stub]
+-- Configuring muse_learn_qml <muse::learn_qml> [stub]
+-- Configuring muse_update <muse::update> [stub]
+-- Configuring muse_vst <muse::vst> [stub]
+-- Configuring braille
+-- Configuring braille_qml
+-- Configuring converter
+-- Configuring engraving
+-- Muse: building with the Laurence music font as default
+-- Configuring engraving_qml
+-- Configuring iex_audioexport
+-- Configuring iex_bb
+-- Configuring iex_bww
+-- Configuring iex_capella
+-- Configuring rtf2html
+-- Configuring iex_guitarpro
+-- Configuring iex_imagesexport
+-- Configuring iex_lyricsexport
+-- Configuring iex_mei
+-- Configuring iex_midi
+-- Configuring beatroot
+-- Configuring iex_mnx
+-- Using muse_deps nlohmann_json from /home/claude/src/MuseScore/build.studio/_deps/nlohmann_json
+-- Using muse_deps json_schema_validator from /home/claude/src/MuseScore/build.studio/_deps/json_schema_validator
+-- Populating mnxdom
+-- Configuring done (0.0s)
+-- Generating done (0.0s)
+-- Build files have been written to: /home/claude/src/MuseScore/build.studio/_deps/mnxdom-subbuild
+[0/7] Performing update step for 'mnxdom-populate'
+[1/7] No patch step for 'mnxdom-populate'
+[3/7] No configure step for 'mnxdom-populate'
+[4/7] No build step for 'mnxdom-populate'
+[5/7] No install step for 'mnxdom-populate'
+[6/7] No test step for 'mnxdom-populate'
+[7/7] Completed 'mnxdom-populate'
+-- Mnxdom C++ standard: 20
+-- Using w3c-mnx schema: /home/claude/src/MuseScore/build.studio/_deps/mnxdom-src/third_party/w3c-mnx/mnx-schema.json
+-- Using w3c-mnx examples: /home/claude/src/MuseScore/build.studio/_deps/mnxdom-src/third_party/w3c-mnx/examples
+-- Found nlohmann_json: /home/claude/src/MuseScore/build.studio/_deps/nlohmann_json/share/cmake/nlohmann_json/nlohmann_jsonConfig.cmake (found suitable version "3.12.0", minimum required is "3.12.0") 
+-- Using system-installed nlohmann_json
+-- Found nlohmann_json: /home/claude/src/MuseScore/build.studio/_deps/nlohmann_json/share/cmake/nlohmann_json/nlohmann_jsonConfig.cmake (found version "3.12.0") 
+-- Using system-installed nlohmann_json_schema_validator
+-- Using nlohmann_json_schema_validator target: nlohmann_json_schema_validator::validator
+-- Testing not enabled for mnxdom_BUILD_TESTING.
+-- Using fetched mnxdom
+-- Configuring iex_musedata
+-- Configuring iex_musicxml
+-- Configuring iex_ove
+-- Configuring iex_tabledit
+-- Configuring iex_videoexport
+-- Configuring propertiespanel
+-- Configuring propertiespanel_qml
+-- Configuring instrumentsscene
+-- Configuring instrumentsscene_qml
+-- Configuring musesounds [stub]
+-- Configuring musesounds_qml [stub]
+-- Configuring notation
+-- Configuring notationscene
+-- Configuring notationscene_qml
+-- Configuring palette
+-- Configuring palette_qml
+-- Configuring playback
+-- Configuring playback_qml
+-- Configuring preferences
+-- Configuring preferences_qml
+-- Configuring print
+-- Configuring project
+-- Configuring project_qml
+-- Configuring appshell
+-- Configuring appshell_qml
+CMake Warning at /home/claude/Qt/6.11.2/gcc_64/lib/cmake/Qt6/QtPublicWalkLibsHelpers.cmake:287 (message):
+  The CorePrivate target is mentioned as a dependency for
+  muse::accessibility, but not declared.  The linking might be incomplete.
+Call Stack (most recent call first):
+  /home/claude/Qt/6.11.2/gcc_64/lib/cmake/Qt6/QtPublicWalkLibsHelpers.cmake:339 (__qt_internal_walk_libs)
+  /home/claude/Qt/6.11.2/gcc_64/lib/cmake/Qt6Core/Qt6CoreMacros.cmake:791 (__qt_internal_collect_all_target_dependencies)
+  /home/claude/Qt/6.11.2/gcc_64/lib/cmake/Qt6Core/Qt6CoreMacros.cmake:898 (_qt_internal_finalize_executable)
+  /home/claude/Qt/6.11.2/gcc_64/lib/cmake/Qt6Core/Qt6CoreMacros.cmake:942:EVAL:1 (qt6_finalize_target)
+  src/app/CMakeLists.txt:DEFERRED
+
+
+CMake Warning at /home/claude/Qt/6.11.2/gcc_64/lib/cmake/Qt6/QtPublicWalkLibsHelpers.cmake:287 (message):
+  The CorePrivate target is mentioned as a dependency for
+  muse::accessibility, but not declared.  The linking might be incomplete.
+Call Stack (most recent call first):
+  /home/claude/Qt/6.11.2/gcc_64/lib/cmake/Qt6/QtPublicWalkLibsHelpers.cmake:339 (__qt_internal_walk_libs)
+  /home/claude/Qt/6.11.2/gcc_64/lib/cmake/Qt6Core/Qt6CoreMacros.cmake:791 (__qt_internal_collect_all_target_dependencies)
+  /home/claude/Qt/6.11.2/gcc_64/lib/cmake/Qt6Core/Qt6CoreMacros.cmake:898 (_qt_internal_finalize_executable)
+  /home/claude/Qt/6.11.2/gcc_64/lib/cmake/Qt6Core/Qt6CoreMacros.cmake:942:EVAL:1 (qt6_finalize_target)
+  src/app/CMakeLists.txt:DEFERRED
+
+
+CMake Warning at /home/claude/Qt/6.11.2/gcc_64/lib/cmake/Qt6/QtPublicWalkLibsHelpers.cmake:312 (message):
+  When trying to collect dependencies of target 'MuseScoreStudio', the
+  non-existent target 'XKB::XKB' was encountered.  This can likely be fixed
+  by moving the find_package call that pulls in 'XKB::XKB' to the scope of
+  directory '/home/claude/src/MuseScore/src/app' or higher.  This warning can
+  be silenced by setting QT_SILENCE_MISSING_DEPENDENCY_TARGET_WARNING to ON.
+Call Stack (most recent call first):
+  /home/claude/Qt/6.11.2/gcc_64/lib/cmake/Qt6/QtPublicWalkLibsHelpers.cmake:348 (__qt_internal_print_missing_dependency_target_warning)
+  /home/claude/Qt/6.11.2/gcc_64/lib/cmake/Qt6Core/Qt6CoreMacros.cmake:791 (__qt_internal_collect_all_target_dependencies)
+  /home/claude/Qt/6.11.2/gcc_64/lib/cmake/Qt6Core/Qt6CoreMacros.cmake:898 (_qt_internal_finalize_executable)
+  /home/claude/Qt/6.11.2/gcc_64/lib/cmake/Qt6Core/Qt6CoreMacros.cmake:942:EVAL:1 (qt6_finalize_target)
+  src/app/CMakeLists.txt:DEFERRED
+
+
+Detected locale "C" with character encoding "ANSI_X3.4-1968", which is not UTF-8.
+Qt depends on a UTF-8 locale, and has switched to "C.UTF-8" instead.
+If this causes problems, reconfigure your locale. See the locale(1) manual
+for more information.
+CMake Warning at /home/claude/Qt/6.11.2/gcc_64/lib/cmake/Qt6/QtPublicWalkLibsHelpers.cmake:312 (message):
+  When trying to collect dependencies of target 'MuseScoreStudio', the
+  non-existent target 'XKB::XKB' was encountered.  This can likely be fixed
+  by moving the find_package call that pulls in 'XKB::XKB' to the scope of
+  directory '/home/claude/src/MuseScore/src/app' or higher.  This warning can
+  be silenced by setting QT_SILENCE_MISSING_DEPENDENCY_TARGET_WARNING to ON.
+Call Stack (most recent call first):
+  /home/claude/Qt/6.11.2/gcc_64/lib/cmake/Qt6/QtPublicWalkLibsHelpers.cmake:348 (__qt_internal_print_missing_dependency_target_warning)
+  /home/claude/Qt/6.11.2/gcc_64/lib/cmake/Qt6/QtPublicPluginHelpers.cmake:344 (__qt_internal_collect_all_target_dependencies)
+  /home/claude/Qt/6.11.2/gcc_64/lib/cmake/Qt6/QtPublicPluginHelpers.cmake:437 (__qt_internal_collect_plugin_targets_from_dependencies)
+  /home/claude/Qt/6.11.2/gcc_64/lib/cmake/Qt6Core/Qt6CoreMacros.cmake:845 (__qt_internal_apply_plugin_imports_finalizer_mode)
+  /home/claude/Qt/6.11.2/gcc_64/lib/cmake/Qt6Core/Qt6CoreMacros.cmake:898 (_qt_internal_finalize_executable)
+  /home/claude/Qt/6.11.2/gcc_64/lib/cmake/Qt6Core/Qt6CoreMacros.cmake:942:EVAL:1 (qt6_finalize_target)
+  src/app/CMakeLists.txt:DEFERRED
+
+
+-- Found 'gzip'. Man pages will be compressed.
+-- Generate compile commands: OFF
+-- Configuring done (7.3s)
+-- Generating done (0.9s)
+-- Build files have been written to: /home/claude/src/MuseScore/build.studio

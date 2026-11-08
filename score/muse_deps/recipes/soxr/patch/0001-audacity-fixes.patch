@@ -1,0 +1,57 @@
+diff --color -ruN sa/src/dev32s.h sb/src/dev32s.h
+--- sa/src/dev32s.h	2026-06-12 18:02:49.149166243 +0300
++++ sb/src/dev32s.h	2026-06-12 18:02:49.152296488 +0300
+@@ -33,7 +33,11 @@
+ 
+ #elif defined __arm__
+ 
++#if defined(_M_ARM64)
++#include <arm64_neon.h>
++#else
+ #include <arm_neon.h>
++#endif
+ 
+ #define vZero()      vdupq_n_f32(0)
+ #define vMul(a,b)    vmulq_f32(a,b)
+diff --color -ruN sa/src/pffft-wrap.c sb/src/pffft-wrap.c
+--- sa/src/pffft-wrap.c	2026-06-12 18:02:49.155076734 +0300
++++ sb/src/pffft-wrap.c	2026-06-12 18:02:49.158538271 +0300
+@@ -40,7 +40,7 @@
+ 
+   float ar, ai, br, bi;
+ 
+-#ifdef __arm__
++#if defined(__arm__) || defined (_M_ARM64)
+   __builtin_prefetch(va);
+   __builtin_prefetch(vb);
+   __builtin_prefetch(va+2);
+diff --color -ruN sa/src/pffft.c sb/src/pffft.c
+--- sa/src/pffft.c	2026-06-12 18:02:49.161298559 +0300
++++ sb/src/pffft.c	2026-06-12 18:02:49.164014138 +0300
+@@ -157,8 +157,12 @@
+ /*
+   ARM NEON support macros
+ */
+-#elif !defined(PFFFT_SIMD_DISABLE) && defined(__arm__)
++#elif !defined(PFFFT_SIMD_DISABLE) && (defined(__arm__) || defined(__aarch64__) || defined(_M_ARM64))
++#if defined(_M_ARM64)
++#  include <arm64_neon.h>
++#  else
+ #  include <arm_neon.h>
++#  endif
+ typedef float32x4_t v4sf;
+ #  define SIMD_SZ 4
+ #  define VZERO() vdupq_n_f32(0)
+@@ -182,7 +186,11 @@
+ #  define VALIGNED(ptr) ((((long)(ptr)) & 0x3) == 0)
+ #else
+ #  if !defined(PFFFT_SIMD_DISABLE)
+-#    warning "building with simd disabled !\n";
++#   if defined(COMPILER_MSVC)
++#       pragma message ("building with simd disabled !\n")
++#   else
++#       warning "building with simd disabled !\n";
++#   endif
+ #    define PFFFT_SIMD_DISABLE /* fallback to scalar code */
+ #  endif
+ #endif

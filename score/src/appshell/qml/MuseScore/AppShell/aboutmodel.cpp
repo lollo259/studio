@@ -1,0 +1,147 @@
+/*
+ * SPDX-License-Identifier: GPL-3.0-only
+ * MuseScore-Studio-CLA-applies
+ *
+ * MuseScore Studio
+ * Music Composition & Notation
+ *
+ * Copyright (C) 2021 MuseScore Limited and others
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 3 as
+ * published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
+#include "aboutmodel.h"
+
+#include <QClipboard>
+#include <QGuiApplication>
+#include <QUrl>
+
+#include "translation.h"
+
+using namespace mu::appshell;
+
+//! NOTE: Should match value in projectpropertiesmodel.cpp
+static const QString GITHUB_REVISION_URL("https://github.com/musescore/MuseScore/commit/");
+
+AboutModel::AboutModel(QObject* parent)
+    : QObject(parent), muse::Contextable(muse::iocCtxForQmlObject(this))
+{
+}
+
+QString AboutModel::museScoreVersion() const
+{
+    QString version = QString::fromStdString(configuration()->museScoreVersion());
+    return application()->unstable()
+           ? muse::qtrc("appshell/about", "Unstable prerelease for %1").arg(version)
+           : version;
+}
+
+QString AboutModel::museScoreRevisionLink() const
+{
+    const QString rev = QString::fromStdString(configuration()->museScoreRevision());
+    if (rev.isEmpty()) {
+        return muse::qtrc("global", "Unknown");
+    }
+    const QString revUrl = GITHUB_REVISION_URL + rev;
+    return QString("<a href=\"%1\">%2</a>").arg(revUrl, rev);
+}
+
+QString AboutModel::museScoreBuildDateTime() const
+{
+    auto buildDateISO = []() -> QString {
+        // Attempt to convert __DATE__ into ISO 8601 format (YYYY-MM-DD)
+        QDate date = QDate::fromString(__DATE__, "MMM dd yyyy");
+        if (!date.isValid()) {
+            date = QDate::fromString(__DATE__, "MMM  d yyyy");
+        }
+        return date.isValid() ? date.toString(Qt::ISODate) : __DATE__;
+    };
+
+    QString dateTime;
+    dateTime += buildDateISO();
+    dateTime += " ";
+    dateTime += __TIME__;
+
+    return dateTime;
+}
+
+QVariantMap AboutModel::museScoreUrl() const
+{
+    QUrl museScoreUrl(QString::fromStdString(configuration()->museScoreUrl()));
+    return makeUrl(museScoreUrl, false);
+}
+
+QVariantMap AboutModel::museScoreForumUrl() const
+{
+    QUrl museScoreForumUrl(QString::fromStdString(configuration()->museScoreForumUrl()));
+    return makeUrl(museScoreForumUrl);
+}
+
+QVariantMap AboutModel::museScoreContributionUrl() const
+{
+    QUrl museScoreContributionUrl(QString::fromStdString(configuration()->museScoreContributionUrl()));
+    return makeUrl(museScoreContributionUrl);
+}
+
+QVariantMap AboutModel::museScorePrivacyPolicyUrl() const
+{
+    QUrl museScorePrivacyPolicyUrl(QString::fromStdString(updateConfiguration()->privacyPolicyUrl()));
+    return makeUrl(museScorePrivacyPolicyUrl);
+}
+
+QVariantMap AboutModel::musicXMLLicenseUrl() const
+{
+    QUrl musicXMLLicenseUrl(QString::fromStdString(configuration()->musicXMLLicenseUrl()));
+    return makeUrl(musicXMLLicenseUrl);
+}
+
+QVariantMap AboutModel::musicXMLLicenseDeedUrl() const
+{
+    QUrl musicXMLLicenseDeedUrl(QString::fromStdString(configuration()->musicXMLLicenseDeedUrl()));
+    return makeUrl(musicXMLLicenseDeedUrl);
+}
+
+void AboutModel::copyRevisionToClipboard() const
+{
+    QString osName = QSysInfo::prettyProductName();
+    if (QSysInfo::productType() == "windows" && (QSysInfo::productVersion() == "10" || QSysInfo::productVersion() == "11")) {
+        osName += " or later";
+    }
+
+    QString forClipboard = QString("OS: %1, Arch.: %2, MuseScore Studio version (%3-bit): %4-%5")
+                           .arg(osName, QSysInfo::currentCpuArchitecture())
+                           .arg(QSysInfo::WordSize)
+                           .arg(application()->version().toString(), application()->build());
+
+    const QString rev = QString::fromStdString(configuration()->museScoreRevision());
+    if (!rev.isEmpty()) {
+        const QString revUrl = GITHUB_REVISION_URL + rev;
+        forClipboard += QString(", revision: [%1](%2)").arg(rev, revUrl);
+    }
+
+    QGuiApplication::clipboard()->setText(forClipboard);
+}
+
+void AboutModel::toggleDevMode()
+{
+    globalConfiguration()->setDevModeEnabled(!globalConfiguration()->devModeEnabled());
+}
+
+QVariantMap AboutModel::makeUrl(const QUrl& url, bool showPath) const
+{
+    QVariantMap urlMap;
+    urlMap["url"] = url.toString();
+    urlMap["displayName"] = showPath ? url.host() + url.path() : url.host();
+
+    return urlMap;
+}

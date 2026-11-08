@@ -1,0 +1,62 @@
+Audacity commit 2fec472ba2
+Subject: lib-src/libnyquist: eliminate register local variables
+
+diff --git a/nyquist/nyqstk/src/Delay.cpp b/nyquist/nyqstk/src/Delay.cpp
+index b5e3a3fcd4..94c5a7dcaf 100644
+--- a/nyquist/nyqstk/src/Delay.cpp
++++ b/nyquist/nyqstk/src/Delay.cpp
+@@ -119,19 +119,19 @@ unsigned long Delay :: getDelay(void) const
+ StkFloat Delay :: energy(void) const
+ {
+   unsigned long i;
+-  register StkFloat e = 0;
++  StkFloat e = 0;
+   if (inPoint_ >= outPoint_) {
+     for (i=outPoint_; i<inPoint_; i++) {
+-      register StkFloat t = inputs_[i];
++      StkFloat t = inputs_[i];
+       e += t*t;
+     }
+   } else {
+     for (i=outPoint_; i<inputs_.size(); i++) {
+-      register StkFloat t = inputs_[i];
++      StkFloat t = inputs_[i];
+       e += t*t;
+     }
+     for (i=0; i<inPoint_; i++) {
+-      register StkFloat t = inputs_[i];
++      StkFloat t = inputs_[i];
+       e += t*t;
+     }
+   }
+diff --git a/nyquist/nyqstk/src/Stk.cpp b/nyquist/nyqstk/src/Stk.cpp
+index 6040237f16..7e21bfae9b 100644
+--- a/nyquist/nyqstk/src/Stk.cpp
++++ b/nyquist/nyqstk/src/Stk.cpp
+@@ -48,7 +48,7 @@ void Stk :: setRawwavePath( std::string path )
+ 
+ void Stk :: swap16(unsigned char *ptr)
+ {
+-  register unsigned char val;
++  unsigned char val;
+ 
+   // Swap 1st and 2nd bytes
+   val = *(ptr);
+@@ -58,7 +58,7 @@ void Stk :: swap16(unsigned char *ptr)
+ 
+ void Stk :: swap32(unsigned char *ptr)
+ {
+-  register unsigned char val;
++  unsigned char val;
+ 
+   // Swap 1st and 4th bytes
+   val = *(ptr);
+@@ -74,7 +74,7 @@ void Stk :: swap32(unsigned char *ptr)
+ 
+ void Stk :: swap64(unsigned char *ptr)
+ {
+-  register unsigned char val;
++  unsigned char val;
+ 
+   // Swap 1st and 8th bytes
+   val = *(ptr);

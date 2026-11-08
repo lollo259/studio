@@ -1,0 +1,15 @@
+Audacity commit 4191cfb837
+Subject: FreeBSD compilation fixes
+
+diff --git a/nyquist/xlisp/path.c b/nyquist/xlisp/path.c
+index 41babde..67fbb03 100644
+--- a/nyquist/xlisp/path.c
++++ b/nyquist/xlisp/path.c
+@@ -25,6 +25,7 @@
+  */
+ 
+ #include <string.h>
++#include <stdint.h>
+ 
+ #include "switches.h"
+ #include "xlisp.h"

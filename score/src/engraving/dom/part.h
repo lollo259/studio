@@ -1,0 +1,215 @@
+/*
+ * SPDX-License-Identifier: GPL-3.0-only
+ * MuseScore-Studio-CLA-applies
+ *
+ * MuseScore Studio
+ * Music Composition & Notation
+ *
+ * Copyright (C) 2021 MuseScore Limited and others
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 3 as
+ * published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
+#pragma once
+
+#include <vector>
+
+#include "instrument.h"
+#include "../types/types.h"
+
+namespace mu::engraving {
+class Staff;
+class Score;
+class SharedPart;
+class InstrumentTemplate;
+
+struct TrackRange {
+    track_idx_t startTrack = muse::nidx;
+    track_idx_t endTrack = muse::nidx;
+};
+
+//---------------------------------------------------------
+//   @@ Part
+//   @P endTrack        int         (read only)
+//   @P harmonyCount    int         (read only)
+//   @P hasDrumStaff    bool        (read only)
+//   @P hasPitchedStaff bool        (read only)
+//   @P hasTabStaff     bool        (read only)
+//   @P instrumentId    string      (read only)
+//   @P longName        string
+//   @P lyricCount      int         (read only)
+//   @P midiChannel     int         (read only)
+//   @P midiProgram     int         (read only)
+//   @P mute            bool
+//   @P partName        string      name of the part, used in the mixer
+//   @P shortName       string
+//   @P show            bool        check/set whether or not a part is shown
+//   @P startTrack      int         (read only)
+//   @P volume          int
+//---------------------------------------------------------
+
+class Part : public EngravingObject
+{
+    OBJECT_ALLOCATOR(engraving, Part)
+    DECLARE_CLASSOF(ElementType::PART)
+
+public:
+    static const Fraction MAIN_INSTRUMENT_TICK;
+
+    Part(Score* score = nullptr, ElementType type = ElementType::PART);
+    void initFromInstrTemplate(const InstrumentTemplate*);
+
+    const muse::ID& id() const;
+    void setId(const muse::ID& id);
+
+    Part* clone() const;
+
+    size_t nstaves() const;
+    size_t visibleStavesCount() const;
+    const std::vector<Staff*>& staves() const;
+    std::set<staff_idx_t> staveIdxList() const;
+    void appendStaff(Staff* staff);
+    void clearStaves();
+
+    Staff* staff(staff_idx_t idx) const;
+    String familyId() const;
+
+    TrackRange trackRange() const;
+
+    InstrumentTrackIdList instrumentTrackIdList() const;
+    InstrumentTrackIdSet instrumentTrackIdSet() const;
+
+    String longName(const Fraction& tick = { -1, 1 }) const;
+    String shortName(const Fraction& tick = { -1, 1 }) const;
+    String instrumentName(const Fraction& tick = { -1, 1 }) const;
+    String instrumentId(const Fraction& tick = { -1, 1 }) const;
+
+    void setLongName(const String& s, const Fraction& tick = { -1, 1 });
+    void setShortName(const String& s, const Fraction& tick = { -1, 1 });
+    void setLongNameAll(const String& s);  // For all instruments in _instruments
+    void setShortNameAll(const String& s); // For all instruments in _instruments
+
+    int number(const Fraction& tick = { -1, 1 }) const;
+    void setNumber(int v, const Fraction& tick = { -1, 1 });
+
+    String transposition(const Fraction& tick = { -1, 1 }) const;
+    void setTransposition(const String& s, const Fraction& tick = { -1, 1 });
+
+    void setPlainLongName(const String& s);
+    void setPlainShortName(const String& s);
+    void setPlainLongNameAll(const String& s);
+    void setPlainShortNameAll(const String& s);
+
+    void setStaves(int);
+
+    int midiProgram() const;
+    void setMidiProgram(int, int bank = 0);
+
+    int midiChannel() const;
+    int midiPort() const;
+    void setMidiChannel(int ch, int port = -1, const Fraction& tick = { -1, 1 });  // tick != -1 for InstrumentChange
+
+    void insertStaff(Staff*, staff_idx_t idx);
+    void removeStaff(Staff*);
+    virtual bool show() const;
+    void setShow(bool val) { m_show = val; }
+    bool soloist() const { return m_soloist; }
+    void setSoloist(bool val) { m_soloist = val; }
+
+    Instrument* instrument(Fraction = { -1, 1 });
+    const Instrument* instrument(Fraction = { -1, 1 }) const;
+    const Instrument* instrumentById(const String& id) const;
+    void setInstrument(Instrument*, Fraction = { -1, 1 });         // transfer ownership
+    void setInstrument(Instrument*, int tick);
+    void setInstrument(const Instrument&&, Fraction = { -1, 1 });
+    void setInstrument(const Instrument&, Fraction = { -1, 1 });
+    void setInstruments(const InstrumentList& instruments);
+    void removeInstrument(Instrument*, const Fraction&);
+    void removeNonPrimaryInstruments();
+    const InstrumentList& instruments() const;
+
+    const std::map<int, StringTunings*>& stringTunings() const { return m_stringTunings; }
+    const StringData* stringData(const Fraction& tick, staff_idx_t staffIdx) const;
+    void addStringTunings(StringTunings* stringTunings);
+    void removeStringTunings(StringTunings* stringTunings);
+    StringTunings* nextStringTuning(const Fraction& tick) const;
+
+    virtual void insertTime(const Fraction& tick, const Fraction& len);
+
+    const std::map<int, HarpPedalDiagram*>& harpDiagrams() const { return m_harpDiagrams; }
+    void addHarpDiagram(HarpPedalDiagram*);
+    void removeHarpDiagram(HarpPedalDiagram*);
+    void clearHarpDiagrams();
+    HarpPedalDiagram* currentHarpDiagram(const Fraction&) const;
+    HarpPedalDiagram* nextHarpDiagram(const Fraction&) const;
+    HarpPedalDiagram* prevHarpDiagram(const Fraction&) const;
+    Fraction currentHarpDiagramTick(const Fraction&) const;
+
+    virtual String partName() const;
+
+    bool isVisible() const;
+
+    PropertyValue getProperty(Pid) const override;
+    bool setProperty(Pid, const PropertyValue&) override;
+
+    int lyricCount() const;
+    int harmonyCount() const;
+    bool hasPitchedStaff() const;
+    bool hasTabStaff() const;
+    bool hasDrumStaff() const;
+
+    void updateHarmonyChannels(bool isDoOnInstrumentChanged, bool checkRemoval = false);
+    const InstrChannel* harmonyChannel() const;
+    bool hasChordSymbol() const;
+
+    const Part* masterPart() const;
+    Part* masterPart();
+
+    AutoOnOff hideWhenEmpty() const { return m_hideWhenEmpty; }
+    void setHideWhenEmpty(AutoOnOff v) { m_hideWhenEmpty = v; }
+
+    bool hideStavesWhenIndividuallyEmpty() const { return m_hideStavesWhenIndividuallyEmpty; }
+    void setHideStavesWhenIndividuallyEmpty(bool v) { m_hideStavesWhenIndividuallyEmpty = v; }
+
+    PreferSharpFlat preferSharpFlat() const { return m_preferSharpFlat; }
+    void setPreferSharpFlat(PreferSharpFlat v) { m_preferSharpFlat = v; }
+
+    virtual const Part* originPart(track_idx_t track, const Fraction& tick) const;
+    Part* originPart(track_idx_t track, const Fraction& tick);
+
+    SharedPart* sharedPart() const { return m_sharedPart; }
+    void setSharedPart(SharedPart* p) { m_sharedPart = p; }
+
+private:
+    friend class SharedPart;
+
+    InstrumentList m_instruments;
+    std::vector<Staff*> m_staves;
+    muse::ID m_id = INVALID_ID;       ///< used for MusicXML import
+    bool m_show = false;              ///< show part in partitur if true
+    bool m_soloist = false;           ///< used in score ordering
+
+    /// Hide staves in this part when empty
+    AutoOnOff m_hideWhenEmpty = AutoOnOff::AUTO;
+
+    /// Hide staves when they are individually empty, rather than only if all this part's staves are empty
+    bool m_hideStavesWhenIndividuallyEmpty = false;
+
+    PreferSharpFlat m_preferSharpFlat = PreferSharpFlat::AUTO;
+
+    std::map<int, HarpPedalDiagram*> m_harpDiagrams;
+    std::map<int, StringTunings*> m_stringTunings;
+
+    SharedPart* m_sharedPart = nullptr;
+};
+}

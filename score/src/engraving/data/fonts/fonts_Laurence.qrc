@@ -1,0 +1,7 @@
+<RCC>
+    <qresource prefix="/">
+        <file alias="fonts/laurence/metadata.json">../../../../fonts/laurence/laurence_metadata.json</file>
+        <file alias="fonts/laurence/Laurence.otf">../../../../fonts/laurence/Laurence.otf</file>
+        <file alias="fonts/laurence/LaurenceText.otf">../../../../fonts/laurence/LaurenceText.otf</file>
+    </qresource>
+</RCC>

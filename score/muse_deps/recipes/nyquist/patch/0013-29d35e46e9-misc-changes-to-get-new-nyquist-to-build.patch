@@ -1,0 +1,72 @@
+Audacity commit 29d35e46e9
+Subject: Misc changes to get new Nyquist to build
+
+diff --git a/nyquist/cmt/cmtio.h b/nyquist/cmt/cmtio.h
+index 3e50ad9..232862b 100644
+--- a/nyquist/cmt/cmtio.h
++++ b/nyquist/cmt/cmtio.h
+@@ -1,7 +1,7 @@
+ #define NOCHAR -2
+ 
+-int IOinputfd;
+-int IOnochar;
++extern int IOinputfd;
++extern int IOnochar;
+ 
+ int IOsetup(int inputfd);
+ int IOcleanup(void);
+diff --git a/nyquist/cmt/userio.c b/nyquist/cmt/userio.c
+index a5fe1b4..0ffea9f 100644
+--- a/nyquist/cmt/userio.c
++++ b/nyquist/cmt/userio.c
+@@ -153,6 +153,10 @@ extern int debug;
+ #include "xlisp.h"
+ #endif
+ 
++int     IOinputfd;      /* input file descriptor (usually 0) */
++
++int     IOnochar;       /* Value to be returned by IOgetchar()
++                           where there is no input to be had */
+ 
+ /****************************************************************************
+ *
+diff --git a/nyquist/nyqsrc/seqfnint.c b/nyquist/nyqsrc/seqfnint.c
+index 0c3047b..f9a36eb 100644
+--- a/nyquist/nyqsrc/seqfnint.c
++++ b/nyquist/nyqsrc/seqfnint.c
+@@ -185,6 +185,8 @@ LVAL xlc_seq_get(void)
+ }
+ 
+ 
++#include "seqmwrite.h"
++
+ /* xlc_seq_write_smf -- interface to C routine seq_xlwrite_smf */
+ /**/
+ LVAL xlc_seq_write_smf(void)
+@@ -213,8 +215,6 @@ LVAL xlc_seq_read_smf(void)
+ }
+ 
+ 
+-#include "seqmwrite.h"
+-
+ #include "seqread.h"
+ 
+ /* xlc_seq_read -- interface to C routine seq_read */
+diff --git a/nyquist/sys/unix/io.c b/nyquist/sys/unix/io.c
+index 21b2abe..f3e499c 100644
+--- a/nyquist/sys/unix/io.c
++++ b/nyquist/sys/unix/io.c
+@@ -16,10 +16,10 @@
+ #include <sgtty.h>
+ #include "cext.h"
+ 
+-int     IOinputfd;      /* input file descriptor (usually 0) */
++extern int     IOinputfd;      /* input file descriptor (usually 0) */
+ 
+-int     IOnochar;       /* Value to be returned by IOgetchar()
+-                   where there is no input to be had */
++extern int     IOnochar;       /* Value to be returned by IOgetchar()
++                                  where there is no input to be had */
+ 
+ static  struct sgttyb IOoldmodes, IOcurrentmodes;
+                 /* Initial and current tty modes */

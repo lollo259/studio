@@ -1,0 +1,16 @@
+Audacity commit 016919a53b
+Subject: Bug1223: (correction).  Fix new potential crash in following pointer.
+Rebased onto r331 during the 2021 sync (reapply commit 9d61ee437a); the original diff predates upstream r288-r331 changes.
+
+diff --git a/nyquist/nyqsrc/sound.c b/nyquist/nyqsrc/sound.c
+index 0a9e9f3eb0..6078502dea 100644
+--- a/nyquist/nyqsrc/sound.c
++++ b/nyquist/nyqsrc/sound.c
+@@ -545,6 +545,7 @@ void snd_list_unref(snd_list_type list)
+             break; // the rest of the list is shared, nothing more to free
+         }
+ 
++        next = NULL;
+         // list nodes either point to a block of samples or this is the 
+         // last list node (list->block == NULL) which points to a suspension
+         // lists can also terminate at the zero_block, which is an infinite

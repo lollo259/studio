@@ -1,0 +1,11 @@
+[
+    {
+        "scope": "TEST",
+        "shortcuts": [
+            {
+                "command": "test://c",
+                "sequences": ["&", "Num+1"]
+            }
+        ]
+    }
+]

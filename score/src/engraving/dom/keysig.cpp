@@ -1,0 +1,366 @@
+/*
+ * SPDX-License-Identifier: GPL-3.0-only
+ * MuseScore-Studio-CLA-applies
+ *
+ * MuseScore Studio
+ * Music Composition & Notation
+ *
+ * Copyright (C) 2021 MuseScore Limited and others
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 3 as
+ * published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
+#include "keysig.h"
+
+#include "types/typesconv.h"
+
+#include "masterscore.h"
+#include "measure.h"
+#include "score.h"
+#include "segment.h"
+#include "staff.h"
+#include "part.h"
+
+#include "editing/editkeysig.h"
+#include "editing/transaction/transaction.h"
+#include "editing/transpose.h"
+
+#include "log.h"
+
+using namespace mu;
+using namespace mu::engraving;
+
+namespace mu::engraving {
+//---------------------------------------------------------
+//   KeySig
+//---------------------------------------------------------
+
+KeySig::KeySig(DummyParentOr<Segment> s)
+    : EngravingItem(ElementType::KEYSIG, s, ElementFlag::ON_STAFF)
+{
+    m_showCourtesy = true;
+    m_hideNaturals = false;
+}
+
+KeySig::KeySig(const KeySig& k)
+    : EngravingItem(k)
+{
+    m_showCourtesy = k.m_showCourtesy;
+    m_sig          = k.m_sig;
+    m_hideNaturals = false;
+}
+
+//---------------------------------------------------------
+//   mag
+//---------------------------------------------------------
+
+double KeySig::mag() const
+{
+    return staff() ? staff()->staffMag(this) : 1.0;
+}
+
+//---------------------------------------------------------
+//   acceptDrop
+//---------------------------------------------------------
+
+bool KeySig::acceptDrop(EditData& data) const
+{
+    return data.dropElement->isKeySig();
+}
+
+//---------------------------------------------------------
+//   drop
+//---------------------------------------------------------
+
+EngravingItem* KeySig::drop(Transaction& tx, EditData& data)
+{
+    KeySig* ks = toKeySig(data.dropElement);
+    if (!ks->isKeySig()) {
+        delete ks;
+        return 0;
+    }
+    KeySigEvent k = ks->keySigEvent();
+    delete ks;
+    if (data.modifiers & ControlModifier) {
+        // apply only to this stave
+        if (!(k == keySigEvent())) {
+            EditKeySig::undoChangeKeySig(tx, score(), staff(), tick(), k);
+        }
+    } else {
+        // apply to all staves:
+        for (Staff* s : score()->masterScore()->staves()) {
+            EditKeySig::undoChangeKeySig(tx, score(), s, tick(), k);
+        }
+    }
+    return this;
+}
+
+//---------------------------------------------------------
+//   setKey
+//---------------------------------------------------------
+
+void KeySig::setKey(Key concertKey)
+{
+    KeySigEvent e;
+    e.setConcertKey(concertKey);
+    if (staff() && !style().styleB(Sid::concertPitch)) {
+        const Part* part = staff()->originPart(tick());
+        Interval v = part->instrument(tick())->transpose();
+        if (!v.isZero()) {
+            v.flip();
+            Key transposedKey = Transpose::transposeKey(concertKey, v, part->preferSharpFlat());
+            e.setKey(transposedKey);
+        }
+    }
+    setKeySigEvent(e);
+}
+
+//---------------------------------------------------------
+//   setKey
+//---------------------------------------------------------
+
+void KeySig::setKey(Key concertKey, Key transposedKey)
+{
+    KeySigEvent e;
+    e.setConcertKey(concertKey);
+    e.setKey(transposedKey);
+    setKeySigEvent(e);
+}
+
+//---------------------------------------------------------
+//   operator==
+//---------------------------------------------------------
+
+bool KeySig::operator==(const KeySig& k) const
+{
+    return m_sig == k.m_sig;
+}
+
+//---------------------------------------------------------
+//   isChange
+//---------------------------------------------------------
+
+bool KeySig::isChange() const
+{
+    if (!staff()) {
+        return false;
+    }
+    if (!segment() || segment()->segmentType() != SegmentType::KeySig) {
+        return false;
+    }
+    const Fraction keyTick = tick();
+    return staff()->currentKeyTick(keyTick) == keyTick;
+}
+
+//---------------------------------------------------------
+//   changeKeySigEvent
+//---------------------------------------------------------
+
+void KeySig::changeKeySigEvent(const KeySigEvent& t)
+{
+    if (m_sig == t) {
+        return;
+    }
+    setKeySigEvent(t);
+}
+
+PointF KeySig::staffOffset() const
+{
+    const Segment* seg = segment();
+    const Measure* meas = seg ? seg->measure() : nullptr;
+    if (meas && meas->endTick() == tick()) {
+        // Courtesy key sig should be adjusted by the following staffType's offset
+        return EngravingItem::staffOffset();
+    }
+    return PointF(0.0, 0.0);
+}
+
+EngravingObject* KeySig::propertyDelegate(Pid propertyId) const
+{
+    if (!_isCourtesy) {
+        return nullptr;
+    }
+    switch (propertyId) {
+    case Pid::KEY:
+    case Pid::KEY_CONCERT:
+    case Pid::SHOW_COURTESY:
+    case Pid::KEYSIG_MODE:
+    {
+        Segment* thisSeg = segment();
+        Segment* nextKSSeg = thisSeg ? thisSeg->next1(SegmentType::KeySig) : nullptr;
+        if (nextKSSeg && nextKSSeg->tick() == thisSeg->tick()) {
+            return nextKSSeg->element(track());
+        }
+        break;
+    }
+    default:
+        break;
+    }
+
+    return nullptr;
+}
+
+//---------------------------------------------------------
+//   getProperty
+//---------------------------------------------------------
+
+PropertyValue KeySig::getProperty(Pid propertyId) const
+{
+    if (EngravingObject* e = propertyDelegate(propertyId)) {
+        return e->getProperty(propertyId);
+    }
+    switch (propertyId) {
+    case Pid::KEY:
+        return int(key());
+    case Pid::KEY_CONCERT:
+        return int(concertKey());
+    case Pid::SHOW_COURTESY:
+        return showCourtesy();
+    case Pid::KEYSIG_MODE:
+        return mode();
+    case Pid::IS_COURTESY:
+        return _isCourtesy;
+    default:
+        return EngravingItem::getProperty(propertyId);
+    }
+}
+
+//---------------------------------------------------------
+//   setProperty
+//---------------------------------------------------------
+
+bool KeySig::setProperty(Pid propertyId, const PropertyValue& v)
+{
+    if (EngravingObject* e = propertyDelegate(propertyId)) {
+        return e->setProperty(propertyId, v);
+    }
+    switch (propertyId) {
+    case Pid::KEY:
+        if (generated()) {
+            return false;
+        }
+        setKey(m_sig.concertKey(), Key(v.toInt()));
+        break;
+    case Pid::KEY_CONCERT:
+        if (generated()) {
+            return false;
+        }
+        setKey(Key(v.toInt()));
+        break;
+    case Pid::SHOW_COURTESY:
+        if (generated()) {
+            return false;
+        }
+        setShowCourtesy(v.toBool());
+        break;
+    case Pid::KEYSIG_MODE:
+        if (generated()) {
+            return false;
+        }
+        setMode(v.value<KeyMode>());
+        staff()->setKey(tick(), keySigEvent());
+        break;
+    case Pid::IS_COURTESY:
+        _isCourtesy = v.toBool();
+        break;
+    default:
+        if (!EngravingItem::setProperty(propertyId, v)) {
+            return false;
+        }
+        break;
+    }
+    triggerLayoutAll();
+    setGenerated(false);
+    return true;
+}
+
+//---------------------------------------------------------
+//   undoChangeProperty
+//---------------------------------------------------------
+
+void KeySig::undoChangeProperty(Pid id, const PropertyValue& v, PropertyFlags ps)
+{
+    if (EngravingObject* e = propertyDelegate(id)) {
+        /* If this is a courtesy, we must change the property of the _real_ key signature,
+         * and we want to avoid EngravingObject::undoChangeProperty unsetting GENERATED
+         * unless something really has changed about the courtesy itself: */
+        e->undoChangeProperty(id, v, ps);
+        // If removing the courtesy, deselect it first:
+        if (id == Pid::SHOW_COURTESY && _isCourtesy && !v.toBool() && selected() && e->isKeySig()) {
+            score()->deselect(this);
+            score()->select(toEngravingItem(e), SelectType::ADD, staffIdx());
+        }
+        return;
+    }
+    EngravingItem::undoChangeProperty(id, v, ps);
+}
+
+//---------------------------------------------------------
+//   propertyDefault
+//---------------------------------------------------------
+
+PropertyValue KeySig::propertyDefault(Pid id) const
+{
+    switch (id) {
+    case Pid::KEY:
+        return int(Key::INVALID);
+    case Pid::KEY_CONCERT:
+        return int(Key::INVALID);
+    case Pid::SHOW_COURTESY:
+        return true;
+    case Pid::KEYSIG_MODE:
+        return KeyMode::UNKNOWN;
+    case Pid::IS_COURTESY:
+        return false;
+    default:
+        return EngravingItem::propertyDefault(id);
+    }
+}
+
+//---------------------------------------------------------
+//   nextSegmentElement
+//---------------------------------------------------------
+
+EngravingItem* KeySig::nextSegmentElement()
+{
+    return segment()->firstInNextSegments(staffIdx());
+}
+
+//---------------------------------------------------------
+//   prevSegmentElement
+//---------------------------------------------------------
+
+EngravingItem* KeySig::prevSegmentElement()
+{
+    return segment()->lastInPrevSegments(staffIdx());
+}
+
+//---------------------------------------------------------
+//   accessibleInfo
+//---------------------------------------------------------
+
+String KeySig::accessibleInfo() const
+{
+    String keySigType = TConv::translatedUserName(key(), isAtonal(), isCustom());
+    return String(u"%1: %2").arg(EngravingItem::accessibleInfo(), keySigType);
+}
+
+//---------------------------------------------------------
+//   translatedSubtypeUserName
+//---------------------------------------------------------
+
+muse::TranslatableString KeySig::subtypeUserName() const
+{
+    return TConv::userName(key(), isAtonal(), isCustom());
+}
+}

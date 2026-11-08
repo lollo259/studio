@@ -1,0 +1,142 @@
+Audacity commit e6d069787b
+Subject: Fix mistake in commit a1dc830 and add a comment
+Rebased onto r331 during the 2021 sync (reapply commit 9b77109eff); the original diff predates upstream r288-r331 changes.
+
+diff --git a/nyquist/xlisp/xlftab.c b/nyquist/xlisp/xlftab.c
+index d3acb34b19..b6969553b6 100644
+--- a/nyquist/xlisp/xlftab.c
++++ b/nyquist/xlisp/xlftab.c
+@@ -12,6 +12,7 @@ HISTORY
+ 
+ */
+ 
++#include <string.h> /* for memcpy */
+ #include "switches.h"
+ #include "xlisp.h"
+ 
+@@ -33,7 +34,7 @@ LVAL xstoprecordio(void);
+ #endif
+ 
+ /* the function table */
+-FUNDEF funtab[] = {
++FUNDEF init_funtab[] = {
+ 
+     /* read macro functions */
+ {	NULL,				S, rmhash		}, /*   0 */
+@@ -418,7 +419,32 @@ FUNDEF funtab[] = {
+ 
+ {0,0,0} /* end of table marker */
+ 
+-};			
++};
++
++FUNDEF *funtab = init_funtab;
++static size_t szfuntab = sizeof(init_funtab) / sizeof(*init_funtab);
++
++int xlbindfunctions(FUNDEF *functions, size_t nfunctions)
++{
++   /* This is written very generally, imposing no fixed upper limit on the
++    growth of the table.  But perhaps a lightweight alternative with such a
++    limit could be conditionally compiled.
++    */
++
++   /* malloc, not realloc, to leave old table unchanged in case of failure */
++   FUNDEF *newfuntab = malloc((szfuntab + nfunctions) * sizeof(FUNDEF));
++   if (!newfuntab)
++      return FALSE;
++   memcpy(newfuntab, funtab, (szfuntab - 1) * sizeof(FUNDEF));
++   memcpy(newfuntab + szfuntab - 1, functions, nfunctions * sizeof(FUNDEF));
++   FUNDEF sentinel = { 0, 0, 0 };
++   newfuntab[szfuntab + nfunctions - 1] = sentinel;
++   funtab = newfuntab;
++   szfuntab += nfunctions;
++   return TRUE;
++
++   /* To do: deallocate funtab when XLisp runtime shuts down */
++}
+ 
+ /* xnotimp does not return anything on purpose, so disable
+  * "no return value" warning
+diff --git a/nyquist/xlisp/xlimage.c b/nyquist/xlisp/xlimage.c
+index a4e7933232..e4ec770274 100644
+--- a/nyquist/xlisp/xlimage.c
++++ b/nyquist/xlisp/xlimage.c
+@@ -182,7 +182,7 @@ int xlisave(const char *fname)
+ /* xlirestore - restore a saved memory image */
+ int xlirestore(const char *fname)
+ {
+-    extern FUNDEF funtab[];
++    extern FUNDEF *funtab;
+     char fullname[STRMAX+1];
+     unsigned char *cp;
+     int n,i,max,type;
+diff --git a/nyquist/xlisp/xlinit.c b/nyquist/xlisp/xlinit.c
+index 5a92610ef2..8bec28200a 100644
+--- a/nyquist/xlisp/xlinit.c
++++ b/nyquist/xlisp/xlinit.c
+@@ -41,7 +41,7 @@ extern LVAL a_fixnum,a_flonum,a_string,a_stream,a_object;
+ extern LVAL a_vector,a_closure,a_char,a_ustream,a_extern;
+ extern LVAL s_gcflag,s_gchook;
+ extern LVAL s_search_path;
+-extern FUNDEF funtab[];
++extern FUNDEF *funtab;
+ 
+ /* forward declarations */
+ FORWARD LOCAL void initwks(void);
+diff --git a/nyquist/xlisp/xlisp.h b/nyquist/xlisp/xlisp.h
+index 63566e8dc8..0c2ccef078 100644
+--- a/nyquist/xlisp/xlisp.h
++++ b/nyquist/xlisp/xlisp.h
+@@ -683,6 +683,13 @@ void xlinit(void);
+ void xlsymbols(void);
+ 
+ 
++/* xlftab.c */
++/* returns true on success,
++   false if table limits would be exceeded and the table remains unchanged
++   Call this, any number of times, before calling xlisp_main_init
++ */
++int xlbindfunctions(FUNDEF *functions, size_t nfunctions);
++
+ /* xlio.c */
+ 
+ int xlgetc(LVAL fptr);
+diff --git a/nyquist/xlisp/xlobj.c b/nyquist/xlisp/xlobj.c
+index e5164107f3..6713849f3d 100644
+--- a/nyquist/xlisp/xlobj.c
++++ b/nyquist/xlisp/xlobj.c
+@@ -88,7 +88,7 @@ void xladdivar(LVAL cls, const char *var)
+ /* xladdmsg - add a message to a class */
+ void xladdmsg(LVAL cls, const char *msg, int offset)
+ {
+-    extern FUNDEF funtab[];
++    extern FUNDEF *funtab;
+     LVAL mptr;
+ 
+     /* enter the message selector */
+diff --git a/nyquist/xlisp/xlprin.c b/nyquist/xlisp/xlprin.c
+index 42dd29682c..260363fafd 100644
+--- a/nyquist/xlisp/xlprin.c
++++ b/nyquist/xlisp/xlprin.c
+@@ -21,7 +21,7 @@
+ /* external variables */
+ extern LVAL s_printcase,k_downcase,k_const,k_nmacro;
+ extern LVAL s_ifmt,s_ffmt;
+-extern FUNDEF funtab[];
++extern FUNDEF *funtab;
+ extern char buf[];
+ 
+ LOCAL void putsymbol(LVAL fptr, char *str, int escflag);
+diff --git a/nyquist/xlisp/xlread.c b/nyquist/xlisp/xlread.c
+index 9419dd9e77..2c08c10f6f 100644
+--- a/nyquist/xlisp/xlread.c
++++ b/nyquist/xlisp/xlread.c
+@@ -932,7 +932,7 @@ int xlisnumber(char *str, LVAL *pval)
+ /* defmacro - define a read macro */
+ void defmacro(int ch, LVAL type, int offset)
+ {
+-    extern FUNDEF funtab[];
++    extern FUNDEF *funtab;
+     LVAL subr;
+     subr = cvsubr(funtab[offset].fd_subr,funtab[offset].fd_type,offset);
+     setelement(getvalue(s_rtable),ch,cons(type,subr));

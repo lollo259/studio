@@ -1,0 +1,114 @@
+/*
+ * SPDX-License-Identifier: GPL-3.0-only
+ * MuseScore-Studio-CLA-applies
+ *
+ * MuseScore Studio
+ * Music Composition & Notation
+ *
+ * Copyright (C) 2021 MuseScore Limited and others
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 3 as
+ * published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
+#include "logger.h"
+#include "eidregister.h"
+#include "log.h"
+
+#include "dom/mscore.h"
+
+using namespace mu::engraving;
+
+EID EIDRegister::newEIDForItem(const EngravingObject* item)
+{
+    EID eid = MScore::testMode ? EID::newUniqueTestMode(m_maxValTestMode) : EID::newUnique();
+    registerItemEID(eid, const_cast<EngravingObject*>(item));
+    return eid;
+}
+
+void EIDRegister::registerItemEID(const EID& eid, const EngravingObject* item)
+{
+    std::lock_guard lock(m_mutex);
+    IF_ASSERT_FAILED(eid.isValid() && item) {
+        return;
+    }
+
+    bool inserted = m_eidToItem.emplace(eid, const_cast<EngravingObject*>(item)).second;
+    assert(inserted);
+
+    inserted = m_itemToEid.emplace(const_cast<EngravingObject*>(item), eid).second;
+    assert(inserted);
+
+    if (MScore::testMode) {
+        EID::updateMaxValTestMode(eid, m_maxValTestMode);
+    }
+
+#ifdef NDEBUG
+    UNUSED(inserted);
+#endif
+}
+
+void EIDRegister::removeItem(const EngravingObject* item)
+{
+    std::lock_guard lock(m_mutex);
+    // NOTE: needed only when elements are removed during read (e.g. broken spanners)
+
+    auto itemIter = m_itemToEid.find(const_cast<EngravingObject*>(item));
+    IF_ASSERT_FAILED(itemIter != m_itemToEid.end()) {
+        return;
+    }
+
+    EID eid = (*itemIter).second;
+    DO_ASSERT(eid.isValid());
+
+    m_itemToEid.erase(itemIter);
+
+    auto eidIter = m_eidToItem.find(eid);
+    IF_ASSERT_FAILED(eidIter != m_eidToItem.end()) {
+        return;
+    }
+
+    m_eidToItem.erase(eidIter);
+}
+
+void EIDRegister::onItemDestroyed(const EngravingObject* item)
+{
+    std::lock_guard lock(m_mutex);
+    // NOTE: most items never get an EID assigned, so a missing entry is the normal case.
+    // Items that do have one must be unregistered here: a later allocation can reuse
+    // the freed address, and a stale entry would corrupt the register.
+
+    auto itemIter = m_itemToEid.find(const_cast<EngravingObject*>(item));
+    if (itemIter == m_itemToEid.end()) {
+        return;
+    }
+
+    m_eidToItem.erase(itemIter->second);
+    m_itemToEid.erase(itemIter);
+}
+
+EngravingObject* EIDRegister::itemFromEID(const EID& eid) const
+{
+    std::shared_lock lock(m_mutex);
+    auto iter = m_eidToItem.find(eid);
+    if (iter == m_eidToItem.end()) {
+        return nullptr;
+    }
+    return iter->second;
+}
+
+EID EIDRegister::EIDFromItem(const EngravingObject* item) const
+{
+    std::shared_lock lock(m_mutex);
+    auto iter = m_itemToEid.find(const_cast<EngravingObject*>(item));
+    return iter == m_itemToEid.end() ? EID::invalid() : iter->second;
+}

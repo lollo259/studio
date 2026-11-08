@@ -1,0 +1,71 @@
+/*
+ * SPDX-License-Identifier: GPL-3.0-only
+ * MuseScore-Studio-CLA-applies
+ *
+ * MuseScore Studio
+ * Music Composition & Notation
+ *
+ * Copyright (C) 2021 MuseScore Limited and others
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 3 as
+ * published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
+#pragma once
+
+#include <vector>
+
+namespace mu::engraving {
+class MasterScore;
+class EngravingItem;
+class System;
+}
+
+namespace mu::engraving::compat {
+class EngravingCompat
+{
+public:
+    static void doPreLayoutCompatIfNeeded(MasterScore* score);
+    static void doPostLayoutCompatIfNeeded(MasterScore* score);
+
+private:
+    static void correctPedalEndPoints(MasterScore* score);
+    static void undoStaffTextExcludeFromPart(MasterScore* masterScore);
+    static void migrateDynamicPosOnVocalStaves(MasterScore* masterScore);
+    static void resetIneffectiveCenterBetweenStaves(MasterScore* masterScore);
+    static void resetMarkerLeftFontSize(MasterScore* masterScore);
+    static void resetRestVerticalOffsets(MasterScore* masterScore);
+    static void adjustVBoxDistances(MasterScore* masterScore);
+    static void pre470TextCompat(MasterScore* masterScore);
+    static void migrateNoteParens(MasterScore* masterScore);
+    static void migrateOffset500(MasterScore* masterScore);
+    static void migrateOffsetAfterAutoplace(MasterScore* masterScore);
+
+    static bool relayoutUserModifiedCrossStaffBeams(MasterScore* masterScore);
+    static bool setLyricLineVisibility(MasterScore* masterScore);
+
+    static void resetAllElementsPositions(MasterScore* masterScore);
+    static void resetAllCrossBeams(MasterScore* masterScore);
+
+    static void applyPre400StyleCompat(MasterScore* masterScore);
+};
+
+class AlignmentMigration500
+{
+public:
+    static void migrateSnappedAndSameItemTypeAlignment(MasterScore* masterScore);
+    static void migrateHopoLetterAlignment(MasterScore* masterScore);
+private:
+    static bool rowItemIsAbove(const EngravingItem* item);
+    static void alignItemOffsetGroup(const std::vector<EngravingItem*>& group);
+};
+} // namespace mu::engraving::compat
