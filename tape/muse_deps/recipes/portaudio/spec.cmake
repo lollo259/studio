@@ -1,0 +1,22 @@
+set(DEP_VERSION 19.7.0)
+
+set(DEP_SOURCE_URL    "https://github.com/PortAudio/portaudio/archive/refs/tags/v19.7.0.tar.gz")
+set(DEP_SOURCE_SHA256 "5af29ba58bbdbb7bbcefaaecc77ec8fc413f0db6f4c4e286c40c3e1b83174fa0")
+
+set(DEP_CMAKE_ARGS
+    -DPA_BUILD_SHARED=ON
+    -DPA_BUILD_STATIC=OFF
+)
+
+if(BD_OS STREQUAL "linux")
+    list(APPEND DEP_CMAKE_ARGS -DPA_USE_JACK=ON)
+elseif(BD_OS STREQUAL "windows")
+    list(APPEND DEP_CMAKE_ARGS -DPA_USE_WDMKS=OFF -DPA_USE_WDMKS_DEVICE_INFO=OFF)
+endif()
+
+set(DEP_PATCHES_WINDOWS
+    patch/0001-windows-loopback-and-mixer-exports.patch
+    patch/0002-asio-lazy-device-enumeration.patch
+)
+
+set(DEP_LICENSE_FILES LICENSE.txt)

@@ -1,0 +1,25 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index d91e3a6..0213dd6 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -119,6 +119,11 @@ option(PNG_HARDWARE_OPTIMIZATIONS "Enable hardware optimizations" ON)
+ # in a single CMake invocation.
+ if(APPLE AND CMAKE_OSX_ARCHITECTURES)
+   string(TOLOWER "${CMAKE_OSX_ARCHITECTURES}" PNG_TARGET_ARCHITECTURE)
++  list(LENGTH CMAKE_OSX_ARCHITECTURES PNG_OSX_ARCH_COUNT)
++  if(PNG_OSX_ARCH_COUNT GREATER 1)
++    set(PNG_UNIVERSAL_APPLE ON)
++    set(PNG_TARGET_ARCHITECTURE "arm64")
++  endif()
+ else()
+   string(TOLOWER "${CMAKE_SYSTEM_PROCESSOR}" PNG_TARGET_ARCHITECTURE)
+ endif()
+@@ -182,7 +187,7 @@ if(PNG_HARDWARE_OPTIMIZATIONS)
+           arm/arm_init.c
+           arm/filter_neon_intrinsics.c
+           arm/palette_neon_intrinsics.c)
+-      if(PNG_ARM_NEON STREQUAL "on")
++      if(PNG_ARM_NEON STREQUAL "on" AND NOT PNG_UNIVERSAL_APPLE)
+         add_definitions(-DPNG_ARM_NEON_OPT=2)
+       elseif(PNG_ARM_NEON STREQUAL "check")
+         add_definitions(-DPNG_ARM_NEON_CHECK_SUPPORTED)

@@ -1,0 +1,1 @@
+https://github.com/musescore/muse_deps/releases/download

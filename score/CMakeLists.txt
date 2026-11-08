@@ -260,7 +260,9 @@ endif(OS_IS_WIN)
 ###########################################
 # Add VTest
 ###########################################
-add_subdirectory(vtest)
+if (EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/vtest)
+    add_subdirectory(vtest)
+endif()
 
 message(STATUS "Generate compile commands: ${MUSE_GENERATE_COMPILE_COMMANDS}")
 if (MUSE_GENERATE_COMPILE_COMMANDS)

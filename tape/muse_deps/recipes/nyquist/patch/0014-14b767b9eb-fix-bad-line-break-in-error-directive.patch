@@ -1,0 +1,17 @@
+Audacity commit 14b767b9eb
+Subject: Fix bad line break in #error directive.
+
+diff --git a/nyquist/xlisp/xlfio.c b/nyquist/xlisp/xlfio.c
+index 67a0f41..efac8ed 100644
+--- a/nyquist/xlisp/xlfio.c
++++ b/nyquist/xlisp/xlfio.c
+@@ -19,8 +19,7 @@
+ /* do some sanity checking: */
+ #ifndef XL_BIG_ENDIAN
+ #ifndef XL_LITTLE_ENDIAN
+-#error configuration error -- either XL_BIG_ or XL_LITTLE_ENDIAN must be defined
+-in xlisp.h
++#error configuration error -- either XL_BIG_ or XL_LITTLE_ENDIAN must be defined in xlisp.h
+ #endif
+ #endif
+ #ifdef XL_BIG_ENDIAN

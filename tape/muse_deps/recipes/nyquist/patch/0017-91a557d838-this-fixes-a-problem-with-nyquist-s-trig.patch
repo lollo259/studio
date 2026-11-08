@@ -1,0 +1,46 @@
+Audacity commit 91a557d838
+Subject: This fixes a problem with nyquist's TRIGGER retaining samples (see comment 2, Bug #2698). This version of samples.c was accidentally omitted from an earlier commit.
+
+diff --git a/nyquist/nyqsrc/samples.c b/nyquist/nyqsrc/samples.c
+index 3fc9788..d25e866 100644
+--- a/nyquist/nyqsrc/samples.c
++++ b/nyquist/nyqsrc/samples.c
+@@ -13,6 +13,7 @@
+ #include "sound.h"
+ #include "falloc.h"
+ #include "samples.h"
++#include <limits.h>
+ 
+ 
+ LVAL s_next = NULL;
+@@ -115,10 +116,16 @@ LVAL snd_samples(sound_type s, int64_t len)
+     long vx = 0;
+     int blocklen;
+     register double scale_factor = s->scale;
+-    len = (long) snd_length(s, len);
++    len = snd_length(s, len);
+     s = sound_copy(s);
+ 
+     xlsave1(v);
++    
++    // xlisp's maximum vector size is limited. If we exceed the limit,
++    // we'll return a shorter array of samples than requested.
++    if (len > INT_MAX / sizeof(LVAL)) {
++        len = INT_MAX / sizeof(LVAL);
++    }
+     v = newvector(len);
+ 
+     while (len > 0) {
+diff --git a/nyquist/nyqsrc/trigger.c b/nyquist/nyqsrc/trigger.c
+index e7bbb2b..0d0fe24 100644
+--- a/nyquist/nyqsrc/trigger.c
++++ b/nyquist/nyqsrc/trigger.c
+@@ -48,7 +48,7 @@ the previous value so re-reading will not re-trigger.)
+ #include "cext.h"
+ #include "assert.h"
+ 
+-#define TRIGGERDBG 1
++#define TRIGGERDBG 0
+ #define D if (TRIGGERDBG) 
+ 
+ /* Note: this structure is identical to an add_susp structure up

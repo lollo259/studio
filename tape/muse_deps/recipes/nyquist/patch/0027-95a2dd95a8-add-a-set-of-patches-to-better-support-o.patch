@@ -1,0 +1,47 @@
+Audacity commit 95a2dd95a8
+Subject: Add a set of patches to better support OpenBSD and FreeBSD
+
+diff --git a/nyquist/cmt/midifns.c b/nyquist/cmt/midifns.c
+index a524f72..35aa086 100644
+--- a/nyquist/cmt/midifns.c
++++ b/nyquist/cmt/midifns.c
+@@ -118,7 +118,9 @@
+ #ifdef UNIX
+ #ifndef UNIX_IRIX
+ #include "sys/time.h"
++#ifndef __OpenBSD__
+ #include "sys/timeb.h"
++#endif
+ #include "cmtio.h"
+ #else
+ #include <sys/types.h>
+diff --git a/nyquist/sys/unix/switches.h b/nyquist/sys/unix/switches.h
+index 967b0c9..ac899c2 100644
+--- a/nyquist/sys/unix/switches.h
++++ b/nyquist/sys/unix/switches.h
+@@ -39,7 +39,9 @@
+ */
+ #define nyquist_printf printf
+ 
+-#if (__APPLE__ && __GNUC__) || FreeBSD /* Mac OS X or FreeBSD */
++/* macOS, FreeBSD or OpenBSD */
++#if (defined(__APPLE__) && defined(__GNUC__)) || defined(__FreeBSD__) || \
++    defined(__OpenBSD__)
+ #define NEED_ULONG 1
+ #else
+ #include <sys/types.h>
+diff --git a/nyquist/xlisp/xlisp.h b/nyquist/xlisp/xlisp.h
+index 3134849..3b03c09 100644
+--- a/nyquist/xlisp/xlisp.h
++++ b/nyquist/xlisp/xlisp.h
+@@ -172,8 +172,8 @@ extern long ptrtoabs();
+ #endif
+ #endif
+ 
+-/* FreeBSD */
+-#ifdef FreeBSD
++/* FreeBSD / OpenBSD */
++#if defined(__FreeBSD__) || defined(__OpenBSD__)
+ #if BYTE_ORDER == LITTLE_ENDIAN
+ #define XL_LITTLE_ENDIAN
+ #else

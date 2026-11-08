@@ -1,0 +1,2 @@
+# recipes are hashed into archive names — bytes must be identical on every platform
+* -text

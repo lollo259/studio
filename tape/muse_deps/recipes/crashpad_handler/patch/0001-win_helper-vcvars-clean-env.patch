@@ -1,0 +1,32 @@
+--- a/build/win_helper.py
++++ b/build/win_helper.py
+@@ -88,15 +88,26 @@
+         if arch == 'arm64':
+             script_arch_name = 'x86_arm64'
+         args.extend((script_arch_name, '&&', 'set'))
++        clean_env = {k: v for k, v in os.environ.items() if 'VSCMD' not in k.upper()}
++        _winroot = os.environ.get('SystemRoot') or os.environ.get('windir')
++        clean_env['PATH'] = os.pathsep.join((
++            os.path.join(_winroot, 'System32'),
++            _winroot,
++            os.path.join(_winroot, 'System32', 'Wbem'),
++        ))
+         popen = subprocess.Popen(args,
+                                  shell=True,
++                                 env=clean_env,
+                                  stdout=subprocess.PIPE,
+                                  stderr=subprocess.STDOUT)
+         variables, _ = popen.communicate()
+         if popen.returncode != 0:
+-            raise Exception('"%s" failed with error %d' %
+-                            (args, popen.returncode))
+-        env = _ExtractImportantEnvironment(variables)
++            if arch == 'amd64':
++                raise Exception('"%s" failed with error %d' %
++                                (args, popen.returncode))
++            env = {}
++        else:
++            env = _ExtractImportantEnvironment(variables)
+
+         env_block = _FormatAsEnvironmentBlock(env)
+         basename = 'environment.' + arch

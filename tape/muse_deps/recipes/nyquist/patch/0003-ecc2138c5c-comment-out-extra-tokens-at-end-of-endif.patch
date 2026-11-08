@@ -1,0 +1,21 @@
+Audacity commit ecc2138c5c
+Subject: comment out extra tokens at end of #endif directive to avoid compiler warnings [-Wextra-tokens]
+Rebased onto r331 during the 2021 sync (reapply commit 7e083b6ba1); the original diff predates upstream r288-r331 changes.
+
+diff --git a/nyquist/nyqsrc/nfilterkit.h b/nyquist/nyqsrc/nfilterkit.h
+index b7343e5844..ce1ae5ff3c 100644
+--- a/nyquist/nyqsrc/nfilterkit.h
++++ b/nyquist/nyqsrc/nfilterkit.h
+@@ -11,10 +11,10 @@ typedef unsigned int   UWORD;
+ 
+ #ifdef DEBUG
+ #define INLINE
+-#else DEBUG
++#else /* DEBUG */
+ /* #define INLINE inline */
+ #define INLINE
+-#endif DEBUG
++#endif /* DEBUG */
+ 
+ /*
+  * FilterUp() - Applies a filter to a given sample when up-converting.

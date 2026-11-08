@@ -1,0 +1,17 @@
+Audacity commit 132173badf
+Subject: cppcheck: fix 2 reports
+Rebased onto r331 during the 2021 sync (reapply commit f678aa44f9); the original diff predates upstream r288-r331 changes.
+
+diff --git a/nyquist/nyqsrc/sndwritepa.c b/nyquist/nyqsrc/sndwritepa.c
+index dad1d812d6..f9453a9bbf 100644
+--- a/nyquist/nyqsrc/sndwritepa.c
++++ b/nyquist/nyqsrc/sndwritepa.c
+@@ -302,7 +302,7 @@ long lookup_format(long format, long mode, long bits, long swap)
+         sf_format |= (swap ? SF_ENDIAN_LITTLE : SF_ENDIAN_BIG);
+ #endif
+ #ifdef XL_LITTLE_ENDIAN
+-        sf_format |= (swap ? SF_ENDIAN_LITTLE : SF_ENDIAN_LITTLE);
++        sf_format |= (swap ? SF_ENDIAN_BIG : SF_ENDIAN_LITTLE);
+ #endif        
+         break;
+     case SND_HEAD_OGG: sf_format = SF_FORMAT_OGG; mode = SND_MODE_VORBIS; break;

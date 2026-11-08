@@ -1,0 +1,36 @@
+Audacity commit 91850989a0
+Subject: Adds a set of patches to better support FreeBSD build
+
+diff --git a/nyquist/sys/unix/switches.h b/nyquist/sys/unix/switches.h
+index 91e2263..967b0c9 100644
+--- a/nyquist/sys/unix/switches.h
++++ b/nyquist/sys/unix/switches.h
+@@ -39,7 +39,7 @@
+ */
+ #define nyquist_printf printf
+ 
+-#if __APPLE__ && __GNUC__ /* Mac OS X */
++#if (__APPLE__ && __GNUC__) || FreeBSD /* Mac OS X or FreeBSD */
+ #define NEED_ULONG 1
+ #else
+ #include <sys/types.h>
+diff --git a/nyquist/xlisp/xlisp.h b/nyquist/xlisp/xlisp.h
+index 44d52c3..3134849 100644
+--- a/nyquist/xlisp/xlisp.h
++++ b/nyquist/xlisp/xlisp.h
+@@ -172,6 +172,15 @@ extern long ptrtoabs();
+ #endif
+ #endif
+ 
++/* FreeBSD */
++#ifdef FreeBSD
++#if BYTE_ORDER == LITTLE_ENDIAN
++#define XL_LITTLE_ENDIAN
++#else
++#define XL_BIG_ENDIAN
++#endif
++#endif
++
+ /* Apple CC (xcode, macOS, macintosh) */
+ #ifdef __APPLE__
+ #define NNODES 2000

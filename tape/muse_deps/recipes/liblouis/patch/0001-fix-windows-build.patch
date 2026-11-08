@@ -1,0 +1,30 @@
+diff --git a/liblouis/liblouis.h.in b/liblouis/liblouis.h.in
+index 88d7996895..1f91995ad0 100644
+--- a/liblouis/liblouis.h.in
++++ b/liblouis/liblouis.h.in
+@@ -41,7 +41,7 @@ typedef @WIDECHAR_TYPE@ widechar;
+ // clang-format on
+ typedef unsigned short formtype;
+ 
+-#ifdef _MSC_VER
++#if 0 // #ifdef _MSC_VER // disable because MuseScore is not using liblouis as a DLL
+ #ifdef _EXPORTING
+ #define LIBLOUIS_API __declspec(dllexport)
+ #else
+diff --git a/liblouis/lou_translateString.c b/liblouis/lou_translateString.c
+index dc0b8a35e3..f92b1d761e 100644
+--- a/liblouis/lou_translateString.c
++++ b/liblouis/lou_translateString.c
+@@ -2290,7 +2290,12 @@ undefinedCharacter(widechar c, const TranslationTableHeader *table, int pos,
+ 
+ 	const char *text = (mode & noUndefined) ? "" : _lou_showString(&c, 1, 1);
+ 	size_t length = strlen(text);
++
++#ifdef _MSC_VER
++	widechar dots[MAXSTRING]; // MSVC doesn't support variable length arrays
++#else
+ 	widechar dots[length == 0 ? 1 : length];
++#endif
+ 
+ 	for (unsigned int k = 0; k < length; k += 1) {
+ 		dots[k] = 0;

@@ -1,0 +1,14 @@
+dump_syms.exe calls SymInitialize & co;
+Release|Win32 needs linking with Dbghelp.lib
+
+--- a/src/tools/windows/dump_syms/dump_syms.vcxproj
++++ b/src/tools/windows/dump_syms/dump_syms.vcxproj
+@@ -85,7 +85,7 @@
+       <MinimalRebuild />
+     </ClCompile>
+     <Link>
+-      <AdditionalDependencies>$(VSInstallDir)\DIA SDK\lib\diaguids.lib;imagehlp.lib;%(AdditionalDependencies)</AdditionalDependencies>
++      <AdditionalDependencies>$(VSInstallDir)\DIA SDK\lib\diaguids.lib;imagehlp.lib;Dbghelp.lib;%(AdditionalDependencies)</AdditionalDependencies>
+       <GenerateDebugInformation>true</GenerateDebugInformation>
+       <SubSystem>Console</SubSystem>
+       <OptimizeReferences>true</OptimizeReferences>

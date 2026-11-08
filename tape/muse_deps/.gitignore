@@ -1,0 +1,10 @@
+# macos temporary files
+.DS_Store
+
+# build_dep_lib.cmake working tree
+.build/
+
+# prebuilt archives are release assets, never committed
+*.7z
+
+*.swp

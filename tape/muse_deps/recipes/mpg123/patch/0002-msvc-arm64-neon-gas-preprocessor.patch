@@ -1,0 +1,70 @@
+diff --color -ruN ma/ports/cmake/src/libmpg123/CMakeLists.txt mb/ports/cmake/src/libmpg123/CMakeLists.txt
+--- ma/ports/cmake/src/libmpg123/CMakeLists.txt	2024-12-14 18:00:11.000000000 +0300
++++ mb/ports/cmake/src/libmpg123/CMakeLists.txt	2026-06-12 17:10:45.397871770 +0300
+@@ -71,6 +71,14 @@
+           message(WARNING "Couldn't find yasm assembler for optimizded decoders. Please set YASM_ASSEMBLER variable")
+           set(MACHINE generic)
+       endif()
++    elseif(MACHINE STREQUAL "arm64")
++      # gas-syntax NEON sources assemble via gas-preprocessor + armasm64
++      find_program(PERL_EXE perl)
++      find_program(ARMASM64_EXE armasm64)
++      if(NOT (PERL_EXE AND ARMASM64_EXE AND GAS_PREPROCESSOR))
++          message(WARNING "Need perl + armasm64 + GAS_PREPROCESSOR for arm64 NEON with MSVC.")
++          set(MACHINE generic)
++      endif()
+     else()
+       message(WARNING "Need work to support non-x86 assembly optimizations with MSVC.")
+       set(MACHINE generic)
+@@ -231,6 +239,21 @@
+             WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}")
+         target_sources(${TARGET} PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/${FILENAME}.obj")
+     endforeach()
++elseif(MSVC AND MACHINE STREQUAL "arm64" AND GAS_PREPROCESSOR)
++    set(GP_DEFINITIONS ${PLATFORM_DEFINITIONS})
++    list(TRANSFORM GP_DEFINITIONS PREPEND -D)
++    foreach(FILE ${PLATFORM_SOURCES})
++        get_filename_component(FILENAME ${FILE} NAME)
++        add_custom_command(
++            OUTPUT ${FILENAME}.obj
++            COMMAND ${PERL_EXE} ${GAS_PREPROCESSOR} -arch aarch64 -as-type armasm --
++            ${ARMASM64_EXE} -nologo -ignore 4509 -DASMALIGN_BALIGN -D__aarch64__=1 ${GP_DEFINITIONS}
++            -I"${PROJECT_SOURCE_DIR}/../../src" -I"${PROJECT_BINARY_DIR}/src"
++            -o ${FILENAME}.obj "${FILE}"
++            DEPENDS ${FILE}
++            WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}")
++        target_sources(${TARGET} PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/${FILENAME}.obj")
++    endforeach()
+ else()
+     target_sources(${TARGET} PRIVATE ${PLATFORM_SOURCES})
+ endif()
+diff --color -ruN ma/src/libmpg123/getcpuflags_arm.c mb/src/libmpg123/getcpuflags_arm.c
+--- ma/src/libmpg123/getcpuflags_arm.c	2024-12-14 18:00:12.000000000 +0300
++++ mb/src/libmpg123/getcpuflags_arm.c	2026-06-12 17:10:52.442002468 +0300
+@@ -19,7 +19,7 @@
+ 
+ extern void INT123_check_neon(void);
+ 
+-#ifndef _M_ARM
++#if !defined(_M_ARM) && !defined(_M_ARM64)
+ static sigjmp_buf jmpbuf;
+ #else
+ static jmp_buf jmpbuf;
+@@ -27,7 +27,7 @@
+ 
+ static void mpg123_arm_catch_sigill(int sig)
+ {
+-#ifndef _M_ARM
++#if !defined(_M_ARM) && !defined(_M_ARM64)
+ 	siglongjmp(jmpbuf, 1);
+ #else
+ 	longjmp(jmpbuf, 1);
+@@ -36,7 +36,7 @@
+ 
+ unsigned int INT123_getcpuflags(struct cpuflags* cf)
+ {
+-#ifndef _M_ARM
++#if !defined(_M_ARM) && !defined(_M_ARM64)
+ 	struct sigaction act, act_old;
+ 	act.sa_handler = mpg123_arm_catch_sigill;
+ 	act.sa_flags = SA_RESTART;

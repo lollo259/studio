@@ -1,0 +1,13 @@
+std::max_align_t needs <cstddef>; the file only pulls <stddef.h>.
+Breaks the linux autotools build with gcc on ubuntu-22.04
+
+--- a/src/common/memory_allocator.h
++++ b/src/common/memory_allocator.h
+@@ -36,6 +36,7 @@
+ #include <sys/mman.h>
+ #include <unistd.h>
+
++#include <cstddef>
+ #include <memory>
+ #include <vector>
+
