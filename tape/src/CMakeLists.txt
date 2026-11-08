@@ -70,6 +70,7 @@ endif()
 add_subdirectory(importexport)
 
 add_subdirectory(uicomponents)
+add_subdirectory(instruments) # Tape: virtual instruments
 
 # Stubs
 add_subdirectory(stubs)

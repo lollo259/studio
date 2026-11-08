@@ -23,6 +23,10 @@
 #include "framework/toast/toastmodule.h"
 #include "framework/cloud/cloudmodule.h"
 #include "framework/network/networkmodule.h"
+#ifdef MUSE_MODULE_MIDI
+#include "framework/midi/midimodule.h"
+#endif
+#include "instruments/instrumentsmodule.h"
 #ifdef MUSE_MODULE_UPDATE
 #include "framework/update/updatemodule.h"
 #else
@@ -154,6 +158,9 @@ std::shared_ptr<muse::IApplication> AppFactory::newGuiApp(const std::shared_ptr<
 #endif
     app->addModule(new muse::cloud::CloudModule());
     app->addModule(new muse::network::NetworkModule());
+#ifdef MUSE_MODULE_MIDI
+    app->addModule(new muse::midi::MidiModule());
+#endif
     app->addModule(new muse::update::UpdateModule());
     app->addModule(new muse::extensions::ExtensionsModule());
 #ifdef MUSE_MODULE_TESTFLOW
@@ -189,6 +196,7 @@ std::shared_ptr<muse::IApplication> AppFactory::newGuiApp(const std::shared_ptr<
     app->addModule(new au::effects::BuiltinEffectsModule());
     app->addModule(new au::effects::BuiltinEffectsCollectionModule());
     app->addModule(new au::automation::AutomationModule());
+    app->addModule(new au::instruments::InstrumentsModule());
 
     return app;
 }
