@@ -3,56 +3,71 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#3A3A40">
+<meta name="theme-color" content="#CDCED1">
 <title>Scenes</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Jost:wght@300;400;500&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
-:root{--bg:#3A3A40;--up:5px 5px 12px #2A2A2E,-5px -5px 12px #4A4A51;--upS:3px 3px 7px #2A2A2E,-3px -3px 7px #4A4A51;--down:inset 4px 4px 9px #28282C,inset -4px -4px 9px #4C4C53;--acc:#FF6A13;--txt:#E8E8E6;--mut:#A9A9AE}
+:root{--bg:#CDCED1;--key:#E2E3E5;--up:0 3px 0 #A6A7AA,0 5px 10px rgba(0,0,0,.18);--upS:0 2px 0 #A6A7AA,0 3px 6px rgba(0,0,0,.15);--down:inset 0 2px 5px rgba(0,0,0,.28);--acc:#FF6A13;--txt:#26262A;--mut:#6C6C70}
 *{box-sizing:border-box}
 html,body{margin:0;height:100%;background:var(--bg);color:var(--txt);font-family:'IBM Plex Mono',monospace;-webkit-tap-highlight-color:transparent;overscroll-behavior:none}
-button{font:inherit;color:inherit;border:none;background:var(--bg);cursor:pointer}
+button{font:inherit;color:inherit;border:none;background:var(--key);cursor:pointer}
 .k{box-shadow:var(--upS);border-radius:10px;transition:box-shadow .12s, transform .08s, color .2s}
 .k:active{transform:translateY(1px);box-shadow:var(--down)}
-.k.on{box-shadow:var(--down);color:var(--acc)}
+.k.on{box-shadow:var(--down);color:var(--acc);background:#F2F2F0}
 #app{display:flex;flex-direction:column;height:100%;padding:calc(12px + env(safe-area-inset-top)) 14px calc(12px + env(safe-area-inset-bottom))}
 header{display:flex;align-items:center;gap:12px;height:48px;flex:none}
 .logo{font-family:Jost,sans-serif;font-weight:300;font-size:24px}
-.dot{width:9px;height:9px;border-radius:5px;background:#6E6E72;transition:background .15s, box-shadow .15s}
+.dot{width:9px;height:9px;border-radius:5px;background:#9A9B9E;transition:background .15s, box-shadow .15s}
 .dot.hit{background:var(--acc);box-shadow:0 0 10px var(--acc)}
 .lbl{font-size:11px;color:var(--mut);letter-spacing:.06em}
 .sp{flex:1}
-main{flex:1;min-height:0;display:flex;gap:16px;margin-top:12px}
-#stage{flex:1;min-width:0;border-radius:22px;box-shadow:var(--down);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:20px;position:relative;text-align:center;user-select:none}
-#stage .num{font-size:14px;color:var(--mut)}
-#stage .name{font-family:Jost,sans-serif;font-weight:300;font-size:clamp(44px,9vw,120px);line-height:1;color:var(--txt)}
-#stage .layers{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
-.chip{font-size:12px;padding:6px 10px;border-radius:8px;box-shadow:var(--upS);color:var(--txt)}
-#stage .next{position:absolute;bottom:16px;font-size:12px;color:var(--mut)}
-#stage .flash{animation:flash .35s ease}
-@keyframes flash{from{transform:scale(.97);opacity:.3}to{transform:scale(1);opacity:1}}
-#side{width:320px;flex:none;display:flex;flex-direction:column;gap:12px;min-height:0}
-#list{flex:1;min-height:0;overflow:auto;display:flex;flex-direction:column;gap:10px;padding:6px}
-.sc{display:flex;align-items:center;gap:12px;min-height:58px;padding:0 14px;text-align:left;width:100%}
+main{flex:1;min-height:0;display:flex;gap:28px;margin-top:10px;align-items:center}
+#wheelArea{flex:1;min-width:0;height:100%;display:flex;align-items:center;justify-content:center;position:relative}
+#wheelWrap{position:relative;width:min(78vh,52vw);aspect-ratio:1}
+#pointer{position:absolute;left:50%;top:-14px;transform:translateX(-50%);width:0;height:0;border-left:9px solid transparent;border-right:9px solid transparent;border-top:13px solid var(--acc);z-index:2}
+#wheel{position:absolute;inset:0;border-radius:50%;touch-action:none;cursor:grab;user-select:none;
+  background:radial-gradient(circle at 50% 50%, #D9DADC 0 30%, transparent 30.5%), repeating-conic-gradient(from 0deg, #C3C4C7 0deg 1.2deg, #D6D7D9 1.2deg 2.4deg);
+  box-shadow:0 18px 40px rgba(0,0,0,.28), inset 0 2px 2px rgba(255,255,255,.7), inset 0 -3px 6px rgba(0,0,0,.18);
+  transition:transform .45s cubic-bezier(.25,1.5,.45,1)}
+#wheel.drag{transition:none;cursor:grabbing}
+#wheel .lab{position:absolute;left:50%;top:50%;font-size:12px;color:var(--mut);transform-origin:0 0}
+#wheel .lab.cur{color:var(--acc);font-weight:500}
+#hub{position:absolute;inset:34%;border-radius:50%;background:radial-gradient(circle at 40% 35%, #F4F4F2, #CFD0D2 70%);box-shadow:0 6px 14px rgba(0,0,0,.25), inset 0 1px 1px #fff;display:flex;align-items:center;justify-content:center;pointer-events:none}
+#hub span{width:10px;height:10px;border-radius:5px;background:var(--acc)}
+#panel{width:340px;flex:none;display:flex;flex-direction:column;gap:16px;align-self:stretch;justify-content:center}
+#screen{border-radius:16px;background:#121214;box-shadow:inset 0 2px 8px rgba(0,0,0,.7), 0 1px 0 rgba(255,255,255,.6);color:#EDEDE8;padding:20px 22px;min-height:230px;display:flex;flex-direction:column;gap:10px;user-select:none}
+#screen .num{font-size:12px;color:#9A9A96;display:flex;justify-content:space-between}
+#screen .name{font-family:Jost,sans-serif;font-weight:300;font-size:40px;line-height:1.05}
+#screen .layers{display:flex;flex-direction:column;gap:4px;font-size:12px;color:#CFCFCA}
+#screen .layers span::before{content:'— ';color:var(--acc)}
+#screen .next{margin-top:auto;font-size:11px;color:#9A9A96}
+#screen .flash{animation:flash .3s ease}
+@keyframes flash{from{opacity:.2;transform:translateY(4px)}to{opacity:1;transform:none}}
+.chip{display:none}
+#list{display:flex;flex-direction:column;gap:8px;max-height:60vh;overflow:auto;padding:4px}
+.sc{display:flex;align-items:center;gap:12px;min-height:52px;padding:0 14px;text-align:left;width:100%}
 .sc .n{width:28px;font-size:12px;color:var(--mut)}
 .sc .t{flex:1;font-size:14px}
 .sc.cur .n,.sc.cur .t{color:var(--acc)}
+.round{flex:none !important;width:72px;height:72px;border-radius:36px;font-size:22px}
+#panicBtn{background:var(--acc);color:#fff}
 .row{display:flex;gap:10px}
 .row>button{flex:1;height:52px;font-size:12px}
 .big{height:64px !important;font-size:20px !important}
 dialog{background:var(--bg);color:var(--txt);border:none;border-radius:20px;box-shadow:0 20px 60px rgba(0,0,0,.6);padding:20px;width:min(560px,94vw);max-height:90vh;overflow:auto}
 dialog::backdrop{background:rgba(0,0,0,.5)}
 label{display:block;font-size:11px;color:var(--mut);margin:12px 0 6px}
-input,select{width:100%;height:42px;border-radius:10px;border:none;background:var(--bg);box-shadow:var(--down);color:var(--txt);font:inherit;padding:0 12px}
+input,select{width:100%;height:42px;border-radius:10px;border:none;background:#F1F1EF;box-shadow:var(--down);color:var(--txt);font:inherit;padding:0 12px}
 .layer{border-radius:14px;box-shadow:var(--upS);padding:12px;margin-top:12px}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
-.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);padding:10px 16px;border-radius:12px;background:#2A2A2E;font-size:12px;opacity:0;transition:opacity .25s;pointer-events:none;max-width:90vw}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);padding:10px 16px;border-radius:12px;background:#26262A;color:#EDEDE8;font-size:12px;opacity:0;transition:opacity .25s;pointer-events:none;max-width:90vw}
 .toast.show{opacity:1}
-.bar{height:4px;border-radius:2px;background:#2A2A2E;overflow:hidden;width:220px}
+.bar{height:4px;border-radius:2px;background:#A6A7AA;overflow:hidden;width:220px}
 .bar>div{height:100%;width:0;background:var(--acc);transition:width .2s}
 @media (max-width:520px){#audioState{display:none}}
-@media (max-width:760px){main{flex-direction:column}#side{width:auto;flex:none;max-height:42%}#stage{min-height:46%}}
+@media (max-width:760px){main{flex-direction:column;gap:18px;align-items:stretch}#panel{width:auto;align-self:auto;order:-1}#screen{min-height:150px}#screen .name{font-size:30px}#wheelWrap{width:min(86vw,46vh)}}
 </style>
 </head>
 <body>
@@ -66,16 +81,23 @@ input,select{width:100%;height:42px;border-radius:10px;border:none;background:va
     <button class="k" id="setBtn" style="height:40px;padding:0 14px;font-size:12px">setup</button>
   </header>
   <main>
-    <section id="stage" aria-live="polite"></section>
-    <aside id="side">
-      <div id="list"></div>
-      <div class="row">
-        <button class="k big" id="prevBtn" aria-label="Previous scene">‹</button>
-        <button class="k big" id="nextBtn" aria-label="Next scene">›</button>
+    <section id="wheelArea">
+      <div id="wheelWrap">
+        <div id="pointer" aria-hidden="true"></div>
+        <div id="wheel" role="slider" aria-label="Scene wheel" tabindex="0"></div>
+        <div id="hub" aria-hidden="true"><span></span></div>
+      </div>
+    </section>
+    <aside id="panel">
+      <section id="screen" aria-live="polite"></section>
+      <div class="row" style="justify-content:space-between">
+        <button class="k round" id="prevBtn" aria-label="Previous scene">‹</button>
+        <button class="k round" id="panicBtn" aria-label="All notes off" style="font-size:11px">off</button>
+        <button class="k round" id="nextBtn" aria-label="Next scene">›</button>
       </div>
       <div class="row">
+        <button class="k" id="listBtn">scenes</button>
         <button class="k" id="addBtn">+ scene</button>
-        <button class="k" id="panicBtn">all notes off</button>
       </div>
     </aside>
   </main>
@@ -103,7 +125,12 @@ input,select{width:100%;height:42px;border-radius:10px;border:none;background:va
   <div class="row"><button class="k" id="learnNext" style="height:44px">learn "next" key</button><button class="k" id="learnPrev" style="height:44px">learn "previous" key</button></div>
   <label>setlist</label>
   <div class="row"><button class="k" id="exportBtn" style="height:44px">copy setlist</button><button class="k" id="importBtn" style="height:44px">paste setlist</button></div>
-  <textarea id="setText" style="width:100%;min-height:80px;margin-top:10px;border-radius:10px;border:none;background:var(--bg);box-shadow:var(--down);color:var(--txt);font:inherit;font-size:11px;padding:10px;display:none"></textarea>
+  <textarea id="setText" style="width:100%;min-height:80px;margin-top:10px;border-radius:10px;border:none;background:#F1F1EF;box-shadow:var(--down);color:var(--txt);font:inherit;font-size:11px;padding:10px;display:none"></textarea>
+</dialog>
+<dialog id="listDlg">
+  <div style="display:flex;align-items:center"><span class="logo" style="font-size:20px">scenes</span><span class="sp"></span><button class="k on" id="closeList" style="height:36px;padding:0 14px;font-size:12px">done</button></div>
+  <p class="lbl">tap to jump · double-tap to edit</p>
+  <div id="list"></div>
 </dialog>
 <div class="toast" id="toast"></div>
 
@@ -149,7 +176,7 @@ function audio() {
     master = ctx.createDynamicsCompressor(); master.threshold.value = -10; master.ratio.value = 4; master.connect(ctx.destination);
   }
   if (ctx.state !== 'running') ctx.resume();
-  $('audioState').textContent = 'sound on · ' + Math.round(((ctx.baseLatency || 0) + (ctx.outputLatency || 0)) * 1000) + ' ms';
+  $('audioState').textContent = 'sound on · ' + Math.round(((ctx.baseLatency || 0) + (ctx.outputLatency || 0)) * 1000) + ' ms delay';
   return ctx;
 }
 document.addEventListener('pointerdown', () => audio(), { once: false });
@@ -341,29 +368,59 @@ function go(i) {
   i = Math.max(0, Math.min(S.scenes.length - 1, i)); if (i === S.cur) { renderStage(true); return; }
   allOff(); S.cur = i; save(); renderAll(true); loadScene(i);
 }
+const STEP = 36; let wheelAngle = 0;
 function renderStage(flash) {
-  const sc = S.scenes[S.cur], nx = S.scenes[S.cur + 1], st = $('stage');
+  const sc = S.scenes[S.cur], nx = S.scenes[S.cur + 1], st = $('screen');
   st.innerHTML = '';
-  if (!sc) { st.innerHTML = '<div class="lbl">no scenes · press + scene</div>'; return; }
-  const box = document.createElement('div'); box.className = flash ? 'flash' : '';
-  box.innerHTML = `<div class="num">${String(S.cur + 1).padStart(2, '0')} / ${String(S.scenes.length).padStart(2, '0')}</div><div class="name"></div><div class="layers" style="margin-top:18px"></div>`;
+  if (!sc) { st.innerHTML = '<div class="num">no scenes · press + scene</div>'; return; }
+  const box = document.createElement('div'); box.className = flash ? 'flash' : ''; box.style.cssText = 'display:flex;flex-direction:column;gap:10px;flex:1';
+  box.innerHTML = `<div class="num"><span>${String(S.cur + 1).padStart(2, '0')} / ${String(S.scenes.length).padStart(2, '0')}</span><span id="latency"></span></div><div class="name"></div><div class="layers"></div><div class="next"></div>`;
   box.querySelector('.name').textContent = sc.name;
-  sc.layers.forEach(L => { const c = document.createElement('span'); c.className = 'chip'; c.textContent = soundName(L.sound) + ' · ' + (L.lo <= 0 && L.hi >= 127 ? 'all keys' : NOTE(L.lo) + '–' + NOTE(L.hi)) + (L.tr ? ' · ' + (L.tr > 0 ? '+' : '') + L.tr : ''); box.querySelector('.layers').appendChild(c); });
+  sc.layers.forEach(L => { const c = document.createElement('span'); c.textContent = soundName(L.sound) + ' · ' + (L.lo <= 0 && L.hi >= 127 ? 'all keys' : NOTE(L.lo) + '–' + NOTE(L.hi)) + (L.tr ? ' · ' + (L.tr > 0 ? '+' : '') + L.tr : ''); box.querySelector('.layers').appendChild(c); });
+  box.querySelector('.next').textContent = nx ? 'next › ' + nx.name : 'last scene';
   st.appendChild(box);
-  const n = document.createElement('div'); n.className = 'next'; n.textContent = nx ? 'next › ' + nx.name : 'last scene'; st.appendChild(n);
+  renderWheel();
+}
+function renderWheel() {
+  const w = $('wheel'); w.querySelectorAll('.lab').forEach(e => e.remove());
+  const r = w.clientWidth / 2 * 0.82;
+  S.scenes.forEach((sc, i) => {
+    const a = i * STEP, l = document.createElement('span'); l.className = 'lab' + (i === S.cur ? ' cur' : '');
+    l.textContent = String(i + 1).padStart(2, '0');
+    l.style.transform = `rotate(${a}deg) translate(-50%, -${r}px)`;
+    w.appendChild(l);
+  });
+  wheelAngle = -S.cur * STEP; w.style.transform = `rotate(${wheelAngle}deg)`;
+  w.setAttribute('aria-valuenow', S.cur + 1); w.setAttribute('aria-valuetext', S.scenes[S.cur] ? S.scenes[S.cur].name : '');
 }
 function renderList() {
   const l = $('list'); l.innerHTML = '';
   S.scenes.forEach((sc, i) => {
     const b = document.createElement('button'); b.className = 'k sc' + (i === S.cur ? ' cur on' : '');
     b.innerHTML = `<span class="n">${String(i + 1).padStart(2, '0')}</span><span class="t"></span>`; b.querySelector('.t').textContent = sc.name;
-    b.onclick = () => go(i); b.ondblclick = () => openEdit(i); l.appendChild(b);
+    b.onclick = () => go(i); b.ondblclick = () => { $('listDlg').close(); openEdit(i); }; l.appendChild(b);
   });
-  const cur = l.children[S.cur]; if (cur) cur.scrollIntoView({ block: 'nearest' });
 }
+/* the wheel: drag it round like a jog wheel, one click per scene */
+(() => {
+  const w = $('wheel'); let drag = null;
+  const ang = e => { const r = w.getBoundingClientRect(); return Math.atan2(e.clientY - (r.top + r.height / 2), e.clientX - (r.left + r.width / 2)) * 180 / Math.PI; };
+  w.addEventListener('pointerdown', e => { audio(); drag = { a: ang(e), acc: 0 }; w.classList.add('drag'); w.setPointerCapture(e.pointerId); });
+  w.addEventListener('pointermove', e => {
+    if (!drag) return; let d = ang(e) - drag.a; if (d > 180) d -= 360; if (d < -180) d += 360; drag.a = ang(e); drag.acc += d;
+    w.style.transform = `rotate(${wheelAngle + drag.acc}deg)`;
+    if (Math.abs(drag.acc) >= STEP) { const dir = drag.acc > 0 ? -1 : 1; const before = S.cur; go(S.cur + dir); if (S.cur !== before) { drag.acc -= -dir * STEP; if (navigator.vibrate) navigator.vibrate(6); } else drag.acc = Math.sign(drag.acc) * Math.min(Math.abs(drag.acc), STEP * 0.4); w.style.transform = `rotate(${wheelAngle + drag.acc}deg)`; }
+  });
+  const end = () => { if (!drag) return; drag = null; w.classList.remove('drag'); w.style.transform = `rotate(${wheelAngle}deg)`; };
+  w.addEventListener('pointerup', end); w.addEventListener('pointercancel', end);
+  let acc = 0; w.addEventListener('wheel', e => { e.preventDefault(); acc += e.deltaY; if (Math.abs(acc) > 60) { go(S.cur + (acc > 0 ? 1 : -1)); acc = 0; } }, { passive: false });
+  window.addEventListener('resize', renderWheel);
+})();
 function renderAll(flash) { renderStage(flash); renderList(); }
 
 $('nextBtn').onclick = () => go(S.cur + 1);
+$('listBtn').onclick = () => { renderList(); $('listDlg').showModal(); };
+$('closeList').onclick = () => $('listDlg').close();
 $('prevBtn').onclick = () => go(S.cur - 1);
 $('panicBtn').onclick = () => { allOff(); toast('all notes off'); };
 $('addBtn').onclick = () => { S.scenes.splice(S.cur + 1, 0, { name: 'New scene', layers: [{ sound: 'b:epiano', lo: 0, hi: 127, vol: 0.9, tr: 0 }] }); save(); S.cur++; renderAll(); openEdit(S.cur); };
