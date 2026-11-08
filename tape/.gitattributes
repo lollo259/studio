@@ -1,0 +1,40 @@
+# Normalize line endings of all files that Git considers to be text
+* text eol=lf
+#except images and sounds
+*.png -text
+*.gif -text
+*.jpg -text
+*.icns -text
+*.wav -text
+*.au -text
+*.ico -text
+# and weird stuff in lib-src
+*.ttl text=auto
+*.aps text=auto
+*.trig text=auto
+# Studio: never touch binary files
+*.ttf -text
+*.otf -text
+*.woff -text
+*.woff2 -text
+*.pdf -text
+*.sf2 -text
+*.sf3 -text
+*.mp3 -text
+*.ogg -text
+*.flac -text
+*.zip -text
+*.7z -text
+*.gz -text
+*.dll -text
+*.exe -text
+*.lib -text
+*.a -text
+*.so -text
+*.dylib -text
+*.qm -text
+*.mo -text
+*.bin -text
+*.aup3 -text
+*.aup4 -text
+*.svgz -text

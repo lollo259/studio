@@ -1,0 +1,194 @@
+# Ben - Laurence Who Studio
+# SPDX-License-Identifier: GPL-3.0-or-later
+"""Ben: venues, stages, scenography and architecture, built on Blender.
+
+A Blender application template by Laurence Who. Start it with
+`blender --app-template ben` or from File > New > Ben.
+"""
+
+import os
+import bpy
+from bpy.app.handlers import persistent
+
+from . import fabric, geometry, layers, modelling, physics, scenography, tools, ui, venue
+
+HERE = os.path.dirname(__file__)
+
+# ------------------------------------------------------------------ look
+
+BLACK = (0.0, 0.0, 0.0)
+NIGHT = (0.043, 0.043, 0.043)    # #0B0B0B
+PANEL = (0.078, 0.078, 0.078)    # #141414
+WIDGET = (0.102, 0.102, 0.102)   # #1A1A1A
+LINE = (0.15, 0.15, 0.15)        # #262626
+TEXT = (0.95, 0.95, 0.95)
+MUTED = (0.55, 0.55, 0.55)
+BLUE = (0.122, 0.373, 0.682)     # #1F5FAE (laurencewho.com)
+BLUE_HI = (0.30, 0.55, 1.0)
+
+_saved = []  # (owner, attribute, old value) so the template can be switched off cleanly
+
+
+def _set(owner, attr, value):
+    if not hasattr(owner, attr):
+        return
+    old = getattr(owner, attr)
+    try:
+        old = tuple(old)
+    except TypeError:
+        pass
+    try:
+        cur = getattr(owner, attr)
+        if hasattr(cur, "__len__") and len(cur) == 4 and len(value) == 3:
+            value = (*value, cur[3])
+        setattr(owner, attr, value)
+        _saved.append((owner, attr, old))
+    except Exception as exc:  # theme layout differs between Blender versions
+        print(f"Ben: could not set {attr}: {exc}")
+
+
+def apply_look():
+    prefs = bpy.context.preferences
+    theme = prefs.themes[0]
+    ui_t = theme.user_interface
+
+    for name in ("wcol_regular", "wcol_tool", "wcol_toolbar_item", "wcol_radio", "wcol_text", "wcol_option",
+                 "wcol_toggle", "wcol_num", "wcol_numslider", "wcol_box", "wcol_menu", "wcol_pulldown",
+                 "wcol_menu_back", "wcol_pie_menu", "wcol_menu_item", "wcol_list_item", "wcol_tab",
+                 "wcol_tooltip", "wcol_scroll"):
+        w = getattr(ui_t, name, None)
+        if w is None:
+            continue
+        _set(w, "inner", WIDGET if name not in ("wcol_menu_back", "wcol_tooltip") else PANEL)
+        _set(w, "inner_sel", BLUE)
+        _set(w, "outline", LINE)
+        _set(w, "text", TEXT)
+        _set(w, "text_sel", (1.0, 1.0, 1.0))
+        _set(w, "item", BLUE_HI if name in ("wcol_numslider", "wcol_scroll", "wcol_option") else MUTED)
+        _set(w, "show_shaded", False)
+
+    for attr, val in (("panel_back", PANEL), ("panel_sub_back", NIGHT), ("panel_header", PANEL),
+                      ("panel_title", TEXT), ("panel_text", TEXT), ("panel_outline", LINE),
+                      ("panel_active", BLUE), ("editor_border", BLACK), ("editor_outline", LINE),
+                      ("editor_outline_active", BLUE), ("widget_text_cursor", BLUE_HI)):
+        _set(ui_t, attr, val)
+
+    for section in ("properties", "outliner", "topbar", "statusbar", "file_browser", "preferences",
+                    "info", "text_editor", "console", "image_editor", "node_editor", "sequence_editor"):
+        sp = getattr(getattr(theme, section, None), "space", None)
+        if sp is None:
+            continue
+        _set(sp, "back", NIGHT)
+        _set(sp, "header", BLACK)
+        _set(sp, "text", TEXT)
+        _set(sp, "header_text", TEXT)
+        _set(sp, "text_hi", (1.0, 1.0, 1.0))
+
+    v3d = theme.view_3d
+    _set(v3d.space.gradients, "background_type", "SINGLE_COLOR")
+    _set(v3d.space.gradients, "high_gradient", NIGHT)
+    _set(v3d.space.gradients, "gradient", BLACK)
+    _set(v3d.space, "header", BLACK)
+    _set(v3d.space, "text", TEXT)
+    _set(v3d.space, "header_text", TEXT)
+    _set(v3d, "object_active", BLUE_HI)
+    _set(v3d, "object_selected", BLUE)
+    _set(v3d, "grid", (0.22, 0.22, 0.22))
+    sidebars = getattr(getattr(theme, "regions", None), "sidebars", None)
+    if sidebars is not None:
+        _set(sidebars, "back", PANEL)
+        _set(sidebars, "tab_back", BLACK)
+
+    font = os.path.join(HERE, "fonts", "WorkSans-Regular.ttf")
+    if os.path.exists(font):
+        _set(prefs.view, "font_path_ui", font)
+
+
+def restore_look():
+    while _saved:
+        owner, attr, old = _saved.pop()
+        try:
+            setattr(owner, attr, old)
+        except Exception:
+            pass
+
+
+# ------------------------------------------------------------------ new files
+
+@persistent
+def factory_startup(_):
+    """Every new Ben file: empty metric scene, dark world, real-size grid, Eevee."""
+    for scene in bpy.data.scenes:
+        modelling.apply_units(scene)
+        for name in ("Cube", "Light", "Camera"):
+            obj = bpy.data.objects.get(name)
+            if obj is not None:
+                bpy.data.objects.remove(obj, do_unlink=True)
+        for engine in ("BLENDER_EEVEE", "BLENDER_EEVEE_NEXT"):
+            try:
+                scene.render.engine = engine
+                break
+            except TypeError:
+                continue
+        world = scene.world or bpy.data.worlds.new("Ben world")
+        scene.world = world
+        world.color = (0.01, 0.01, 0.012)
+    for screen in bpy.data.screens:
+        for area in screen.areas:
+            if area.type != "VIEW_3D":
+                continue
+            for space in area.spaces:
+                if space.type != "VIEW_3D":
+                    continue
+                space.show_region_ui = True          # Ben sidebar visible
+                space.show_region_toolbar = False    # Ben's tools live in the header
+                space.show_region_tool_header = False
+                space.show_gizmo_navigate = False
+                ov = space.overlay
+                for attr in ("show_text", "show_stats", "show_cursor", "show_object_origins",
+                             "show_relationship_lines", "show_extras"):
+                    if hasattr(ov, attr):
+                        setattr(ov, attr, False)
+                ov.show_extras = True                 # keep lights and cameras visible
+                shading = space.shading
+                shading.light = "STUDIO"
+                shading.show_cavity = True
+                shading.show_shadows = True
+                space.overlay.show_floor = True
+                space.clip_end = 1000.0
+                if space.region_3d is not None:
+                    space.region_3d.view_distance = 30.0
+        screen.show_statusbar = False
+
+
+# ------------------------------------------------------------------ register
+
+_modules = (venue, scenography, modelling, tools, layers, physics, fabric, ui)
+
+
+def register():
+    for mod in _modules:
+        for cls in mod.classes:
+            bpy.utils.register_class(cls)
+    bpy.types.Scene.ben_paint_color = bpy.props.FloatVectorProperty(
+        name="Paint colour", subtype="COLOR", size=3, min=0.0, max=1.0, default=(0.85, 0.84, 0.81))
+    layers.register_props()
+    tools.register_keymaps()
+    ui.install()
+    bpy.types.VIEW3D_MT_add.prepend(ui.add_menu)
+    bpy.app.handlers.load_factory_startup_post.append(factory_startup)
+    apply_look()
+
+
+def unregister():
+    restore_look()
+    if factory_startup in bpy.app.handlers.load_factory_startup_post:
+        bpy.app.handlers.load_factory_startup_post.remove(factory_startup)
+    bpy.types.VIEW3D_MT_add.remove(ui.add_menu)
+    tools.unregister_keymaps()
+    ui.uninstall()
+    layers.unregister_props()
+    del bpy.types.Scene.ben_paint_color
+    for mod in reversed(_modules):
+        for cls in reversed(mod.classes):
+            bpy.utils.unregister_class(cls)

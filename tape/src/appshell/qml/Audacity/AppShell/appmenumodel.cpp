@@ -1,0 +1,990 @@
+/*
+ * SPDX-License-Identifier: GPL-3.0-only
+ * MuseScore-CLA-applies
+ *
+ * MuseScore
+ * Music Composition & Notation
+ *
+ * Copyright (C) 2021 MuseScore BVBA and others
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 3 as
+ * published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
+#include "appmenumodel.h"
+
+#include "shared/types/workspacetitles.h"
+
+#include "global/containers.h"
+#include "types/translatablestring.h"
+
+#include "muse_framework_config.h"
+
+#ifdef MUSE_MODULE_WORKSPACE
+#include "workspace/qml/Muse/Workspace/workspacesmenumodel.h"
+#endif
+
+#include "log.h"
+
+using namespace au::appshell;
+using namespace muse;
+using namespace muse::ui;
+using namespace muse::uicomponents;
+using namespace muse::actions;
+
+using namespace au::project;
+//! TODO AU4
+// using namespace muse::workspace;
+using namespace muse::extensions;
+
+static QString makeId(const ActionCode& actionCode, int itemIndex)
+{
+    return QString::fromStdString(actionCode) + QString::number(itemIndex);
+}
+
+static const ActionCode RENAME_ITEM_CODE("rename-item");
+static const QString RENAME_CLIP_ITEM_ID("rename-clip-item");
+static const QString RENAME_LABEL_ITEM_ID("rename-label-item");
+
+AppMenuModel::AppMenuModel(QObject* parent)
+    : AbstractMenuModel(parent)
+{
+#ifdef MUSE_MODULE_WORKSPACE
+    m_workspacesMenuModel = std::make_shared<workspace::WorkspacesMenuModel>(this);
+#endif
+}
+
+void AppMenuModel::load()
+{
+    TRACEFUNC;
+
+    AbstractMenuModel::load();
+
+#ifdef MUSE_MODULE_WORKSPACE
+    m_workspacesMenuModel->load();
+#endif
+
+    MenuItemList items {
+        makeFileMenu(),
+        makeEditMenu(),
+        makeSelectMenu(),
+        makeViewMenu(),
+        makeRecordMenu(),
+        makeTracksMenu(),
+        makeGenerateMenu(),
+        makeEffectMenu(),
+        makeAnalyzeMenu(),
+        makeToolsMenu(),
+        makeHelpMenu()
+    };
+
+    if (globalConfiguration()->devModeEnabled()) {
+        const auto diagnosticMenu = makeDiagnosticMenu();
+        items << diagnosticMenu;
+    }
+
+    setItems(items);
+
+    setupConnections();
+
+    //! NOTE: removes some undesired platform-specific items
+    //! (such as "Start Dictation" and "Special Characters" on macOS)
+    appMenuModelHook()->onAppMenuInited();
+}
+
+bool AppMenuModel::isGlobalMenuAvailable()
+{
+    return uiConfiguration()->isGlobalMenuAvailable();
+}
+
+void AppMenuModel::setupConnections()
+{
+    recentFilesController()->recentFilesListChanged().onNotify(this, [this]() {
+        MenuItem& recentScoreListItem = findMenu("menu-file-open");
+
+        MenuItemList recentScoresList = makeRecentProjectsItems();
+        bool openRecentEnabled = !recentScoresList.empty();
+
+        if (!recentScoresList.empty()) {
+            recentScoresList = appendClearRecentSection(recentScoresList);
+        }
+
+        UiActionState state = recentScoreListItem.state();
+        state.enabled = openRecentEnabled;
+        recentScoreListItem.setState(state);
+
+        recentScoreListItem.setSubitems(recentScoresList);
+    });
+
+#ifdef MUSE_MODULE_WORKSPACE
+    connect(m_workspacesMenuModel.get(), &workspace::WorkspacesMenuModel::itemsChanged, this, [this](){
+        MenuItem& workspacesItem = findMenu("menu-workspaces");
+        au::shared::translateWorkspaceTitles(m_workspacesMenuModel->items());
+        workspacesItem.setSubitems(m_workspacesMenuModel->items());
+    });
+#endif
+
+    uiActionsRegister()->actionsChanged().onReceive(this, [this](const ui::UiActionList& acts) {
+        for (const UiAction& act : acts) {
+            MenuItem& item = findItem(act.code);
+            if (item.isValid()) {
+                item.setAction(act);
+            }
+        }
+    });
+
+    effectsProvider()->effectMetaListChanged().onNotify(this, [this]() {
+        onEffectsChanged();
+    });
+
+    effectsConfiguration()->effectMenuOrganizationChanged().onNotify(this, [this]() {
+        onEffectsChanged();
+    });
+
+    projectHistory()->historyChanged().onReceive(this, [this](auto) {
+        updateUndoRedoItems();
+    });
+
+    configuration()->isEffectsPanelVisibleChanged().onNotify(this, [this]() {
+        setItemIsChecked("toggle-effects", configuration()->isEffectsPanelVisible());
+    });
+
+    extensionsProvider()->manifestListChanged().onNotify(this, [this]() {
+        findMenu("menu-tools").setSubitems(makeToolItems());
+    });
+
+    extensionsProvider()->manifestChanged().onReceive(this, [this](const Manifest&) {
+        findMenu("menu-tools").setSubitems(makeToolItems());
+    });
+
+    updateRenameItemsState();
+}
+
+void AppMenuModel::onActionsStateChanges(const muse::actions::ActionCodeList& codes)
+{
+    AbstractMenuModel::onActionsStateChanges(codes);
+
+    //! NOTE "rename-item" drives both the "Rename clip" and "Rename label" items; split its
+    //! state between them depending on whether a clip or a label is selected
+    if (muse::contains(codes, RENAME_ITEM_CODE)) {
+        updateRenameItemsState();
+    }
+}
+
+void AppMenuModel::setItemIsChecked(const QString& itemId, bool checked)
+{
+    MenuItem& item = findMenu(itemId);
+    auto state = item.state();
+    state.checked = checked;
+    item.setState(state);
+}
+
+void AppMenuModel::updateUndoRedoItems()
+{
+    MenuItem& undoItem = findItem(ActionCode("action://trackedit/undo"));
+    const TranslatableString undoActionName = projectHistory()->topMostUndoActionName();
+    undoItem.setTitle(undoActionName.isEmpty()
+                      ? TranslatableString("action", "Undo")
+                      : TranslatableString("action", "Undo ‘%1’").arg(undoActionName));
+
+    MenuItem& redoItem = findItem(ActionCode("action://trackedit/redo"));
+    const TranslatableString redoActionName = projectHistory()->topMostRedoActionName();
+    redoItem.setTitle(redoActionName.isEmpty()
+                      ? TranslatableString("action", "Redo")
+                      : TranslatableString("action", "Redo ‘%1’").arg(redoActionName));
+}
+
+void AppMenuModel::updateRenameItemsState()
+{
+    const UiActionState actionState = uiActionsRegister()->actionState(RENAME_ITEM_CODE);
+
+    MenuItem& renameClipItem = findItem(RENAME_CLIP_ITEM_ID);
+    if (renameClipItem.isValid()) {
+        UiActionState state = actionState;
+        state.enabled = state.enabled && selectionController()->selectedClips().size() == 1;
+        renameClipItem.setState(state);
+    }
+
+    MenuItem& renameLabelItem = findItem(RENAME_LABEL_ITEM_ID);
+    if (renameLabelItem.isValid()) {
+        UiActionState state = actionState;
+        state.enabled = state.enabled && selectionController()->selectedLabels().size() == 1;
+        renameLabelItem.setState(state);
+    }
+}
+
+MenuItem* AppMenuModel::makeMenuItem(const actions::ActionCode& actionCode, MenuItemRole menuRole)
+{
+    MenuItem* item = makeMenuItem(actionCode);
+    item->setRole(menuRole);
+    return item;
+}
+
+MenuItem* AppMenuModel::makeFileMenu()
+{
+    MenuItemList recentScoresList = makeRecentProjectsItems();
+    bool openRecentEnabled = !recentScoresList.isEmpty();
+
+    if (!recentScoresList.empty()) {
+        recentScoresList = appendClearRecentSection(recentScoresList);
+    }
+
+    MenuItemList fileItems {
+        makeMenuItem("file-new"),
+        makeMenuItem("file-open"),
+        makeMenu(TranslatableString("appshell-menu-file", "Open &recent"), recentScoresList, "menu-file-open", openRecentEnabled),
+
+        makeSeparator(),
+
+        makeMenuItem("project-import"),
+
+        makeSeparator(),
+
+        makeMenuItem("file-save"),
+        makeMenuItem("file-save-to-cloud"),
+        makeMenuItem("file-save-as"),
+        makeMenuItem("audacity://cloud/update-audio-preview"),
+
+        makeSeparator(),
+
+        makeMenuItem("export-audio"),
+        // makeMenu(TranslatableString("appshell-menu-export-other", "&Export other"), makeExportItems(), "menu-export-other"),
+        makeMenuItem("export-labels"),
+        makeMenuItem("file-share-audio"),
+
+        makeSeparator(),
+
+        makeMenuItem("file-close"),
+        makeMenuItem("quit", MenuItemRole::QuitRole)
+    };
+
+    return makeMenu(TranslatableString("appshell-menu-file", "&File"), fileItems, "menu-file");
+}
+
+MenuItem* AppMenuModel::makeEditMenu()
+{
+    MenuItemList editItems {
+        makeMenuItem("action://trackedit/undo"),
+        makeMenuItem("action://trackedit/redo"),
+        makeSeparator(),
+        makeMenuItem("action://cut"),
+        makeMenuItem("action://copy"),
+        makeMenuItem("action://paste"),
+        makeMenuItem("action://delete"),
+        makeSeparator(),
+        makeMenuItem("duplicate"),
+        // TODO: we should only show those trackedit actions when in the trackedit context,
+        // this need some framework update to support contextual shortcuts and dynamic actions based on context
+        // makeMenuItem("action://trackedit/paste-overlap"),
+        // makeMenuItem("action://trackedit/paste-insert"),
+        // makeMenuItem("action://trackedit/paste-insert-all-tracks-ripple"),
+        makeMenuItem("delete-per-track-ripple"),
+        makeSeparator(),
+        makeMenu(TranslatableString("appshell-menu-clip", "Clip"), makeClipItems(), "menu-clip"),
+        makeMenu(TranslatableString("appshell-menu-label", "Label"), makeLabelItems(), "menu-label"),
+        makeMenuItem("silence-audio-selection", TranslatableString("action", "Silence audio")),
+        makeSeparator(),
+        makeMenuItem("open-metadata-editor", TranslatableString("action", "Metadata editor")),
+#ifndef Q_OS_MAC
+        makeSeparator(),
+#endif
+        makeMenuItem("preference-dialog", MenuItemRole::PreferencesRole)
+    };
+
+    return makeMenu(TranslatableString("appshell-menu-edit", "&Edit"), editItems, "menu-edit");
+}
+
+MenuItem* AppMenuModel::makeSelectMenu()
+{
+    //! NOTE: audio sub-menu to be implemented
+    // auto audioClipsMenu = makeMenu(TranslatableString("appshell-menu-select", "Audio clips"),
+    //                                makeAudioClipsSelectionItems(), "menu-selection-audio-clips");
+    // audioClipsMenu->setState(audioClipsMenu->state().make_disabled());
+
+    //! NOTE: spectral tools are not implemented yet
+    // auto spectralMenu = makeMenu(TranslatableString("appshell-menu-select", "Spectral"),
+    //                              makeSpectralSelectionItems(), "menu-selection-spectral");
+    // spectralMenu->setState(spectralMenu->state().make_disabled());
+
+    MenuItemList selectItems {
+        makeMenuItem("select-all"),
+        makeMenuItem("clear-selection"),
+        makeMenuItem("select-all-tracks"),
+        makeSeparator(),
+        makeMenu(TranslatableString("appshell-menu-select", "Region"), makeRegionSelectionItems(), "menu-selection-region"),
+        // audioClipsMenu,
+        // spectralMenu,
+        makeSeparator(),
+        makeMenu(TranslatableString("appshell-menu-select", "Looping"), makeLoopingItems(), "menu-looping"),
+        makeMenuItem("zero-cross"),
+    };
+
+    return makeMenu(TranslatableString("appshell-menu-select", "&Select"), selectItems, "menu-select");
+}
+
+MenuItem* AppMenuModel::makeViewMenu()
+{
+    MenuItem* effectsItem = makeMenuItem("toggle-effects");
+    if (effectsItem) {
+        auto state = effectsItem->state();
+        state.checked = configuration()->isEffectsPanelVisible();
+        effectsItem->setState(state);
+    }
+
+    MenuItemList viewItems {
+        makeMenu(TranslatableString("appshell-menu-zoom", "Zoom"), makeZoomItems(), "menu-zoom"),
+        // makeMenu(TranslatableString("appshell-menu-skip", "Skip to"), makeSkipToItems(), "menu-skip", false),
+    };
+
+    if (effectsItem) {
+        viewItems << makeSeparator();
+        viewItems << effectsItem;
+    }
+
+    viewItems << makeSeparator()
+              << makeMenuItem("open-label-editor")
+              << makeMenuItem("open-metadata-editor")
+              << makeMenuItem("toggle-history")
+              << makeSeparator()
+#ifdef MUSE_MODULE_WORKSPACE
+        << makeMenu(TranslatableString("appshell-menu-view", "W&orkspaces"),
+                    au::shared::translateWorkspaceTitles(m_workspacesMenuModel->items()), "menu-workspaces")
+        << makeSeparator()
+#endif
+#ifndef Q_OS_MAC
+        << makeMenuItem("fullscreen")
+        << makeSeparator()
+#endif
+        << makeMenuItem("toggle-clipping-in-waveform")
+        << makeMenuItem("toggle-rms-in-waveform")
+        << makeMenuItem("toggle-vertical-rulers")
+        << makeSeparator()
+        << makeMenuItem("dock-restore-default-layout");
+
+    return makeMenu(TranslatableString("appshell-menu-view", "&View"), viewItems, "menu-view");
+}
+
+MenuItem* AppMenuModel::makeRecordMenu()
+{
+    MenuItemList recordItems {
+        makeMenuItem("record-on-current-track"),
+        makeMenuItem("record-on-new-track"),
+        //! makeMenuItem("set-up-timed-recording"),
+        makeMenuItem("action://record/lead-in-recording"),
+        //! makeMenuItem("toggle-sound-activated-recording"),
+        //! makeMenuItem("set-sound-activation-level"),
+    };
+
+    return makeMenu(TranslatableString("appshell-menu-record", "&Record"), recordItems, "menu-record");
+}
+
+MenuItem* AppMenuModel::makeTracksMenu()
+{
+    MenuItemList tracksItems {
+        makeMenuItem("new-mono-track"),
+        makeMenuItem("new-stereo-track"),
+        makeMenuItem("new-label-track"),
+        makeSeparator(),
+        makeMenuItem("track-duplicate"),
+        // makeMenuItem("remove-tracks"),
+        // makeSeparator(),
+        // makeMenuItem("mixdown-to"),
+        // makeSeparator(),
+        // makeMenu(TranslatableString("appshell-menu-align", "Align content"), makeAlignItems(), "menu-align", false),
+        // makeMenu(TranslatableString("appshell-menu-sort", "Sort tracks"), makeSortItems(), "menu-sort", false),
+    };
+
+    return makeMenu(TranslatableString("appshell-menu-tracks", "&Tracks"), tracksItems, "menu-tracks");
+}
+
+MenuItem* AppMenuModel::makeGenerateMenu()
+{
+    return makeMenu(TranslatableString("appshell-menu-generate", "&Generate"), makeGeneratorItems(), "menu-generate");
+}
+
+MenuItem* AppMenuModel::makeEffectMenu()
+{
+    return makeMenu(TranslatableString("appshell-menu-effect", "&Effect"), makeEffectsItems(), "menu-effect");
+}
+
+MenuItem* AppMenuModel::makeAnalyzeMenu()
+{
+    return makeMenu(TranslatableString("appshell-menu-analyze", "&Analyze"), makeAnalyzeItems(), "menu-analyze");
+}
+
+MenuItem* AppMenuModel::makeToolsMenu()
+{
+    return makeMenu(TranslatableString("appshell-menu-tools", "&Tools"), makeToolItems(), "menu-tools");
+}
+
+MenuItemList AppMenuModel::makeExtensionItems()
+{
+    MenuItemList items;
+    for (const Manifest& manifest : extensionsProvider()->manifestList(Filter::Enabled)) {
+        if (manifest.actions.size() == 1) {
+            const muse::extensions::Action& action = manifest.actions.front();
+            if (action.showOnAppmenu) {
+                items << makeMenuItem(makeActionQuery(manifest.uri, action.code).toString(),
+                                      TranslatableString::untranslatable(action.title.empty() ? manifest.title : action.title));
+            }
+            continue;
+        }
+
+        MenuItemList actions;
+        for (const muse::extensions::Action& action : manifest.actions) {
+            if (action.showOnAppmenu) {
+                actions << makeMenuItem(makeActionQuery(manifest.uri, action.code).toString(),
+                                        TranslatableString::untranslatable(action.title));
+            }
+        }
+        if (!actions.empty()) {
+            items << makeMenu(TranslatableString::untranslatable(manifest.title), actions);
+        }
+    }
+
+    std::sort(items.begin(), items.end(), [](const MenuItem& left, const MenuItem& right) {
+        return left.translatedTitle() < right.translatedTitle();
+    });
+    return items;
+}
+
+MenuItem* AppMenuModel::makeExtraMenu()
+{
+    MenuItemList extraItems {
+        //! TODO AU4
+        //: Title of the Play menu; a noun rather than a verb
+        makeMenu(TranslatableString("appshell-menu-play", "Play"), makeVolumeAndCompressionItems(), "menu-play", false),
+        makeMenu(TranslatableString("appshell-menu-scrubbing", "Scrubbing"), makeVolumeAndCompressionItems(), "menu-scrubbing", false),
+        makeMenu(TranslatableString("appshell-menu-extratools", "Tools"), makeVolumeAndCompressionItems(), "menu-extra-tools", false),
+        makeMenu(TranslatableString("appshell-menu-mixer", "Mixer"), makeVolumeAndCompressionItems(), "menu-mixer", false),
+        makeMenu(TranslatableString("appshell-menu-extraedit", "Edit"), makeVolumeAndCompressionItems(), "menu-extra-edit", false),
+        makeMenu(TranslatableString("appshell-menu-playatspeed", "Play at speed"),
+                 makeVolumeAndCompressionItems(), "menu-play-at-speed", false),
+        makeMenu(TranslatableString("appshell-menu-device", "Device"), makeVolumeAndCompressionItems(), "menu-device", false),
+        makeMenu(TranslatableString("appshell-menu-extraselect", "Select"), makeVolumeAndCompressionItems(), "menu-extraselect", false),
+        makeSeparator(),
+        makeMenuItem("prev-window"),
+        makeMenuItem("next-window"),
+        makeMenu(TranslatableString("appshell-menu-focus", "Focus"), makeVolumeAndCompressionItems(), "menu-focus", false),
+        makeMenu(TranslatableString("appshell-menu-cursor", "Cursor"), makeVolumeAndCompressionItems(), "menu-cursor", false),
+        makeMenu(TranslatableString("appshell-menu-track", "Track"), makeVolumeAndCompressionItems(), "menu-track", false),
+        makeMenu(TranslatableString("appshell-menu-scriptables1", "Scriptables1"),
+                 makeVolumeAndCompressionItems(), "menu-scriptables1", false),
+        makeMenu(TranslatableString("appshell-menu-scriptables2", "Scriptables2"),
+                 makeVolumeAndCompressionItems(), "menu-scriptables2", false),
+        makeMenu(TranslatableString("appshell-menu-images", "Images"), makeVolumeAndCompressionItems(), "menu-images", false),
+
+#ifndef Q_OS_MAC
+        makeMenu(TranslatableString("appshell-menu-settings", "Settings"), makeVolumeAndCompressionItems(), "menu-settings", false),
+#endif
+        makeMenuItem("benchmark"),
+        makeMenuItem("regular-interval-labels"),
+    };
+
+    return makeMenu(TranslatableString("appshell-menu-extra", "&Extra"), extraItems, "menu-extra");
+}
+
+MenuItem* AppMenuModel::makeHelpMenu()
+{
+    MenuItemList helpItems {
+        // makeMenuItem("tutorials"),
+        makeMenuItem("online-handbook"),
+        makeSeparator(),
+        // makeMenu(TranslatableString("appshell-menu-diagnostics", "Diagnostics"), makeDiagnosticsItems(), "menu-diagnostics", false),
+        // makeSeparator(),
+        // makeMenuItem("link-account"),
+        makeMenuItem("about-audacity", MenuItemRole::AboutRole),
+        makeMenuItem("about-qt", MenuItemRole::AboutQtRole),
+        makeSeparator(),
+        makeMenuItem("revert-factory")
+    };
+
+    if (updateConfiguration()->isAppUpdatable()) {
+        helpItems.push_front(makeSeparator());
+        helpItems.push_front(makeMenuItem("check-update"));
+    }
+
+    return makeMenu(TranslatableString("appshell-menu-help", "&Help"), helpItems, "menu-help");
+}
+
+muse::uicomponents::MenuItem* AppMenuModel::makeDiagnosticMenu()
+{
+    MenuItemList systemItems {
+        makeMenuItem("diagnostic-show-paths"),
+        makeMenuItem("diagnostic-show-graphicsinfo"),
+        makeMenuItem("diagnostic-show-profiler"),
+    };
+
+    MenuItemList items {
+        makeMenuItem("diagnostic-save-diagnostic-files"),
+        makeMenu(TranslatableString("appshell-menu-diagnostics", "&System"), systemItems, "menu-system")
+    };
+
+    if (globalConfiguration()->devModeEnabled()) {
+        MenuItemList actionsItems {
+            makeMenuItem("diagnostic-show-actions")
+        };
+
+        MenuItemList accessibilityItems {
+            makeMenuItem("diagnostic-show-navigation-tree"),
+            makeMenuItem("diagnostic-show-accessible-tree"),
+            makeMenuItem("diagnostic-accessible-tree-dump"),
+        };
+
+        MenuItemList testflowItems {
+            makeMenuItem("testflow-show-scripts"),
+        };
+
+        MenuItemList extensionsItems {
+            makeMenuItem("extensions-show-apidump"),
+        };
+
+        items << makeMenu(TranslatableString("appshell-menu-diagnostics", "A&ctions"), actionsItems, "menu-actions")
+              << makeMenu(TranslatableString("appshell-menu-diagnostics", "&Accessibility"), accessibilityItems, "menu-accessibility")
+              << makeMenu(TranslatableString("appshell-menu-diagnostics", "E&xtensions"), extensionsItems, "menu-extensions")
+              << makeMenu(TranslatableString("appshell-menu-diagnostics", "Test&flow"), testflowItems, "menu-testflow");
+        //! TODO AU4
+        // << makeMenuItem("multiwindows-dev-show-info");
+    }
+
+    return makeMenu(TranslatableString("appshell-menu-diagnostics", "&Diagnostics"), items, "menu-diagnostic");
+}
+
+MenuItemList AppMenuModel::makeRecentProjectsItems()
+{
+    MenuItemList items;
+    //! TODO AU4
+    const RecentFilesList& recentFiles = recentFilesController()->recentFilesList();
+
+    int index = 0;
+    for (const RecentFile& file : recentFiles) {
+        MenuItem* item = new MenuItem(this);
+
+        UiAction action;
+        action.code = "file-open-recent";
+        action.title = TranslatableString::untranslatable(file.displayName(/*includingExtension*/ true));
+        item->setAction(action);
+
+        item->setId(makeId(item->action().code, index++));
+
+        UiActionState state;
+        state.enabled = true;
+        item->setState(state);
+
+        item->setSelectable(true);
+        item->setArgs(ActionData::make_arg2<QUrl, QString>(file.path.toQUrl(), file.displayNameOverride));
+
+        items << item;
+    }
+
+    return items;
+}
+
+MenuItemList AppMenuModel::appendClearRecentSection(const muse::uicomponents::MenuItemList& recentScores)
+{
+    MenuItemList result = recentScores;
+    result << makeSeparator()
+           << makeMenuItem("clear-recent");
+
+    return result;
+}
+
+MenuItemList AppMenuModel::makeExportItems()
+{
+    MenuItemList items {
+        makeMenuItem("export-labels")
+    };
+
+    // MenuItem* exportMidi = makeMenuItem("export-midi");
+    // UiActionState exportMidiState = exportMidi->state();
+    // exportMidiState.enabled = false;
+    // exportMidi->setState(exportMidiState);
+
+    // items << exportMidi;
+
+    return items;
+}
+
+MenuItemList AppMenuModel::makeClipItems()
+{
+    MenuItem* renameClipItem = makeMenuItem(RENAME_ITEM_CODE, TranslatableString("appshell-menu-clip", "Rename clip"));
+    renameClipItem->setId(RENAME_CLIP_ITEM_ID);
+
+    MenuItemList items {
+        renameClipItem,
+        // makeMenuItem("trim-clip"),
+        makeSeparator(),
+        makeMenuItem("split"),
+        makeMenuItem("split-into-new-track"),
+        makeMenuItem("disjoin"),
+        makeMenuItem("join"),
+        makeSeparator(),
+        makeMenuItem("group-clips"),
+        makeMenuItem("ungroup-clips")
+    };
+
+    return items;
+}
+
+MenuItemList AppMenuModel::makeLabelItems()
+{
+    MenuItem* renameLabelItem = makeMenuItem(RENAME_ITEM_CODE, TranslatableString("appshell-menu-label", "Rename label"));
+    renameLabelItem->setId(RENAME_LABEL_ITEM_ID);
+
+    MenuItemList items {
+        makeMenuItem("label-add"),
+        renameLabelItem,
+        // makeMenuItem("paste-new-label"),
+        makeSeparator(),
+        makeMenuItem("open-label-editor", TranslatableString("action", "Manage labels")),
+    };
+
+    return items;
+}
+
+MenuItemList AppMenuModel::makeSpectralSelectionItems()
+{
+    MenuItemList items {
+        makeMenuItem("toggle-spectral-selection")
+    };
+
+    return items;
+}
+
+MenuItemList AppMenuModel::makeAudioClipsSelectionItems()
+{
+    MenuItemList items {
+        makeMenuItem("select-previous-clip-boundary-to-cursor"),
+        makeMenuItem("select-cursor-to-next-clip-boundary"),
+        makeMenuItem("select-previous-clip"),
+        makeMenuItem("select-next-clip"),
+    };
+
+    return items;
+}
+
+MenuItemList AppMenuModel::makeRegionSelectionItems()
+{
+    MenuItemList items {
+        makeMenuItem("select-left-of-playback-position"),
+        makeMenuItem("select-right-of-playback-position"),
+        makeMenuItem("select-track-start-to-cursor"),
+        makeMenuItem("select-cursor-to-track-end"),
+        makeMenuItem("select-track-start-to-end"),
+    };
+
+    return items;
+}
+
+MenuItemList AppMenuModel::makeLoopingItems()
+{
+    MenuItemList items {
+        makeMenuItem("toggle-loop-region"),
+        makeMenuItem("clear-loop-region"),
+        makeSeparator(),
+        makeMenuItem("set-loop-region-to-selection"),
+        makeSeparator(),
+        makeMenuItem("set-loop-region-in-out"),
+    };
+
+    return items;
+}
+
+MenuItemList AppMenuModel::makeZoomItems()
+{
+    MenuItemList items {
+        makeMenuItem("zoom-in"),
+        makeMenuItem("zoom-out"),
+        makeMenuItem("zoom-default"),
+        makeMenuItem("zoom-to-selection"),
+        makeMenuItem("zoom-toggle"),
+        makeSeparator(),
+        makeMenuItem("zoom-to-fit-project"),
+        // makeMenuItem("collapse-all-tracks"),
+        // makeMenuItem("expand-all-tracks")
+    };
+
+    return items;
+}
+
+MenuItemList AppMenuModel::makeSkipToItems()
+{
+    MenuItemList items {
+        makeMenuItem("skip-to-selection-start"),
+        makeMenuItem("skip-to-selection-end")
+    };
+
+    return items;
+}
+
+MenuItemList AppMenuModel::makeAlignItems()
+{
+    MenuItemList items {
+        makeMenuItem("align-end-to-end"),
+        makeMenuItem("align-together"),
+        makeSeparator(),
+        makeMenuItem("align-start-to-zero"),
+        makeMenuItem("align-start-to-playhead"),
+        makeMenuItem("align-start-to-selection-end"),
+        makeMenuItem("align-end-to-playhead"),
+        makeMenuItem("align-end-to-selection-end")
+    };
+
+    return items;
+}
+
+MenuItemList AppMenuModel::makeSortItems()
+{
+    MenuItemList items {
+        makeMenuItem("sort-by-time"),
+        makeMenuItem("sort-by-name")
+    };
+
+    return items;
+}
+
+//! TODO AU4
+MenuItemList AppMenuModel::makeVolumeAndCompressionItems()
+{
+    MenuItemList items {
+        makeMenuItem("sort-by-time")
+    };
+
+    return items;
+}
+
+MenuItemList AppMenuModel::makeMacrosItems()
+{
+    MenuItemList items {
+        makeMenuItem("apply-macros-palette"),
+        makeSeparator(),
+        makeMenuItem("macro-fade-ends"),
+        makeMenuItem("macro-mp3-conversion")
+    };
+
+    return items;
+}
+
+MenuItemList AppMenuModel::makeDiagnosticsItems()
+{
+    MenuItemList systemItems {
+        makeMenuItem("diagnostic-show-paths"),
+        makeMenuItem("diagnostic-show-profiler"),
+    };
+
+    MenuItemList items {
+        makeMenuItem("diagnostic-save-diagnostic-files"),
+        makeMenu(TranslatableString("appshell-menu-diagnostic", "&System"), systemItems, "menu-system")
+    };
+
+    if (globalConfiguration()->devModeEnabled()) {
+#ifdef MUSE_MODULE_ACCESSIBILITY
+        MenuItemList accessibilityItems {
+            makeMenuItem("diagnostic-show-navigation-tree"),
+            makeMenuItem("diagnostic-show-accessible-tree"),
+            makeMenuItem("diagnostic-accessible-tree-dump"),
+        };
+        items << makeMenu(TranslatableString("appshell-menu-diagnostic", "&Accessibility"), accessibilityItems, "menu-accessibility");
+#endif
+
+#ifdef MUSE_MODULE_TESTFLOW
+        MenuItemList testflowItems {
+            makeMenuItem("testflow-show-scripts"),
+        };
+        items << makeMenu(TranslatableString("appshell-menu-diagnostic", "Test&flow"), testflowItems, "menu-testflow");
+#endif
+
+#ifdef MUSE_MODULE_MULTIWINDOWS
+        items << makeMenuItem("multiwindows-dev-show-info");
+#endif
+    }
+
+    return items;
+}
+
+MenuItemList AppMenuModel::makeFramesItems()
+{
+    MenuItemList items {
+        makeMenuItem("insert-hbox"),
+        makeMenuItem("insert-vbox"),
+        makeMenuItem("insert-textframe"),
+        makeSeparator(),
+        makeMenuItem("append-hbox"),
+        makeMenuItem("append-vbox"),
+        makeMenuItem("append-textframe")
+    };
+
+    return items;
+}
+
+MenuItemList AppMenuModel::makeWorkspacesItems()
+{
+    MenuItemList items;
+
+    //! TODO AU4
+    // IWorkspacePtrList workspaces = workspacesManager()->workspaces();
+    // IWorkspacePtr currentWorkspace = workspacesManager()->currentWorkspace();
+
+    // std::sort(workspaces.begin(), workspaces.end(), [](const IWorkspacePtr& workspace1, const IWorkspacePtr& workspace2) {
+    //     return workspace1->name() < workspace2->name();
+    // });
+
+    // int index = 0;
+    // for (const IWorkspacePtr& workspace : workspaces) {
+    //     MenuItem* item = new MenuItem(uiActionsRegister()->action("select-workspace"), this);
+    //     item->setId(makeId(item->action().code, index++));
+
+    //     UiAction action = item->action();
+    //     action.title = TranslatableString::untranslatable(String::fromStdString(workspace->title()));
+
+    //     item->setAction(action);
+    //     item->setArgs(ActionData::make_arg1<std::string>(workspace->name()));
+    //     item->setSelectable(true);
+    //     item->setSelected(workspace == currentWorkspace);
+
+    //     UiActionState state;
+    //     state.enabled = true;
+    //     state.checked = item->selected();
+    //     item->setState(state);
+
+    //     items << item;
+    // }
+
+    items << makeSeparator()
+          << makeMenuItem("configure-workspaces");
+
+    return items;
+}
+
+MenuItemList AppMenuModel::makeShowItems()
+{
+    MenuItemList items {
+        makeMenuItem("show-invisible"),
+        makeMenuItem("show-unprintable"),
+        makeMenuItem("show-frames"),
+        makeMenuItem("show-pageborders"),
+        makeMenuItem("show-irregular"),
+        makeMenuItem("show-soundflags"),
+    };
+
+    return items;
+}
+
+muse::uicomponents::MenuItem* AppMenuModel::makeMenuEffectItem(const effects::EffectId& effectId)
+{
+    return makeMenuItem(effects::makeEffectAction(effects::EFFECT_OPEN_ACTION,
+                                                  effectId));
+}
+
+muse::uicomponents::MenuItem* AppMenuModel::makeMenuEffect(const muse::String& title, const muse::uicomponents::MenuItemList& items)
+{
+    return makeMenu(TranslatableString::untranslatable(title), items);
+}
+
+MenuItemList AppMenuModel::makeEffectsItems()
+{
+    MenuItemList items {
+        makeMenuItem("plugin-manager"),
+        makeMenuItem("add-realtime-effects"),
+        makeSeparator(),
+        makeMenuItem("repeat-last-effect"),
+    };
+
+    const muse::uicomponents::MenuItemList effectMenus = effectsMenuProvider()->destructiveEffectMenu(*this,
+                                                                                                      effects::EffectFilter::ProcessorsOnly);
+    if (!effectMenus.empty()) {
+        items << makeSeparator() << effectMenus;
+    }
+
+    return items;
+}
+
+MenuItemList AppMenuModel::makeGeneratorItems()
+{
+    MenuItemList items {
+        makeMenuItem("plugin-manager"),
+        makeSeparator(),
+    };
+
+    const muse::uicomponents::MenuItemList effectMenus = effectsMenuProvider()->destructiveEffectMenu(*this,
+                                                                                                      effects::EffectFilter::GeneratorsOnly);
+
+    items << effectMenus;
+
+    return items;
+}
+
+MenuItemList AppMenuModel::makeToolItems()
+{
+    MenuItemList items {
+        makeMenuItem("plugin-manager"),
+        makeSeparator(),
+        // makeMenuItem("manage-macros"),
+        // makeMenu(TranslatableString("appshell-menu-macros", "&Macros"), makeMacrosItems(), "menu-macros", false),
+        // makeSeparator(),
+    };
+
+    const muse::uicomponents::MenuItemList toolMenus = effectsMenuProvider()->destructiveEffectMenu(*this,
+                                                                                                    effects::EffectFilter::ToolsOnly);
+
+    items << toolMenus;
+
+    if (!toolMenus.empty()) {
+        items << makeSeparator();
+    }
+
+    const muse::uicomponents::MenuItemList extensionItems = makeExtensionItems();
+    items << extensionItems;
+
+    // if (!extensionItems.empty()) {
+    //     items << makeSeparator();
+    // }
+
+    // items << makeMenuItem("raw-data-import")
+    //       << makeSeparator();
+    // items << makeMenuItem("reset-configuration");
+
+    return items;
+}
+
+MenuItemList AppMenuModel::makeAnalyzeItems()
+{
+    MenuItemList items {
+        makeMenuItem("plugin-manager"),
+        makeSeparator(),
+        // makeMenuItem("contrast-analyzer"),
+        // makeMenuItem("plot-spectrum"),
+        // makeSeparator(),
+    };
+
+    const muse::uicomponents::MenuItemList analyzeMenus = effectsMenuProvider()->destructiveEffectMenu(*this,
+                                                                                                       effects::EffectFilter::AnalyzersOnly);
+
+    items << analyzeMenus;
+
+    if (!analyzeMenus.empty()) {
+        items << makeSeparator();
+    }
+
+    return items;
+}
+
+void AppMenuModel::onEffectsChanged()
+{
+    MenuItem& effectsItem = findMenu("menu-effect");
+    effectsItem.setSubitems(makeEffectsItems());
+    MenuItem& generateItem = findMenu("menu-generate");
+    generateItem.setSubitems(makeGeneratorItems());
+    MenuItem& analyzeItem = findMenu("menu-analyze");
+    analyzeItem.setSubitems(makeAnalyzeItems());
+    MenuItem& toolsItem = findMenu("menu-tools");
+    toolsItem.setSubitems(makeToolItems());
+}

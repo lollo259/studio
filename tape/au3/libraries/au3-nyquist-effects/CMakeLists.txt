@@ -1,0 +1,26 @@
+#[[
+Library of built-in effects. Implement the UI-agnostic APIs of au3-effects.
+]]
+
+set( TARGET au3-nyquist-effects )
+
+set( SOURCES
+   LoadNyquist.cpp
+   LoadNyquist.h
+   NyquistBase.cpp
+   NyquistBase.h
+)
+set( LIBRARIES
+   au3-effects-interface
+   au3-label-track-interface
+   #au3-note-track-interface # don't link for now as we need USE_MIDI
+   au3-time-track-interface
+   au3-wave-track-settings
+   PRIVATE
+   libnyquist
+   au3-strings-interface
+   wxBase
+)
+audacity_library( ${TARGET} "${SOURCES}" "${LIBRARIES}"
+   "" ""
+)

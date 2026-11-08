@@ -1,0 +1,24 @@
+{
+    "folders": [
+        {
+            "path": ".."
+        }
+    ],
+    "settings": {
+        "[cpp]": {
+            "editor.defaultFormatter": "zachflower.uncrustify"
+        },
+        "emeraldwalk.runonsave": {
+            "commands": [
+                {
+                    "match": "\\.qml$",
+                    "cmd": "qmlformat -i --semicolon-rule=essential -l unix ${file}"
+                }
+            ]
+        },
+        "C_Cpp.autoAddFileAssociations": false,
+        "cmake.copyCompileCommands": "${workspaceFolder}/compile_commands.json",
+        "cmake.buildBeforeRun": false, // Useful if you are running the "audacity (install)" target :
+        "uncrustify.executablePath.linux": "/usr/local/bin/uncrustify_074",
+    }
+}

@@ -1,0 +1,216 @@
+/*  SPDX-License-Identifier: GPL-2.0-or-later */
+/*!********************************************************************
+
+  Audacity: A Digital Audio Editor
+
+  WaveTrackUtilities.h
+
+  Paul Licameli
+
+  @brief Various operations on WaveTrack, needing only its public interface
+
+**********************************************************************/
+#ifndef __AUDACITY_WAVE_TRACK_UTILITIES__
+#define __AUDACITY_WAVE_TRACK_UTILITIES__
+
+#include "au3-utility/IteratorX.h"
+#include "WaveTrack.h"
+#include <unordered_set>
+
+class SampleBlock;
+class sampleCount;
+class TrackList;
+class WaveTrack;
+
+#include <functional>
+using ProgressReporter = std::function<void (double)>;
+
+class SampleBlock;
+class TrackList;
+
+namespace WaveTrackUtilities {
+using SampleBlockID = long long;
+using SampleBlockIDSet = std::unordered_set<SampleBlockID>;
+using BlockVisitor
+    =std::function<void (const std::shared_ptr<SampleBlock>&)>;
+using BlockInspector
+    =std::function<void (std::shared_ptr<const SampleBlock>)>;
+
+using IntervalHolder = std::shared_ptr<WaveTrack::Interval>;
+using IntervalHolders = std::vector<IntervalHolder>;
+using IntervalConstHolder = std::shared_ptr<const WaveTrack::Interval>;
+
+//! Get mutative access to all clips (in some unspecified sequence),
+//! including those hidden in cutlines.
+/*!
+ If clips are added to the track during the visit, not all may be visited.
+ If a clip is removed from the track during the visit, there will not be
+ dangling pointers, but a clip not in the track may be visited.
+ */
+class WAVE_TRACK_API AllClipsIterator : public ValueIterator<IntervalHolder>
+{
+public:
+    // Constructs an "end" iterator
+    AllClipsIterator() {}
+
+    // Construct a "begin" iterator
+    explicit AllClipsIterator(WaveTrack& track);
+
+    value_type operator *() const;
+
+    AllClipsIterator& operator ++();
+
+    //! Define == well enough to serve for loop termination test
+    friend bool operator ==(
+        const AllClipsIterator& a, const AllClipsIterator& b)
+    { return a.mStack.empty() == b.mStack.empty(); }
+
+    friend bool operator !=(
+        const AllClipsIterator& a, const AllClipsIterator& b)
+    { return !(a == b); }
+
+private:
+    using Stack = std::vector<std::pair<IntervalHolders, size_t> >;
+    void Push(IntervalHolders clips);
+
+    WaveTrack* mpTrack{};
+    Stack mStack;
+};
+
+//! Get const access to all clips (in some unspecified sequence),
+//! including those hidden in cutlines.
+/*!
+ @copydoc AllClipsIterator
+ */
+class WAVE_TRACK_API AllClipsConstIterator : public ValueIterator<IntervalConstHolder>
+{
+public:
+    // Constructs an "end" iterator
+    AllClipsConstIterator() {}
+
+    // Construct a "begin" iterator
+    explicit AllClipsConstIterator(const WaveTrack& track)
+        : mIter{const_cast<WaveTrack&>(track)}
+    {}
+
+    value_type operator *() const { return *mIter; }
+
+    AllClipsConstIterator& operator ++()
+    { ++mIter; return *this; }
+
+    //! Define == well enough to serve for loop termination test
+    friend bool operator ==(
+        const AllClipsConstIterator& a, const AllClipsConstIterator& b)
+    { return a.mIter == b.mIter; }
+
+    friend bool operator !=(
+        const AllClipsConstIterator& a, const AllClipsConstIterator& b)
+    { return !(a == b); }
+
+private:
+    AllClipsIterator mIter;
+};
+
+inline IteratorRange<AllClipsIterator> GetAllClips(WaveTrack& track)
+{
+    return { AllClipsIterator{ track }, AllClipsIterator{} };
+}
+
+inline IteratorRange<AllClipsConstIterator> GetAllClips(const WaveTrack& track)
+{
+    return { AllClipsConstIterator{ track }, AllClipsConstIterator{} };
+}
+
+//! Argument is in (0, 1)
+//! @return true if processing should continue
+using ProgressReport = std::function<bool (double)>;
+
+WAVE_TRACK_API bool Reverse(WaveTrack& track, sampleCount start, sampleCount len, const ProgressReport& report = {});
+
+/*!
+ @return the total number of samples in all underlying sequences
+of all clips, across all channels (including hidden audio but not
+counting the cutlines)
+ */
+WAVE_TRACK_API sampleCount GetSequenceSamplesCount(const WaveTrack& track);
+
+/*!
+ @return the total number of blocks in all underlying sequences of all clips,
+across all channels (including hidden audio but not counting the cutlines)
+ */
+WAVE_TRACK_API size_t CountBlocks(const WaveTrack& track);
+
+//! Should be called upon project close.  Not balanced by unlocking calls.
+/*!
+ @excsafety{No-fail}
+ */
+WAVE_TRACK_API void CloseLock(WaveTrack& track) noexcept;
+
+//! Remove cut line, without expanding the audio in it
+/*
+ @return whether any cutline existed at the position and was removed
+ */
+WAVE_TRACK_API bool RemoveCutLine(WaveTrack& track, double cutLinePosition);
+
+//! Expand cut line (that is, re-insert audio, then delete audio saved in
+//! cut line)
+/*
+ @param[out] cutlineStart start time of the insertion
+ @param[out] cutlineEnd end time of the insertion
+ */
+WAVE_TRACK_API void ExpandCutLine(WaveTrack& track, double cutLinePosition, double* cutlineStart = nullptr, double* cutlineEnd = nullptr,
+                                  bool moveClips=false);
+
+//! Whether any clips have hidden audio
+WAVE_TRACK_API bool HasHiddenData(const WaveTrack& track);
+
+//! Remove hidden audio from all clips
+WAVE_TRACK_API void DiscardTrimmed(WaveTrack& track);
+
+// Function to visit all sample blocks from a list of tracks.
+// If a set is supplied, then only visit once each unique block ID not already
+// in that set, and accumulate those into the set as a side-effect.
+// The visitor function may be null.
+WAVE_TRACK_API void VisitBlocks(TrackList& tracks, BlockVisitor visitor, SampleBlockIDSet* pIDs = nullptr);
+
+// Non-mutating version of the above
+WAVE_TRACK_API void InspectBlocks(const TrackList& tracks, BlockInspector inspector, SampleBlockIDSet* pIDs = nullptr);
+
+WAVE_TRACK_API void
+ExpandClipTillNextOne(const WaveTrack& track, WaveTrack::Interval& interval);
+
+//! Resolve overlapping clip play regions so that no two clips overlap.
+/*!
+ Clips are visited in play-start order; whenever a clip's play region overlaps
+ its predecessor, the earlier clip yields its overlapping tail - its right edge
+ is trimmed back to the later clip's start, or it is removed if fully shadowed.
+ Sequence/hidden (trimmed-away) extents are not considered. Tolerant of
+ sub-sample rounding.
+ @post `track.NoPlayRegionsOverlap()`
+ */
+WAVE_TRACK_API void RemoveOverlaps(WaveTrack& track);
+
+//! Ref: the copy keeps using the realtime effect states of the original,
+//! for a copy that replaces the original or is temporary.
+//! Deep: the copy gets its own states, for a copy that becomes a new track.
+enum class RealtimeEffectsCopy {
+    Ref, Deep
+};
+
+//! Make another track copying format, rate, etc. but containing no
+//! clips; with the specified number of channels.
+/*!
+ It is important to pass the correct factory (that for the project
+ which will own the copy) in the unusual case that a track is copied from
+ another project or the clipboard.  For copies within one project, the
+ default will do.
+ */
+WAVE_TRACK_API WaveTrack::Holder EmptyCopy(const WaveTrack& track, size_t nChannels, RealtimeEffectsCopy effects,
+                                           const SampleBlockFactoryPtr& pFactory = {});
+
+//! As above, with as many channels as in `track`
+WAVE_TRACK_API WaveTrack::Holder EmptyCopy(const WaveTrack& track, RealtimeEffectsCopy effects,
+                                           const SampleBlockFactoryPtr& pFactory = {});
+} // namespace WaveTrackUtilities
+
+#endif

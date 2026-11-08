@@ -1,0 +1,158 @@
+/*
+ * SPDX-License-Identifier: GPL-3.0-only
+ * MuseScore-CLA-applies
+ *
+ * MuseScore
+ * Music Composition & Notation
+ *
+ * Copyright (C) 2021 MuseScore BVBA and others
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 3 as
+ * published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
+#ifndef AU_APPSHELL_APPMENUMODEL_H
+#define AU_APPSHELL_APPMENUMODEL_H
+
+#include <QWindow>
+#include <QtQml/qqmlregistration.h>
+
+#ifndef MU_QT5_COMPAT
+Q_MOC_INCLUDE(< QWindow >)
+#endif
+
+#include "uicomponents/qml/Muse/UiComponents/abstractmenumodel.h"
+
+#include "modularity/ioc.h"
+#include "ui/imainwindow.h"
+#include "ui/iuiactionsregister.h"
+#include "ui/inavigationcontroller.h"
+#include "ui/iuiconfiguration.h"
+#include "actions/iactionsdispatcher.h"
+#include "iappshellconfiguration.h"
+#include "internal/iappmenumodelhook.h"
+#include "global/iglobalconfiguration.h"
+#include "effects/effects_base/ieffectsprovider.h"
+#include "effects/effects_base/ieffectsconfiguration.h"
+#include "effects/effects_base/effectstypes.h"
+#include "effects/effects_base/ieffectsmenuprovider.h"
+#include "trackedit/iprojecthistory.h"
+#include "trackedit/iselectioncontroller.h"
+
+//! TODO AU4
+// #include "workspace/iworkspacemanager.h"
+#include "project/irecentfilescontroller.h"
+#include "extensions/iextensionsprovider.h"
+#include "update/iupdateconfiguration.h"
+
+namespace au::appshell {
+class AppMenuModel : public muse::uicomponents::AbstractMenuModel, public effects::IEffectMenuItemFactory
+{
+    Q_OBJECT
+public:
+    muse::GlobalInject<muse::IGlobalConfiguration> globalConfiguration;
+    muse::GlobalInject<muse::ui::IUiConfiguration> uiConfiguration;
+    muse::GlobalInject<au::project::IRecentFilesController> recentFilesController;
+    muse::GlobalInject<effects::IEffectsConfiguration> effectsConfiguration;
+    muse::GlobalInject<IAppShellConfiguration> configuration;
+    muse::GlobalInject<IAppMenuModelHook> appMenuModelHook;
+    muse::GlobalInject<effects::IEffectsProvider> effectsProvider;
+    muse::GlobalInject<muse::update::IUpdateConfiguration> updateConfiguration;
+
+    muse::ContextInject<muse::actions::IActionsDispatcher> actionsDispatcher = { this };
+    muse::ContextInject<muse::ui::IMainWindow> mainWindow { this };
+    muse::ContextInject<muse::ui::INavigationController> navigationController = { this };
+    muse::ContextInject<muse::ui::IUiActionsRegister> uiActionsRegister = { this };
+    muse::ContextInject<effects::IEffectsMenuProvider> effectsMenuProvider = { this };
+    muse::ContextInject<trackedit::IProjectHistory> projectHistory = { this };
+    muse::ContextInject<trackedit::ISelectionController> selectionController = { this };
+
+    //! TODO AU4
+    // muse::ContextInject<workspace::IWorkspaceManager> workspacesManager = { this };
+    muse::ContextInject<muse::extensions::IExtensionsProvider> extensionsProvider = { this };
+
+public:
+    explicit AppMenuModel(QObject* parent = nullptr);
+
+    Q_INVOKABLE void load() override;
+    Q_INVOKABLE bool isGlobalMenuAvailable();
+
+private:
+    void setupConnections();
+    void onEffectsChanged();
+
+    void onActionsStateChanges(const muse::actions::ActionCodeList& codes) override;
+
+    // effects::IEffectMenuItemFactory
+    muse::uicomponents::MenuItem* makeMenuSeparator() override { return makeSeparator(); }
+    muse::uicomponents::MenuItem* makeMenuEffectItem(const effects::EffectId& effectId) override;
+    muse::uicomponents::MenuItem* makeMenuEffect(const muse::String& title, const muse::uicomponents::MenuItemList& items) override;
+
+    using muse::uicomponents::AbstractMenuModel::makeMenuItem;
+    muse::uicomponents::MenuItem* makeMenuItem(const muse::actions::ActionCode& actionCode, muse::uicomponents::MenuItemRole role);
+
+    muse::uicomponents::MenuItem* makeFileMenu();
+    muse::uicomponents::MenuItem* makeEditMenu();
+    muse::uicomponents::MenuItem* makeSelectMenu();
+    muse::uicomponents::MenuItem* makeViewMenu();
+    muse::uicomponents::MenuItem* makeRecordMenu();
+    muse::uicomponents::MenuItem* makeTracksMenu();
+    muse::uicomponents::MenuItem* makeGenerateMenu();
+    muse::uicomponents::MenuItem* makeEffectMenu();
+    muse::uicomponents::MenuItem* makeAnalyzeMenu();
+    muse::uicomponents::MenuItem* makeToolsMenu();
+    muse::uicomponents::MenuItem* makeExtraMenu();
+    muse::uicomponents::MenuItem* makeHelpMenu();
+    muse::uicomponents::MenuItem* makeDiagnosticMenu();
+
+    muse::uicomponents::MenuItemList makeRecentProjectsItems();
+    muse::uicomponents::MenuItemList appendClearRecentSection(const muse::uicomponents::MenuItemList& recentScores);
+
+    muse::uicomponents::MenuItemList makeExportItems();
+    muse::uicomponents::MenuItemList makeClipItems();
+    muse::uicomponents::MenuItemList makeLabelItems();
+    muse::uicomponents::MenuItemList makeRegionSelectionItems();
+    muse::uicomponents::MenuItemList makeAudioClipsSelectionItems();
+    muse::uicomponents::MenuItemList makeSpectralSelectionItems();
+    muse::uicomponents::MenuItemList makeLoopingItems();
+    muse::uicomponents::MenuItemList makeZoomItems();
+    muse::uicomponents::MenuItemList makeSkipToItems();
+    muse::uicomponents::MenuItemList makeAlignItems();
+    muse::uicomponents::MenuItemList makeSortItems();
+    muse::uicomponents::MenuItemList makeVolumeAndCompressionItems();
+    muse::uicomponents::MenuItemList makeMacrosItems();
+    muse::uicomponents::MenuItemList makeDiagnosticsItems();
+    muse::uicomponents::MenuItemList makeFramesItems();
+    muse::uicomponents::MenuItemList makeWorkspacesItems();
+    muse::uicomponents::MenuItemList makeShowItems();
+    muse::uicomponents::MenuItemList makeEffectsItems();
+    muse::uicomponents::MenuItemList makeGeneratorItems();
+    muse::uicomponents::MenuItemList makeToolItems();
+    muse::uicomponents::MenuItemList makeAnalyzeItems();
+    muse::uicomponents::MenuItemList makeExtensionItems();
+
+    void setItemIsChecked(const QString& itemId, bool checked);
+
+    void updateUndoRedoItems();
+    void updateRenameItemsState();
+
+    std::shared_ptr<muse::uicomponents::AbstractMenuModel> m_workspacesMenuModel;
+
+// Moved to the bottom of the class definition because of the code formatter bug
+#ifdef Q_OS_WIN
+    QML_ANONYMOUS
+#else
+    QML_NAMED_ELEMENT(PlatformAppMenuModel)
+#endif
+};
+}
+
+#endif // AU_APPSHELL_APPMENUMODEL_H

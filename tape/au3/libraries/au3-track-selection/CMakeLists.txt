@@ -1,0 +1,26 @@
+#[[
+Utilities for changing the binary selected state of tracks in a project, which
+includes some state to record the last-clicked track, to implement shift-click
+of a range.
+
+Also sync-locked state of the project, and the criteria for sync lock grouping
+of tracks.
+
+Also the logic to set and get the unique focused track of the project, with a
+callback interface for screen reader notifications.
+]]
+
+set( TARGET au3-track-selection )
+
+set( SOURCES
+   TrackFocus.cpp
+   TrackFocus.h
+)
+set( LIBRARIES
+   au3-time-frequency-selection-interface
+   au3-strings-interface
+   wxBase
+)
+audacity_library( ${TARGET} "${SOURCES}" "${LIBRARIES}"
+   "" ""
+)
