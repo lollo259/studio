@@ -32,6 +32,8 @@ qt_add_qml_module(appshell_qml
         mainwindowtitleprovider.h
         projectpagemodel.cpp
         projectpagemodel.h
+        panelsmodel.cpp
+        panelsmodel.h
         PublishPage/publishtoolbarmodel.cpp
         PublishPage/publishtoolbarmodel.h
         windowdroparea.cpp

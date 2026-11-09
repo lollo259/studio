@@ -147,10 +147,25 @@ Item {
         }
     }
 
+    // Studio look E: the total length of the piece, next to play
+    StyledTextLabel {
+        id: totalLabel
+
+        anchors.left: timeField.right
+        anchors.leftMargin: 4
+        anchors.verticalCenter: parent.verticalCenter
+        anchors.verticalCenterOffset: 1
+
+        readonly property var t: root.playbackModel.maxPlayTime
+        text: !t ? "" : "/ " + (t.getHours() > 0 ? Qt.formatTime(t, "h:mm:ss") : Qt.formatTime(t, "m:ss"))
+        font: timeField.font
+        opacity: 0.6
+    }
+
     MeasureAndBeatFields {
         id: measureAndBeatFields
 
-        anchors.left: timeField.right
+        anchors.left: totalLabel.right
         anchors.leftMargin: 6
         anchors.verticalCenter: parent.verticalCenter
         anchors.verticalCenterOffset: 1 // for nicer visual alignment

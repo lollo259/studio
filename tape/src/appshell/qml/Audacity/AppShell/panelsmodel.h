@@ -1,0 +1,56 @@
+/*
+ * Tape (Laurence Who Studio): fold panels away and bring them back.
+ *   side   the track list on the left
+ *   top    the toolbars under the menu bar
+ *   right  history and the playback meter
+ * The menu bar itself always stays.
+ * SPDX-License-Identifier: GPL-3.0-only
+ */
+#pragma once
+
+#include <QObject>
+#include <QStringList>
+#include <QtQml/qqmlregistration.h>
+
+#include "framework/global/modularity/ioc.h"
+#include "framework/global/async/asyncable.h"
+#include "framework/actions/iactionsdispatcher.h"
+#include "framework/dockwindow/idockwindowprovider.h"
+
+namespace au::appshell {
+class PanelsModel : public QObject, public muse::Contextable, public muse::async::Asyncable
+{
+    Q_OBJECT
+    QML_ELEMENT
+
+    Q_PROPERTY(bool sideOpen READ sideOpen NOTIFY changed)
+    Q_PROPERTY(bool topOpen READ topOpen NOTIFY changed)
+    Q_PROPERTY(bool rightOpen READ rightOpen NOTIFY changed)
+
+    muse::ContextInject<muse::actions::IActionsDispatcher> dispatcher { this };
+    muse::ContextInject<muse::dock::IDockWindowProvider> dockWindowProvider { this };
+
+public:
+    explicit PanelsModel(QObject* parent = nullptr);
+
+    Q_INVOKABLE void init();
+    Q_INVOKABLE void toggle(const QString& group);
+
+    bool sideOpen() const;
+    bool topOpen() const;
+    bool rightOpen() const;
+
+signals:
+    void changed();
+
+private:
+    static QStringList docks(const QString& group);
+    bool anyOpen(const QString& group) const;
+    void setOpen(const QString& dock, bool open);
+
+    QStringList m_hiddenSide;
+    QStringList m_hiddenTop;
+    QStringList m_hiddenRight;
+    bool m_listening = false;
+};
+}

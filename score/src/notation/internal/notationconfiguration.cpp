@@ -145,7 +145,7 @@ void NotationConfiguration::init()
         });
     }
 
-    settings()->setDefaultValue(LIGHT_SCORE_BACKGROUND_COLOR, Val(QColor("#BCC1CC")));
+    settings()->setDefaultValue(LIGHT_SCORE_BACKGROUND_COLOR, Val(QColor("#CDCED1"))); // Studio look E: aluminium desk
     settings()->valueChanged(LIGHT_SCORE_BACKGROUND_COLOR).onReceive(nullptr, [this](const Val&) {
         m_backgroundChanged.notify();
     });
@@ -175,7 +175,7 @@ void NotationConfiguration::init()
         m_foregroundChanged.notify();
     });
 
-    settings()->setDefaultValue(FOREGROUND_COLOR, Val(QColor("#f9f9f9")));
+    settings()->setDefaultValue(FOREGROUND_COLOR, Val(QColor("#FBFAF7"))); // Studio look E: warm paper
     settings()->valueChanged(FOREGROUND_COLOR).onReceive(nullptr, [this](const Val&) {
         m_foregroundChanged.notify();
     });
