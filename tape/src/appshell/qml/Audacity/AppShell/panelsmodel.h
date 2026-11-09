@@ -25,6 +25,8 @@ class PanelsModel : public QObject, public muse::Contextable, public muse::async
 
     Q_PROPERTY(bool sideOpen READ sideOpen NOTIFY changed)
     Q_PROPERTY(bool topOpen READ topOpen NOTIFY changed)
+    //! inside the Studio window: Studio has the window keys, the app hides its own
+    Q_PROPERTY(bool embedded READ embedded CONSTANT)
     Q_PROPERTY(bool rightOpen READ rightOpen NOTIFY changed)
 
     muse::ContextInject<muse::actions::IActionsDispatcher> dispatcher { this };
@@ -35,6 +37,8 @@ public:
 
     Q_INVOKABLE void init();
     Q_INVOKABLE void toggle(const QString& group);
+
+    bool embedded() const { return qEnvironmentVariableIsSet("STUDIO_EMBEDDED"); }
 
     bool sideOpen() const;
     bool topOpen() const;

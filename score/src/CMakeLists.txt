@@ -97,6 +97,11 @@ endif()
 
 # App (main)
 add_subdirectory(app)
+
+# Studio: the window that holds Score and Tape
+if (OS_IS_WIN OR MUE_BUILD_STUDIOHOST)
+    add_subdirectory(studiohost)
+endif()
 if (MUE_CONFIGURATION_IS_APPWEB)
     add_subdirectory(web/appjs)
 endif()

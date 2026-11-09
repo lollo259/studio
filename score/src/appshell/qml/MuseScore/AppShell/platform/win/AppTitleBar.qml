@@ -184,7 +184,7 @@ Rectangle {
 
             windowIsMiximized: root.windowVisibility === Window.Maximized
 
-            visible: root.windowVisibility !== Window.FullScreen
+            visible: root.windowVisibility !== Window.FullScreen && !panels.embedded
 
             onShowWindowMinimizedRequested: {
                 root.showWindowMinimizedRequested()

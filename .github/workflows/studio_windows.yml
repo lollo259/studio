@@ -77,6 +77,10 @@ jobs:
         x86_64-w64-mingw32-windres tape.rc -O coff -o tape.res
         x86_64-w64-mingw32-gcc -municode -mwindows -O2 -static "-DTARGET=L\"Score\\\\bin\\\\${SCORE_EXE}\"" launcher.c score.res -o "$GITHUB_WORKSPACE/Studio/Score.exe"
         x86_64-w64-mingw32-gcc -municode -mwindows -O2 -static '-DTARGET=L"Tape\\bin\\Audacity4.exe"' launcher.c tape.res -o "$GITHUB_WORKSPACE/Studio/Tape.exe"
+        # Studio.exe: the one window with Score and Tape inside (built with Score)
+        if [ -f "$GITHUB_WORKSPACE/Studio/Score/bin/Studio.exe" ]; then
+          x86_64-w64-mingw32-gcc -municode -mwindows -O2 -static '-DTARGET=L"Score\\bin\\Studio.exe"' launcher.c score.res -o "$GITHUB_WORKSPACE/Studio/Studio.exe"
+        fi
         ls -la "$GITHUB_WORKSPACE/Studio"
 
     - name: Sounds
@@ -106,6 +110,7 @@ jobs:
         printf '%s\r\n' \
           'Laurence Who Studio' \
           '' \
+          'Studio.exe - Score and Tape in one window, linked' \
           'Score.exe  - write music (Score)' \
           'Tape.exe   - record and play (Tape)' \
           'Sounds     - the instruments Tape plays, ready to use' \
