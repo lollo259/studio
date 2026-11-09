@@ -347,7 +347,12 @@ void ThemeApi::setupUiFonts()
 
         font->setPixelSize(size);
         font->setFamily(QString::fromStdString(family));
-        font->setWeight(fontConfig.weight);
+        QFont::Weight weight = fontConfig.weight;
+        if (QString::fromStdString(family).startsWith("Jost")) {
+            // Studio: thin, light interface text; "bold" becomes medium
+            weight = (weight == QFont::Normal) ? QFont::Light : QFont::Medium;
+        }
+        font->setWeight(weight);
     }
 }
 

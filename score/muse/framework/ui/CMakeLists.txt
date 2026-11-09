@@ -171,6 +171,10 @@ qt_add_resources(muse_ui "muse_ui_resources"
         "data/Jost-Regular.ttf"
         "data/Jost-Bold.ttf"
         "data/Jost-Italic.ttf"
+        "data/JostStar-Thin.ttf"
+        "data/JostStar-Light.ttf"
+        "data/JostStar-Book.ttf"
+        "data/JostStar-Medium.ttf"
 )
 
 if (MUSE_LOAD_QML_FROM_SOURCE)

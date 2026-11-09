@@ -99,12 +99,8 @@ void AppMenuModel::load()
         makeExtensionsMenu()
     };
 
-    if (globalConfiguration()->devModeEnabled()) {
-        items << makeHelpMenu(false);
-        items << makeDiagnosticsMenu();
-    } else {
-        items << makeHelpMenu(true);
-    }
+    // Studio: no Diagnostics menu in the menu bar (it stays inside Help for when we need it)
+    items << makeHelpMenu(true);
 
     setItems(items);
 

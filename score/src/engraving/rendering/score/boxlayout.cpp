@@ -21,6 +21,8 @@
  */
 
 #include "boxlayout.h"
+
+#include <algorithm>
 #include "dom/fret.h"
 #include "dom/harmony.h"
 #include "dom/system.h"
@@ -115,6 +117,14 @@ void BoxLayout::layoutVBox(const VBox* item, VBox::LayoutData* ldata, const Layo
     bool heightChanged = false;
     if (boxAutoSize) {
         double contentHeight = item->contentRect().height();
+        // Studio: grow the frame to include texts moved down by their offset (e.g. a title placed low),
+        // so the frame opens fully instead of the title spilling onto the music
+        for (const EngravingItem* e : item->el()) {
+            if (e->isText() && e->visible()) {
+                const double bottom = e->pos().y() + e->ldata()->bbox().bottom();
+                contentHeight = std::max(contentHeight, bottom + item->absoluteFromSpatium(Spatium(2.0)));
+            }
+        }
 
         if (contentHeight < item->minHeight()) {
             contentHeight = item->minHeight();

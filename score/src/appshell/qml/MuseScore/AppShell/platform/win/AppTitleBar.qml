@@ -21,6 +21,7 @@
  */
 import QtQuick
 import QtQuick.Layouts
+import QtQuick.Controls
 import QtQuick.Window
 
 import Muse.Ui
@@ -55,6 +56,13 @@ Rectangle {
 
         spacing: 8
 
+        // Studio: the menu sits in the middle of the title bar
+        Item {
+            id: leftSpacer
+            Layout.fillHeight: true
+            Layout.preferredWidth: menu.truncated ? 0 : Math.max(0, (root.width - menu.width) / 2 - content.spacing)
+        }
+
         AppMenuBar {
             id: menu
 
@@ -63,7 +71,7 @@ Rectangle {
             Layout.preferredWidth: implicitWidth
             Layout.preferredHeight: implicitHeight
 
-            availableWidth: root.width - (content.spacing + titleLabel.minDistanceFromMenu + titleTextmetrics.width + content.spacing + systemButtons.width)
+            availableWidth: root.width - (content.spacing * 4 + titleLabel.minDistanceFromMenu + systemButtons.width + panelToggles.width)
         }
 
         StyledTextLabel {
@@ -73,17 +81,13 @@ Rectangle {
 
             Layout.fillWidth: !menu.truncated ? true : false
             Layout.fillHeight: true
-            Layout.minimumWidth: titleTextmetrics.advanceWidth
+            Layout.minimumWidth: minDistanceFromMenu
 
             horizontalAlignment: Text.AlignLeft
             verticalAlignment: Text.AlignVCenter
-            leftPadding: {
-                var parentCenterX = parent.width / 2
-                var expectedTextCenterX = parentCenterX - titleTextmetrics.width / 2
-                return Math.max(expectedTextCenterX - x, minDistanceFromMenu)
-            }
+            leftPadding: 0
 
-            text: titleTextmetrics.elidedText
+            text: "" // Studio: no window title text, the menu is centred
             textFormat: Text.RichText
             font: ui.theme.bodyFont
 
@@ -96,6 +100,77 @@ Rectangle {
                 font: titleLabel.font
                 elide: Qt.ElideRight
                 elideWidth: titleLabel.width
+            }
+        }
+
+        // Studio: fold the panels away / bring them back. The menu bar always stays.
+        Row {
+            id: panelToggles
+
+            Layout.alignment: Qt.AlignRight | Qt.AlignVCenter
+            spacing: 2
+
+            PanelsModel {
+                id: panels
+            }
+
+            Component.onCompleted: panels.init()
+
+            Repeater {
+                model: [
+                    { group: "side", tip: qsTrc("appshell", "Palettes and side panels") },
+                    { group: "top", tip: qsTrc("appshell", "Toolbars") },
+                    { group: "bottom", tip: qsTrc("appshell", "Mixer, piano and timeline") }
+                ]
+
+                Item {
+                    id: toggle
+
+                    readonly property bool isOpen: modelData.group === "side" ? panels.sideOpen
+                                                  : modelData.group === "top" ? panels.topOpen : panels.bottomOpen
+
+                    width: 30
+                    height: 26
+
+                    Rectangle {
+                        anchors.fill: parent
+                        radius: 4
+                        color: area.containsMouse ? ui.theme.buttonColor : "transparent"
+                    }
+
+                    // a little window: the strip that folds is filled while it is open
+                    Rectangle {
+                        id: frame
+                        anchors.centerIn: parent
+                        width: 16
+                        height: 12
+                        radius: 2
+                        color: "transparent"
+                        border.width: 1.2
+                        border.color: ui.theme.fontPrimaryColor
+
+                        Rectangle {
+                            visible: toggle.isOpen
+                            color: ui.theme.fontPrimaryColor
+                            x: modelData.group === "side" ? 0 : 0
+                            y: modelData.group === "bottom" ? parent.height - height : 0
+                            width: modelData.group === "side" ? 5 : parent.width
+                            height: modelData.group === "side" ? parent.height : 4
+                            radius: 1
+                        }
+                    }
+
+                    MouseArea {
+                        id: area
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        onClicked: panels.toggle(modelData.group)
+                    }
+
+                    ToolTip.visible: area.containsMouse
+                    ToolTip.delay: 600
+                    ToolTip.text: modelData.tip
+                }
             }
         }
 

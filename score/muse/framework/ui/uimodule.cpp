@@ -139,7 +139,9 @@ void UiModule::onInit(const IApplication::RunMode& mode)
     // Muse (Laurence Who): Work Sans interface font, as on laurencewho.com
     for (const char* f : { ":/ui/data/WorkSans-Regular.ttf", ":/ui/data/WorkSans-Medium.ttf",
                            ":/ui/data/WorkSans-SemiBold.ttf", ":/ui/data/WorkSans-Bold.ttf",
-                           ":/ui/data/Jost-Regular.ttf", ":/ui/data/Jost-Bold.ttf", ":/ui/data/Jost-Italic.ttf" }) {
+                           ":/ui/data/Jost-Regular.ttf", ":/ui/data/Jost-Bold.ttf", ":/ui/data/Jost-Italic.ttf",
+                           ":/ui/data/JostStar-Thin.ttf", ":/ui/data/JostStar-Light.ttf",
+                           ":/ui/data/JostStar-Book.ttf", ":/ui/data/JostStar-Medium.ttf" }) {
         if (QFontDatabase::addApplicationFont(f) == -1) {
             LOGE() << "Unable load UI font: " << f;
         }

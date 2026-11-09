@@ -667,7 +667,7 @@ Notification UiConfiguration::musicalTextFontChanged() const
 
 std::string UiConfiguration::defaultFontFamily() const
 {
-    return "Jost"; // Studio: Jost is the standard font everywhere
+    return "Jost*"; // Studio: Jost (all weights, so the interface can be light)
 }
 
 int UiConfiguration::defaultFontSize() const

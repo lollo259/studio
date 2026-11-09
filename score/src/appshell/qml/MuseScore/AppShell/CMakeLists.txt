@@ -42,6 +42,8 @@ qt_add_qml_module(appshell_qml
         mainwindowtitleprovider.h
         notationpagemodel.cpp
         notationpagemodel.h
+        panelsmodel.cpp
+        panelsmodel.h
         notationstatusbarmodel.cpp
         notationstatusbarmodel.h
         PublishPage/publishtoolbarmodel.cpp
