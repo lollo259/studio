@@ -33,13 +33,14 @@
 using namespace muse;
 using namespace muse::languages;
 
-static const Settings::Key LANGUAGE_KEY("languages", "language");
+// Studio: English everywhere (new key, so existing installs switch once)
+static const Settings::Key LANGUAGE_KEY("languages", "studioLanguage");
 
 void LanguagesConfiguration::init()
 {
     m_config = ConfigReader::read(":/configs/languages.cfg");
 
-    settings()->setDefaultValue(LANGUAGE_KEY, Val(SYSTEM_LANGUAGE_CODE.toStdString()));
+    settings()->setDefaultValue(LANGUAGE_KEY, Val(std::string("en")));
     settings()->valueChanged(LANGUAGE_KEY).onReceive(nullptr, [this](const Val& val) {
         m_currentLanguageCodeChanged.send(val.toQString());
     });
