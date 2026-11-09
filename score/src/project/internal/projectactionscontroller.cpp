@@ -35,6 +35,7 @@
 #include <QCoreApplication>
 #include <QDateTime>
 #include <QProcess>
+#include <QLocalSocket>
 #include <QSettings>
 #include <QStandardPaths>
 #include <qobject.h>
@@ -556,6 +557,18 @@ muse::Ret ProjectActionsController::sendToTape()
     if (linkFile.open(QIODevice::WriteOnly)) {
         linkFile.write(QJsonDocument(link).toJson());
         linkFile.close();
+    }
+
+    // inside the Studio window: turn to the Tape page
+    if (qEnvironmentVariableIsSet("STUDIO_EMBEDDED")) {
+        QLocalSocket s;
+        s.connectToServer("laurencewho-studio-link");
+        if (s.waitForConnected(200)) {
+            s.write("{\"cmd\":\"show\",\"page\":\"tape\",\"from\":\"score-project\"}\n");
+            s.flush();
+            s.waitForBytesWritten(200);
+            s.disconnectFromServer();
+        }
     }
 
     if (!QProcess::startDetached(tape, files, QFileInfo(tape).absolutePath())) {

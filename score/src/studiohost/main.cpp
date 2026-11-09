@@ -25,6 +25,7 @@
 #include <QTimer>
 #include <QVBoxLayout>
 #include <QWindow>
+#include <QShortcut>
 
 #ifdef Q_OS_WIN
 #include <windows.h>
@@ -77,7 +78,7 @@ public:
     bool linked = false;
     bool scoreUp = false;
     bool tapeUp = false;
-    QString page = "split";
+    QString page = "score";
     QString note;
 
 signals:
@@ -478,6 +479,11 @@ public:
         });
         m_link.start();
 
+        auto* sw = new QShortcut(QKeySequence("Ctrl+Tab"), this);
+        sw->setContext(Qt::ApplicationShortcut);
+        connect(sw, &QShortcut::activated, this, [this]() { setPage(m_top->page == "score" ? "tape" : "score"); });
+
+        setPage("score");
         resize(1440, 900);
         QTimer::singleShot(100, m_score, &AppSlot::launch);
         QTimer::singleShot(400, m_tape, &AppSlot::launch);

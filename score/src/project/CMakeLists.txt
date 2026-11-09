@@ -148,3 +148,7 @@ endif()
 if (MUE_BUILD_PROJECT_QML)
     add_subdirectory(qml/MuseScore/Project)
 endif()
+
+# Studio: Send to Tape turns the Studio window to the Tape page
+find_package(Qt6 REQUIRED COMPONENTS Network)
+target_link_libraries(project PRIVATE Qt6::Network)
