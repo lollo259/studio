@@ -52,6 +52,18 @@ if (NOT sfizz_POPULATED)
     set(CMAKE_AUTOUIC ${_saved_uic})
 endif()
 
+# FluidSynth: the SF2/SF3 soundfont engine (LGPL-2.1), the same sources Score uses, as a small static library
+include(${CMAKE_SOURCE_DIR}/muse/framework/audio/thirdparty/fluidsynth/fluidsynth.cmake)
+add_library(tape_fluidsynth STATIC ${FLUIDSYNTH_SRC})
+target_include_directories(tape_fluidsynth PUBLIC ${FLUIDSYNTH_INC})
+target_compile_definitions(tape_fluidsynth PRIVATE ${FLUIDSYNTH_DEF})
+set_target_properties(tape_fluidsynth PROPERTIES AUTOMOC OFF AUTORCC OFF AUTOUIC OFF POSITION_INDEPENDENT_CODE ON)
+if (MSVC)
+    target_compile_options(tape_fluidsynth PRIVATE /wd4013 /wd4100 /wd4101 /wd4115 /wd4127 /wd4201 /wd4244 /wd4267 /wd4456 /wd4701 /wd4703 /wd4706 /W0)
+else()
+    target_compile_options(tape_fluidsynth PRIVATE -w)
+endif()
+
 muse_create_module(instruments)
 
 target_sources(instruments PRIVATE
@@ -60,19 +72,23 @@ target_sources(instruments PRIVATE
     ilivesynth.h
     soundlibrary.cpp
     soundlibrary.h
+    internal/engines.cpp
+    internal/engines.h
     internal/livesynth.cpp
     internal/livesynth.h
     internal/instrumentsservice.cpp
     internal/instrumentsservice.h
     internal/instrumentsactions.cpp
+    internal/instrumenttracks.cpp
+    internal/instrumenttracks.h
     internal/instrumentsactions.h
 )
 
 if (WIN32)
-    target_link_libraries(instruments PRIVATE sfizz::shared portaudio::portaudio muse::midi)
+    target_link_libraries(instruments PRIVATE sfizz::shared tape_fluidsynth portaudio::portaudio muse::midi)
     install(TARGETS sfizz_shared RUNTIME DESTINATION bin)
 else()
-    target_link_libraries(instruments PRIVATE sfizz::sfizz portaudio::portaudio muse::midi)
+    target_link_libraries(instruments PRIVATE sfizz::sfizz tape_fluidsynth portaudio::portaudio muse::midi)
 endif()
 
 add_subdirectory(qml/Audacity/Instruments)

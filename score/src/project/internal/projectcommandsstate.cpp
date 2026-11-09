@@ -53,6 +53,7 @@ static std::map<Command, PCondition> PROJECT_COMMAND_CONDITIONS = {
     { PROJECT_SHARE_AUDIO_COMMAND, PCondition::NotBusy },
     { PROJECT_EXPORT_COMMAND, PCondition::HasProject },
     { PROJECT_EXPORT_STAGE_COMMAND, PCondition::HasProject },
+    { PROJECT_SEND_TO_TAPE_COMMAND, PCondition::HasProject },
     { PROJECT_CONVERT_TO_SCORE_COMMAND, PCondition::Any },
     { PROJECT_PRINT_COMMAND, PCondition::HasProject },
     { PROJECT_CLEAR_RECENT_COMMAND, PCondition::Any },

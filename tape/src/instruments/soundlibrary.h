@@ -21,6 +21,8 @@ struct SoundEntry {
     std::string path;      // absolute path to the .sfz / .sf2 / .sf3 file
     SoundFamily family = SoundFamily::Other;
     bool isSoundFont = false; // .sf2/.sf3 (many programs inside) vs single .sfz instrument
+    int bank = -1;            // soundfonts: which program of the file this entry plays
+    int program = -1;
 };
 
 const char* familyName(SoundFamily f);
@@ -28,6 +30,11 @@ const char* familyName(SoundFamily f);
 //! Default Studio sounds folder: %USERPROFILE%\Studio\Sounds (Windows), ~/Studio/Sounds elsewhere
 std::string defaultSoundsFolder();
 
+//! Every folder Tape looks in: the user's Studio\Sounds, then the Sounds folder that ships
+//! inside the Studio download (next to the Score and Tape folders)
+std::vector<std::string> soundsFolders();
+
 //! Scans the folder recursively. Entries are sorted by family, then library, then name.
 std::vector<SoundEntry> scanSounds(const std::string& folder);
+std::vector<SoundEntry> scanAllSounds();
 }

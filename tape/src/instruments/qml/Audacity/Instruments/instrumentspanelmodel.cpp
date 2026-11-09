@@ -174,28 +174,34 @@ void InstrumentsPanelModel::selectKeyboard(const QString& id)
     }
 }
 
+InstrumentTracks& InstrumentsPanelModel::tracks()
+{
+    if (!m_tracks) {
+        m_tracks = std::make_unique<InstrumentTracks>(iocContext());
+    }
+    return *m_tracks;
+}
+
 void InstrumentsPanelModel::toggleTake()
 {
-    auto s = svc();
-    if (!s) {
-        return;
-    }
-    if (!s->synth()->isTaking()) {
-        if (!s->synth()->isRunning()) {
-            s->synth()->start();
-        }
+    if (!tracks().isTaking()) {
+        // on an instrument track: plays the project along and lands in that track, in time
         const QString name = "take " + QDateTime::currentDateTime().toString("yyyy-MM-dd HH.mm.ss");
-        s->synth()->startTake(takesFolder().toStdString(), name.toStdString());
+        tracks().startTake(takesFolder(), name);
     } else {
-        TakeResult r = s->synth()->stopTake();
-        m_lastTake = QString::fromStdString(r.audioPath);
-        if (!r.audioPath.empty() && r.seconds > 0.05) {
-            // the take goes into the open project as a new track
-            dispatcher()->dispatch("project-import",
-                                   muse::actions::ActionData::make_arg1<QStringList>(QStringList { m_lastTake }));
-        }
+        m_lastTake = tracks().stopTake();
     }
     emit changed();
+}
+
+void InstrumentsPanelModel::newInstrumentTrack()
+{
+    tracks().addInstrumentTrack();
+}
+
+void InstrumentsPanelModel::openLastTakeInScore()
+{
+    tracks().openLastTakeInScore();
 }
 
 void InstrumentsPanelModel::rescan()

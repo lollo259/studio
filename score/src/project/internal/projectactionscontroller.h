@@ -119,6 +119,8 @@ private:
 
     muse::Ret exportScore();
     muse::Ret exportForStage();
+    muse::Ret sendToTape();
+    QString findTape();
     muse::Ret printScore();
 
     void setBusy(BusyStatus status, bool isBusy);

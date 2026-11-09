@@ -16,7 +16,7 @@
 #include <QTimer>
 
 #include <portaudio.h>
-#include <sfizz.hpp>
+#include "engines.h"
 
 using namespace au::instruments;
 
@@ -96,9 +96,8 @@ LiveSynth::LiveSynth()
 {
     m_left.resize(MAX_BLOCK);
     m_right.resize(MAX_BLOCK);
-    m_current = makeEngine();
     const Builtin& b = BUILTINS[0];
-    m_current->loadSfzString(std::string("/") + b.id + ".sfz", b.sfz);
+    m_current = makeSfzEngineFromText(static_cast<float>(m_sampleRate), MAX_BLOCK, std::string("/") + b.id + ".sfz", b.sfz);
     m_currentName = b.name;
     m_loader = std::thread([this] { loaderLoop(); });
 }
@@ -122,13 +121,22 @@ LiveSynth::~LiveSynth()
     }
 }
 
-sfz::Sfizz* LiveSynth::makeEngine() const
+Engine* LiveSynth::makeEngineFor(const SoundEntry& sound) const
 {
-    auto* s = new sfz::Sfizz();
-    s->setSampleRate(static_cast<float>(m_sampleRate));
-    s->setSamplesPerBlock(MAX_BLOCK);
-    s->setNumVoices(96);
-    return s;
+    const float rate = static_cast<float>(m_sampleRate);
+    if (sound.path.rfind(BUILTIN_PREFIX, 0) == 0) {
+        const std::string id = sound.path.substr(std::strlen(BUILTIN_PREFIX));
+        for (const Builtin& b : BUILTINS) {
+            if (id == b.id) {
+                return makeSfzEngineFromText(rate, MAX_BLOCK, std::string("/") + b.id + ".sfz", b.sfz);
+            }
+        }
+        return nullptr;
+    }
+    if (sound.isSoundFont) {
+        return makeSoundFontEngine(rate, sound.path, std::max(0, sound.bank), std::max(0, sound.program));
+    }
+    return makeSfzEngine(rate, MAX_BLOCK, sound.path);
 }
 
 bool LiveSynth::start()
@@ -182,7 +190,9 @@ bool LiveSynth::start()
 
     if (rate != m_sampleRate) {
         m_sampleRate = rate;
-        m_current->setSampleRate(static_cast<float>(rate));
+        if (m_current) {
+            m_current->setSampleRate(static_cast<float>(rate));
+        }
     }
 
     err = Pa_StartStream(stream);
@@ -210,7 +220,7 @@ void LiveSynth::stop()
     Pa_CloseStream(static_cast<PaStream*>(m_stream));
     m_stream = nullptr;
     // apply a swap that the stream never picked up
-    if (sfz::Sfizz* n = m_next.exchange(nullptr)) {
+    if (Engine* n = m_next.exchange(nullptr)) {
         delete m_current;
         m_current = n;
     }
@@ -283,24 +293,11 @@ void LiveSynth::loaderLoop()
             m_hasPendingLoad = false;
         }
 
-        sfz::Sfizz* engine = makeEngine();
-        bool ok = false;
-        if (sound.path.rfind(BUILTIN_PREFIX, 0) == 0) {
-            const std::string id = sound.path.substr(std::strlen(BUILTIN_PREFIX));
-            for (const Builtin& b : BUILTINS) {
-                if (id == b.id) {
-                    ok = engine->loadSfzString(std::string("/") + b.id + ".sfz", b.sfz);
-                }
-            }
-        } else if (!sound.isSoundFont) {
-            ok = engine->loadSfzFile(sound.path);
-        }
-
+        Engine* engine = makeEngineFor(sound);
+        const bool ok = engine != nullptr;
         if (!ok) {
-            delete engine;
             std::lock_guard<std::mutex> lock(m_nameMutex);
-            m_error = sound.isSoundFont ? "soundfonts (.sf2) arrive in the next update: pick an SFZ sound"
-                                        : "could not load " + sound.name;
+            m_error = "could not load " + sound.name;
             m_loading = false;
             notifyChangedOnMainThread();
             continue;
@@ -403,7 +400,7 @@ float LiveSynth::volume() const
 
 void LiveSynth::render(float* out, unsigned long frames)
 {
-    if (sfz::Sfizz* n = m_next.exchange(nullptr)) {
+    if (Engine* n = m_next.exchange(nullptr)) {
         if (m_current) {
             m_current->allSoundOff();
         }
@@ -411,20 +408,20 @@ void LiveSynth::render(float* out, unsigned long frames)
         m_current = n;
     }
 
-    sfz::Sfizz* s = m_current;
+    Engine* s = m_current;
     Event e;
     while (m_events.pop(e)) {
         if (!s) {
             continue;
         }
         switch (e.type) {
-        case 1: s->noteOn(0, e.a, e.b);
+        case 1: s->noteOn(e.a, e.b);
             break;
-        case 2: s->noteOff(0, e.a, 0);
+        case 2: s->noteOff(e.a);
             break;
-        case 3: s->cc(0, e.a, e.b);
+        case 3: s->cc(e.a, e.b);
             break;
-        case 4: s->pitchWheel(0, e.value);
+        case 4: s->pitchWheel(e.value);
             break;
         case 5: s->allSoundOff();
             break;
@@ -437,9 +434,8 @@ void LiveSynth::render(float* out, unsigned long frames)
     unsigned long done = 0;
     while (done < frames) {
         const unsigned long n = std::min<unsigned long>(frames - done, MAX_BLOCK);
-        float* buffers[2] = { m_left.data(), m_right.data() };
         if (s) {
-            s->renderBlock(buffers, n, 1);
+            s->render(m_left.data(), m_right.data(), static_cast<int>(n));
         } else {
             std::fill_n(m_left.data(), n, 0.0f);
             std::fill_n(m_right.data(), n, 0.0f);

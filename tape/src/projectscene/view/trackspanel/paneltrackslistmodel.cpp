@@ -138,6 +138,9 @@ void PanelTracksListModel::addTrack(TrackTypes::Type type)
         dispatcher()->dispatch("new-stereo-track");
     } else if (type == TrackTypes::Type::LABEL) {
         dispatcher()->dispatch("new-label-track");
+    } else if (static_cast<int>(type) == 100) {
+        // Tape: instrument track (instruments module)
+        dispatcher()->dispatch("instruments-new-track");
     }
 }
 

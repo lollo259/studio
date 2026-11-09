@@ -41,6 +41,7 @@ inline static const muse::rcommand::Command PROJECT_SHARE_AUDIO_COMMAND("command
 
 inline static const muse::rcommand::Command PROJECT_EXPORT_COMMAND("command://project/export");
 inline static const muse::rcommand::Command PROJECT_EXPORT_STAGE_COMMAND("command://project/export-stage");
+inline static const muse::rcommand::Command PROJECT_SEND_TO_TAPE_COMMAND("command://project/send-to-tape");
 inline static const muse::rcommand::Command PROJECT_CONVERT_TO_SCORE_COMMAND("command://project/convert-to-score");
 
 inline static const muse::rcommand::Command PROJECT_PRINT_COMMAND("command://project/print");

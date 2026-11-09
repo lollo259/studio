@@ -73,7 +73,7 @@ std::string InstrumentsService::soundsFolder() const
 void InstrumentsService::rescan()
 {
     m_sounds = m_synth->builtinSounds();
-    std::vector<SoundEntry> found = scanSounds(defaultSoundsFolder());
+    std::vector<SoundEntry> found = scanAllSounds();
     m_sounds.insert(m_sounds.end(), found.begin(), found.end());
     m_changed.notify();
 }

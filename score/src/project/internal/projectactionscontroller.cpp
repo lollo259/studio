@@ -32,6 +32,11 @@
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QCoreApplication>
+#include <QDateTime>
+#include <QProcess>
+#include <QSettings>
+#include <QStandardPaths>
 #include <qobject.h>
 
 #include "async/async.h"
@@ -82,6 +87,7 @@ void ProjectActionsController::init()
 
     d->onRequest(this, PROJECT_EXPORT_COMMAND, [this]() { return exportScore(); });
     d->onRequest(this, PROJECT_EXPORT_STAGE_COMMAND, [this]() { return exportForStage(); });
+    d->onRequest(this, PROJECT_SEND_TO_TAPE_COMMAND, [this]() { return sendToTape(); });
     d->onRequest(this, PROJECT_CONVERT_TO_SCORE_COMMAND, [this]() { return convertFileToScore(); });
 
     d->onRequest(this, PROJECT_PRINT_COMMAND, [this]() { return printScore(); });
@@ -442,6 +448,121 @@ muse::Ret ProjectActionsController::exportForStage()
     if (manifest.open(QIODevice::WriteOnly)) {
         manifest.write(QJsonDocument(root).toJson());
         manifest.close();
+    }
+
+    return make_ok();
+}
+
+// Studio: Score -> Tape.
+// Every instrument is rendered on its own (the same playback as the score, other instruments
+// silent) into Documents/Studio/From Score/<title> <time>/, then Tape opens with one track per
+// instrument, all starting at bar 1. If Tape is already open the files arrive in that window.
+QString ProjectActionsController::findTape()
+{
+    QSettings settings("LaurenceWho", "Studio");
+    const QString saved = settings.value("tapePath").toString();
+    if (!saved.isEmpty() && QFileInfo::exists(saved)) {
+        return saved;
+    }
+
+    // Studio folder: Studio/Score/bin/<score>.exe and Studio/Tape/bin/Tape.exe
+    const QDir bin(QCoreApplication::applicationDirPath());
+    const QStringList candidates = {
+        bin.filePath("../../Tape/bin/Tape.exe"),
+        bin.filePath("../../Tape/bin/Audacity4.exe"),
+        bin.filePath("../../Tape/bin/audacity4"),
+        bin.filePath("../../Tape/bin/Tape"),
+    };
+    for (const QString& c : candidates) {
+        if (QFileInfo(c).isFile()) {
+            return QFileInfo(c).canonicalFilePath();
+        }
+    }
+
+    io::path_t picked = interactive()->selectOpeningFileSync(muse::trc("project", "Where is Tape? Pick Tape.exe (or Audacity4.exe)"),
+                                                             io::path_t(QStandardPaths::writableLocation(QStandardPaths::DownloadLocation)),
+                                                             { "Tape (*.exe)", "All files (*)" });
+    if (picked.empty()) {
+        return QString();
+    }
+    settings.setValue("tapePath", picked.toQString());
+    return picked.toQString();
+}
+
+muse::Ret ProjectActionsController::sendToTape()
+{
+    INotationProjectPtr project = currentNotationProject();
+    IMasterNotationPtr master = currentMasterNotation();
+    if (!project || !master) {
+        return make_ret(Ret::Code::InternalError);
+    }
+
+    const QString tape = findTape();
+    if (tape.isEmpty()) {
+        return make_ret(Ret::Code::Cancel);
+    }
+
+    QString title = io::completeBasename(project->path()).toQString();
+    if (title.isEmpty()) {
+        title = master->notation()->name().isEmpty() ? QString("Score") : master->notation()->name();
+    }
+    title = io::escapeFileName(io::path_t(title)).toQString();
+
+    const QString docs = QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation);
+    const QString folder = docs + "/Studio/From Score/" + title + " " + QDateTime::currentDateTime().toString("yyyy-MM-dd HH.mm.ss");
+    QDir().mkpath(folder);
+
+    // one notation per instrument: the parts already in the score, plus a part for every
+    // instrument that has none yet
+    INotationPtrList notations;
+    for (const IExcerptNotationPtr& excerpt : master->excerpts()) {
+        notations.push_back(excerpt->notation());
+    }
+    for (const IExcerptNotationPtr& excerpt : master->potentialExcerpts()) {
+        notations.push_back(excerpt->notation());
+    }
+    if (notations.empty()) {
+        notations.push_back(master->notation());
+    }
+
+    const io::path_t base = folder + "/" + title + ".wav";
+    if (!exportProjectScenario()->exportScores(notations, base, INotationWriter::UnitType::PER_PART)) {
+        return make_ret(Ret::Code::Cancel);
+    }
+
+    // the whole score as MIDI too, so the notes travel with the sound
+    exportProjectScenario()->exportScores({ master->notation() }, folder + "/" + title + ".mid", INotationWriter::UnitType::PER_PART);
+
+    QStringList files;
+    QJsonArray tracks;
+    for (const QFileInfo& fi : QDir(folder).entryInfoList({ "*.wav" }, QDir::Files, QDir::Name)) {
+        files << QDir::toNativeSeparators(fi.absoluteFilePath());
+        tracks.append(fi.fileName());
+    }
+    if (files.isEmpty()) {
+        interactive()->error(muse::trc("project", "Nothing to send to Tape"),
+                             muse::trc("project", "The score made no sound. Check that the instruments aren't muted."));
+        return make_ret(Ret::Code::InternalError);
+    }
+
+    // a small note for Tape (and for later: Tape -> Score, live sync)
+    QJsonObject link;
+    link["format"] = "studio-link-1";
+    link["score"] = QDir::toNativeSeparators(project->path().toQString());
+    link["title"] = title;
+    link["tracks"] = tracks;
+    link["midi"] = title + ".mid";
+    QFile linkFile(folder + "/studio-link.json");
+    if (linkFile.open(QIODevice::WriteOnly)) {
+        linkFile.write(QJsonDocument(link).toJson());
+        linkFile.close();
+    }
+
+    if (!QProcess::startDetached(tape, files, QFileInfo(tape).absolutePath())) {
+        QSettings("LaurenceWho", "Studio").remove("tapePath");
+        interactive()->error(muse::trc("project", "Tape didn't start"),
+                             muse::trc("project", "The files are ready in Documents\\Studio\\From Score. Try Send to Tape again and pick Tape."));
+        return make_ret(Ret::Code::InternalError);
     }
 
     return make_ok();

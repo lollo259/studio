@@ -18,6 +18,8 @@ using namespace muse::actions;
 
 static const ActionCode OPEN_CODE("instruments");
 static const ActionCode PANIC_CODE("instruments-panic");
+static const ActionCode NEW_TRACK_CODE("instruments-new-track");
+static const ActionCode OPEN_IN_SCORE_CODE("instruments-open-in-score");
 
 static const UiActionList s_actions = {
     UiAction(OPEN_CODE,
@@ -30,12 +32,45 @@ static const UiActionList s_actions = {
              au::context::CTX_ANY,
              TranslatableString("action", "All notes off"),
              TranslatableString("action_description", "Stop every sounding note of the instruments")),
+    UiAction(NEW_TRACK_CODE,
+             au::context::UiCtxAny,
+             au::context::CTX_ANY,
+             TranslatableString("action", "New &instrument track"),
+             TranslatableString("action_description", "Add a track played by a virtual instrument from your MIDI keyboard")),
+    UiAction(OPEN_IN_SCORE_CODE,
+             au::context::UiCtxAny,
+             au::context::CTX_ANY,
+             TranslatableString("action", "Open last take in &Score"),
+             TranslatableString("action_description", "Open the notes of the last instrument take in Score")),
 };
 
 void InstrumentsActions::init()
 {
     dispatcher()->reg(this, OPEN_CODE, this, &InstrumentsActions::openPanel);
     dispatcher()->reg(this, PANIC_CODE, this, &InstrumentsActions::panic);
+    dispatcher()->reg(this, NEW_TRACK_CODE, this, &InstrumentsActions::newInstrumentTrack);
+    dispatcher()->reg(this, OPEN_IN_SCORE_CODE, this, &InstrumentsActions::openInScore);
+}
+
+InstrumentTracks& InstrumentsActions::tracks()
+{
+    if (!m_tracks) {
+        m_tracks = std::make_unique<InstrumentTracks>(iocContext());
+    }
+    return *m_tracks;
+}
+
+void InstrumentsActions::newInstrumentTrack()
+{
+    tracks().addInstrumentTrack();
+}
+
+void InstrumentsActions::openInScore()
+{
+    QString error;
+    if (!tracks().openLastTakeInScore(&error) && !error.isEmpty()) {
+        interactive()->info("Score", error.toStdString());
+    }
 }
 
 void InstrumentsActions::openPanel()

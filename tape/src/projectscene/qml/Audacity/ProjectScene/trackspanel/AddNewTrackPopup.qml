@@ -56,6 +56,13 @@ StyledPopupView {
                     icon: IconCode.LOOP_IN,
                     text: qsTrc("projectscene", "Label"),
                     enabled: true
+                },
+                {
+                    // Tape: a track played by a virtual instrument (MIDI keyboard)
+                    type: 100,
+                    icon: IconCode.MUSIC_NOTES,
+                    text: qsTrc("projectscene", "Instrument"),
+                    enabled: true
                 }
             ]
 

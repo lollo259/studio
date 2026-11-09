@@ -12,6 +12,10 @@
 #include "framework/interactive/iinteractive.h"
 #include "framework/ui/iuiactionsmodule.h"
 
+#include <memory>
+
+#include "instrumenttracks.h"
+
 namespace au::instruments {
 class InstrumentsActions : public muse::ui::IUiActionsModule, public muse::actions::Actionable, public muse::async::Asyncable,
     public muse::Contextable
@@ -34,6 +38,11 @@ public:
 private:
     void openPanel();
     void panic();
+    void newInstrumentTrack();
+    void openInScore();
+    InstrumentTracks& tracks();
+
+    std::unique_ptr<InstrumentTracks> m_tracks;
 
     muse::async::Channel<muse::actions::ActionCodeList> m_enabledChanged;
     muse::async::Channel<muse::actions::ActionCodeList> m_checkedChanged;

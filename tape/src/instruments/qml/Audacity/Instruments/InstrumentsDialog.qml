@@ -181,6 +181,8 @@ StyledDialogView {
                     FlatButton { Layout.fillWidth: true; text: qsTrc("instruments", "Rescan"); onClicked: panel.rescan() }
                     FlatButton { Layout.fillWidth: true; text: qsTrc("instruments", "Takes folder"); onClicked: panel.openTakesFolder() }
                     FlatButton { Layout.fillWidth: true; text: qsTrc("instruments", "All notes off"); onClicked: panel.allNotesOff() }
+                    FlatButton { Layout.fillWidth: true; text: qsTrc("instruments", "New instrument track"); onClicked: panel.newInstrumentTrack() }
+                    FlatButton { Layout.fillWidth: true; text: qsTrc("instruments", "Last take in Score"); enabled: panel.lastTake !== ""; onClicked: panel.openLastTakeInScore() }
                     FlatButton { Layout.fillWidth: true; Layout.columnSpan: 2; text: qsTrc("instruments", "Restart audio"); onClicked: panel.restartAudio() }
                 }
             }

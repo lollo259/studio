@@ -17,11 +17,10 @@
 
 #include "../ilivesynth.h"
 
-namespace sfz {
-class Sfizz;
-}
 
 namespace au::instruments {
+class Engine;
+
 class LiveSynth : public ILiveSynth
 {
 public:
@@ -98,7 +97,7 @@ private:
 
     void push(const Event& e);
     void notifyChangedOnMainThread();
-    sfz::Sfizz* makeEngine() const;
+    Engine* makeEngineFor(const SoundEntry& sound) const;
     void loaderLoop();
     void writerLoop();
     void recordMidi(uint8_t status, uint8_t a, uint8_t b);
@@ -112,9 +111,9 @@ private:
     std::string m_error;
 
     // engines: m_current is used only by the audio thread while the stream runs
-    sfz::Sfizz* m_current = nullptr;
-    std::atomic<sfz::Sfizz*> m_next { nullptr };
-    std::atomic<sfz::Sfizz*> m_retired { nullptr };
+    Engine* m_current = nullptr;
+    std::atomic<Engine*> m_next { nullptr };
+    std::atomic<Engine*> m_retired { nullptr };
     SpscQueue<Event, 2048> m_events;
     std::vector<float> m_left;
     std::vector<float> m_right;

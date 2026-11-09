@@ -14,6 +14,10 @@
 #include "framework/global/async/asyncable.h"
 #include "framework/global/modularity/ioc.h"
 
+#include <memory>
+
+#include "instruments/internal/instrumenttracks.h"
+
 namespace au::instruments {
 class InstrumentsPanelModel : public QObject, public muse::async::Asyncable, public muse::Contextable
 {
@@ -48,6 +52,8 @@ public:
     Q_INVOKABLE void restartAudio();
     Q_INVOKABLE void allNotesOff();
     Q_INVOKABLE void previewNote(int note, bool on);
+    Q_INVOKABLE void newInstrumentTrack();
+    Q_INVOKABLE void openLastTakeInScore();
 
     QVariantList sounds() const;
     QString currentSound() const;
@@ -69,6 +75,9 @@ signals:
 
 private:
     QString takesFolder() const;
+    InstrumentTracks& tracks();
+
+    std::unique_ptr<InstrumentTracks> m_tracks;
 
     QTimer m_timer;
     QString m_lastTake;
