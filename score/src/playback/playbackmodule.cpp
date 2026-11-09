@@ -35,6 +35,7 @@
 #include "internal/soundprofilesrepository.h"
 #include "internal/knownaudiopluginsconfigurator.h"
 #include "internal/playbackcommandscontroller.h"
+#include "internal/studiolink.h"
 
 using namespace mu::playback;
 using namespace muse;
@@ -110,6 +111,10 @@ void PlaybackContext::onInit(const IApplication::RunMode& mode)
     }
 
     m_soundProfileRepo->init();
+
+    // Studio: play, stop and the cursor shared live with Tape
+    m_studioLink = std::make_shared<StudioLink>(iocContext());
+    m_studioLink->init();
 }
 
 void PlaybackContext::onDeinit()

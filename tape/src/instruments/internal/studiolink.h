@@ -1,0 +1,47 @@
+/*
+ * Tape side of the Studio live link: play, stop and the cursor are shared with Score.
+ * SPDX-License-Identifier: GPL-3.0-only
+ */
+#pragma once
+
+#include <QElapsedTimer>
+#include <QJsonObject>
+#include <QTimer>
+#include <memory>
+
+#include "framework/global/async/asyncable.h"
+#include "framework/global/modularity/ioc.h"
+#include "context/iglobalcontext.h"
+#include "playback/iplayback.h"
+
+namespace studiolink {
+class Peer;
+}
+
+namespace au::instruments {
+class StudioLink : public muse::Contextable, public muse::async::Asyncable
+{
+    muse::ContextInject<au::context::IGlobalContext> globalContext{ this };
+    muse::ContextInject<au::playback::IPlayback> playback{ this };
+
+public:
+    StudioLink(const muse::modularity::ContextPtr& ctx);
+    ~StudioLink();
+
+    void init();
+
+private:
+    void subscribe();
+    void onMessage(const QJsonObject& msg);
+    void sendState(const char* cmd);
+    bool muted() const;
+    bool isPlaying() const;
+    double position() const;
+
+    std::unique_ptr<studiolink::Peer> m_peer;
+    QElapsedTimer m_applied;
+    QTimer m_seekDebounce;
+    double m_lastSentPos = -1;
+    bool m_wasPlaying = false;
+};
+}

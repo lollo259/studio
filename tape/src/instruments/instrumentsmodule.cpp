@@ -11,6 +11,7 @@
 #include "internal/livesynth.h"
 #include "internal/instrumentsservice.h"
 #include "internal/instrumentsactions.h"
+#include "internal/studiolink.h"
 
 using namespace au::instruments;
 using namespace muse;
@@ -73,6 +74,10 @@ void InstrumentsContext::onInit(const IApplication::RunMode& mode)
     }
     m_actions = std::make_shared<InstrumentsActions>(iocContext());
     m_actions->init();
+
+    // Studio: play, stop and the cursor shared live with Score
+    m_link = std::make_shared<StudioLink>(iocContext());
+    m_link->init();
     auto ar = ioc()->resolve<muse::ui::IUiActionsRegister>(mname);
     if (ar) {
         ar->reg(m_actions);

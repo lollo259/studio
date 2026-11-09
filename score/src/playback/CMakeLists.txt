@@ -48,7 +48,14 @@ target_sources(playback PRIVATE
     internal/drumsetloader.h
     internal/knownaudiopluginsconfigurator.cpp
     internal/knownaudiopluginsconfigurator.h
+    internal/studiolink.cpp
+    internal/studiolink.h
+    internal/studiolinkpeer.cpp
+    internal/studiolinkpeer.h
 )
+
+find_package(Qt6 REQUIRED COMPONENTS Network)
+target_link_libraries(playback PRIVATE Qt6::Network)
 
 if (MUE_BUILD_PLAYBACK_TESTS)
     add_subdirectory(tests)

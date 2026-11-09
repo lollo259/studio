@@ -31,6 +31,7 @@ class PlaybackConfiguration;
 class PlaybackController;
 class SoundProfilesRepository;
 class PlaybackCommandsController;
+class StudioLink;
 class PlaybackModule : public muse::modularity::IModuleSetup
 {
 public:
@@ -61,5 +62,6 @@ private:
     std::shared_ptr<PlaybackCommandsController> m_commandsController;
     std::shared_ptr<PlaybackController> m_playbackController;
     std::shared_ptr<SoundProfilesRepository> m_soundProfileRepo;
+    std::shared_ptr<StudioLink> m_studioLink;
 };
 }

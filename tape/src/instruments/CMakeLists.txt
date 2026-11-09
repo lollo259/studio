@@ -64,6 +64,7 @@ else()
     target_compile_options(tape_fluidsynth PRIVATE -w)
 endif()
 
+find_package(Qt6 REQUIRED COMPONENTS Network)
 muse_create_module(instruments)
 
 target_sources(instruments PRIVATE
@@ -81,14 +82,18 @@ target_sources(instruments PRIVATE
     internal/instrumentsactions.cpp
     internal/instrumenttracks.cpp
     internal/instrumenttracks.h
+    internal/studiolink.cpp
+    internal/studiolink.h
+    internal/studiolinkpeer.cpp
+    internal/studiolinkpeer.h
     internal/instrumentsactions.h
 )
 
 if (WIN32)
-    target_link_libraries(instruments PRIVATE sfizz::shared tape_fluidsynth portaudio::portaudio muse::midi)
+    target_link_libraries(instruments PRIVATE sfizz::shared tape_fluidsynth portaudio::portaudio muse::midi Qt6::Network)
     install(TARGETS sfizz_shared RUNTIME DESTINATION bin)
 else()
-    target_link_libraries(instruments PRIVATE sfizz::sfizz tape_fluidsynth portaudio::portaudio muse::midi)
+    target_link_libraries(instruments PRIVATE sfizz::sfizz tape_fluidsynth portaudio::portaudio muse::midi Qt6::Network)
 endif()
 
 add_subdirectory(qml/Audacity/Instruments)
