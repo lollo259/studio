@@ -1,0 +1,124 @@
+name: 'Studio: Windows'
+
+# One folder with everything: Score, Tape, the sounds (already unpacked and mapped)
+# and Score.exe / Tape.exe at the top. Runs after a successful Score or Tape build.
+
+on:
+  workflow_dispatch:
+  workflow_run:
+    workflows: ['Score: Windows', 'Tape: Windows']
+    types: [completed]
+    branches: [main]
+  push:
+    branches: [main]
+    paths: ['studio/**', '.github/workflows/studio_windows.yml']
+
+concurrency:
+  group: studio-windows
+  cancel-in-progress: true
+
+jobs:
+  studio:
+    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-24.04
+    steps:
+    - name: Clone repository
+      uses: actions/checkout@v6
+
+    - name: Tools
+      run: |
+        sudo apt-get update -qq
+        sudo apt-get install -y -qq p7zip-full gcc-mingw-w64-x86-64 binutils-mingw-w64-x86-64
+
+    - name: Latest Score build
+      uses: dawidd6/action-download-artifact@v11
+      with:
+        workflow: score_windows.yml
+        workflow_conclusion: success
+        branch: main
+        name: 'Score_.*'
+        name_is_regexp: true
+        path: dl/score
+
+    - name: Latest Tape build
+      uses: dawidd6/action-download-artifact@v11
+      with:
+        workflow: tape_windows.yml
+        workflow_conclusion: success
+        branch: main
+        name: 'Tape_.*'
+        name_is_regexp: true
+        path: dl/tape
+
+    - name: Put the apps in place
+      shell: bash
+      run: |
+        set -e
+        mkdir -p Studio x/score x/tape
+        # each app arrives as a .7z with its own folder inside: unpack, then take the folder that holds bin/
+        for z in $(find dl/score -name '*.7z'); do 7z x -y -ox/score "$z" > /dev/null; done
+        for z in $(find dl/tape -name '*.7z'); do 7z x -y -ox/tape "$z" > /dev/null; done
+        score_bin=$(dirname "$(find x/score -iname 'LaurenceWhoScore*.exe' -path '*/bin/*' | head -1)")
+        tape_bin=$(dirname "$(find x/tape -iname 'Audacity4.exe' -path '*/bin/*' | head -1)")
+        test -n "$score_bin" && test -n "$tape_bin"
+        mv "$(dirname "$score_bin")" Studio/Score
+        mv "$(dirname "$tape_bin")" Studio/Tape
+        echo "SCORE_EXE=$(basename "$(find Studio/Score/bin -maxdepth 1 -iname 'LaurenceWhoScore*.exe' | head -1)")" >> $GITHUB_ENV
+        ls Studio Studio/Score/bin | head -40
+
+    - name: Score.exe and Tape.exe
+      shell: bash
+      run: |
+        set -e
+        cd studio/launcher
+        echo "1 ICON \"$GITHUB_WORKSPACE/score/share/icons/AppIcon/MS4_AppIcon.ico\"" > score.rc
+        echo "1 ICON \"$GITHUB_WORKSPACE/tape/share/icons/AppIcon/AU4_AppIcon.ico\"" > tape.rc
+        x86_64-w64-mingw32-windres score.rc -O coff -o score.res
+        x86_64-w64-mingw32-windres tape.rc -O coff -o tape.res
+        x86_64-w64-mingw32-gcc -municode -mwindows -O2 -static "-DTARGET=L\"Score\\\\bin\\\\${SCORE_EXE}\"" launcher.c score.res -o "$GITHUB_WORKSPACE/Studio/Score.exe"
+        x86_64-w64-mingw32-gcc -municode -mwindows -O2 -static '-DTARGET=L"Tape\\bin\\Audacity4.exe"' launcher.c tape.res -o "$GITHUB_WORKSPACE/Studio/Tape.exe"
+        ls -la "$GITHUB_WORKSPACE/Studio"
+
+    - name: Sounds
+      shell: bash
+      run: |
+        set -e
+        mkdir -p Studio/Sounds
+        cd Studio/Sounds
+        git clone --depth 1 https://github.com/sfzinstruments/SalamanderGrandPiano.git "Salamander Grand Piano"
+        git clone --depth 1 https://github.com/sgossner/VSCO-2-CE.git "VSCO 2 CE"
+        git clone --depth 1 https://github.com/mrbumpy409/GeneralUser-GS.git gu
+        mkdir -p "GeneralUser GS"
+        mv gu/GeneralUser-GS.sf2 "GeneralUser GS/"
+        cp gu/LICENSE.txt "GeneralUser GS/" 2>/dev/null || true
+        rm -rf gu "Salamander Grand Piano/.git" "VSCO 2 CE/.git"
+        # VSCO ships only recordings: write the instrument maps (one .sfz per instrument and articulation)
+        cd "VSCO 2 CE"
+        find . -type f -iname '*.wav' | sed 's#^\./##' | sort > /tmp/vsco_files.txt
+        python3 -I "$GITHUB_WORKSPACE/studio/sounds/make_vsco_sfz.py" /tmp/vsco_files.txt . "Keys/Upright Piano/MappingChart.txt" "$GITHUB_WORKSPACE/studio/sounds/vsco_gains.json"
+        ls *.sfz | wc -l
+        cd ..
+        du -sh *
+
+    - name: Read me
+      shell: bash
+      run: |
+        printf '%s\r\n' \
+          'Laurence Who Studio' \
+          '' \
+          'Score.exe  - write music (Score)' \
+          'Tape.exe   - record and play (Tape)' \
+          'Sounds     - the instruments Tape plays, ready to use' \
+          '' \
+          'Keep everything together in this folder: Score and Tape find each other and the sounds here.' \
+          'In Score: File > Send to Tape. In Tape: Add track > Instrument, Record > Open last take in Score.' \
+          > "Studio/Start here.txt"
+        echo "STUDIO_NAME=Studio_$(date -u +%Y%m%d-%H%M)_Windows" >> $GITHUB_ENV
+
+    - name: Upload Studio
+      uses: actions/upload-artifact@v7
+      with:
+        name: ${{ env.STUDIO_NAME }}
+        path: Studio/
+        compression-level: 0
+        retention-days: 14
