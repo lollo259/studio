@@ -70,22 +70,24 @@ FocusScope {
     property bool toolTipShowLocked: false
 
     property font iconFont: ui.theme.iconsFont
-    property color iconColor: ui.theme.fontPrimaryColor
+    property color iconColor: studioKeys && accentButton ? accentColor : ui.theme.fontPrimaryColor
     property font textFont: ui.theme.bodyFont
 
     property bool transparent: false
     property bool accentButton: false
 
+    // Studio (TE): buttons are light keys; "on" keys keep the light body with an orange edge and lamp
+    property bool studioKeys: true
     property color normalColor:
-        transparent ? "transparent" : accentButton ? accentColor : ui.theme.buttonColor
-    property color hoverHitColor: accentButton ? accentColor : ui.theme.buttonColor
+        transparent && !accentButton ? "transparent" : (accentButton && !studioKeys) ? accentColor : ui.theme.buttonColor
+    property color hoverHitColor: (accentButton && !studioKeys) ? accentColor : ui.theme.buttonColor
     property color accentColor: ui.theme.accentColor
 
     property bool isNarrow: buttonType === FlatButton.Horizontal
     property real margins: isNarrow ? 12 : 16
     property real minWidth: isNarrow ? 24 : 132
 
-    property real backgroundRadius: 3
+    property real backgroundRadius: studioKeys ? 6 : 3
 
     property bool drawFocusBorderInsideRect: false
 
@@ -176,44 +178,84 @@ FocusScope {
     Component {
         id: defaultBackgroundComponent
 
-        Rectangle {
-            id: background
+        Item {
+            id: keyRoot
 
-            color: root.normalColor
-            opacity: ui.theme.buttonOpacityNormal
+            readonly property bool isKey: root.studioKeys && (!root.transparent || root.accentButton || mouseArea.containsMouse)
+            readonly property bool down: mouseArea.pressed
 
-            radius: root.backgroundRadius
-            border.width: ui.theme.borderWidth
-            border.color: ui.theme.strokeColor
-
-            NavigationFocusBorder {
-                navigationCtrl: navCtrl
-                drawOutsideParent: !root.drawFocusBorderInsideRect
+            // the key's shadow / edge underneath (TE: keys sit on the body)
+            Rectangle {
+                visible: keyRoot.isKey
+                anchors.fill: parent
+                anchors.topMargin: keyRoot.down ? 1 : 2
+                anchors.bottomMargin: keyRoot.down ? -1 : -2
+                radius: root.backgroundRadius
+                color: Qt.darker(ui.theme.backgroundPrimaryColor, 1.28)
             }
 
-            states: [
-                State {
-                    name: "PRESSED"
-                    when: mouseArea.pressed
+            Rectangle {
+                id: background
 
-                    PropertyChanges {
-                        target: background
-                        color: root.hoverHitColor
-                        opacity: ui.theme.buttonOpacityHit
-                    }
-                },
+                anchors.fill: parent
+                anchors.topMargin: keyRoot.isKey && keyRoot.down ? 1 : 0
+                anchors.bottomMargin: keyRoot.isKey && keyRoot.down ? -1 : 0
 
-                State {
-                    name: "HOVERED"
-                    when: mouseArea.containsMouse && !mouseArea.pressed
+                color: root.normalColor
+                opacity: keyRoot.isKey ? 1.0 : ui.theme.buttonOpacityNormal
 
-                    PropertyChanges {
-                        target: background
-                        color: root.hoverHitColor
-                        opacity: ui.theme.buttonOpacityHover
-                    }
+                gradient: keyRoot.isKey ? keyGradient : null
+                Gradient {
+                    id: keyGradient
+                    GradientStop { position: 0.0; color: mouseArea.containsMouse && !keyRoot.down ? Qt.lighter(root.normalColor, 1.06) : Qt.lighter(root.normalColor, 1.03) }
+                    GradientStop { position: 1.0; color: Qt.darker(root.normalColor, 1.04) }
                 }
-            ]
+
+                radius: root.backgroundRadius
+                border.width: root.studioKeys && root.accentButton ? 1.5 : ui.theme.borderWidth
+                border.color: root.studioKeys && root.accentButton ? root.accentColor : ui.theme.strokeColor
+
+                NavigationFocusBorder {
+                    navigationCtrl: navCtrl
+                    drawOutsideParent: !root.drawFocusBorderInsideRect
+                }
+
+                // lamp: lit while the key is on
+                Rectangle {
+                    visible: root.studioKeys && root.accentButton && root.width >= 22 && root.height >= 20
+                    width: 5
+                    height: 5
+                    radius: 2.5
+                    anchors.top: parent.top
+                    anchors.right: parent.right
+                    anchors.margins: 4
+                    color: root.accentColor
+                }
+
+                states: [
+                    State {
+                        name: "PRESSED"
+                        when: mouseArea.pressed && !keyRoot.isKey
+
+                        PropertyChanges {
+                            target: background
+                            color: root.hoverHitColor
+                            opacity: ui.theme.buttonOpacityHit
+                        }
+                    },
+
+                    State {
+                        name: "HOVERED"
+                        when: mouseArea.containsMouse && !mouseArea.pressed && !keyRoot.isKey
+
+                        PropertyChanges {
+                            target: background
+                            color: root.hoverHitColor
+                            opacity: ui.theme.buttonOpacityHover
+                        }
+                    }
+                ]
+            }
         }
     }
 

@@ -116,13 +116,14 @@ Item {
             readonly property MenuItem item: Boolean(itemModel) ? itemModel.item : null
             readonly property bool hasMenu: Boolean(item) && item.subitems.length !== 0
 
-            width: gridView.cellWidth
-            height: gridView.cellWidth
+            // Studio (TE): every tool is its own key, with a small gap between keys
+            width: gridView.cellWidth - 4
+            height: gridView.cellWidth - 4
 
             enabled: noteInputModel.isInputAllowed
 
             accentButton: (Boolean(item) && item.checked) || menuLoader.isMenuOpened
-            transparent: !accentButton
+            transparent: false
 
             icon: Boolean(item) ? item.icon : IconCode.NONE
             iconFont: ui.theme.toolbarIconsFont
