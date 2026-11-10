@@ -472,6 +472,8 @@ public:
                 m_top->playing = false;
             } else if (cmd == "show") {
                 setPage(m.value("page").toString());
+            } else if (cmd == "take") {
+                setPage("score"); // the take's notes open in Score
             }
             m_top->update();
         });
@@ -567,6 +569,9 @@ private:
 
     void setPage(const QString& page)
     {
+        if (m_top->page != page) {
+            m_link.send(QJsonObject { { "cmd", "page" }, { "page", page } }); // Score refreshes Tape's tracks on the way in
+        }
         m_top->page = page;
         m_score->setVisible(page != "tape");
         m_tape->setVisible(page != "score");

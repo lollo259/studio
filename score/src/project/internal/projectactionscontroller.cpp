@@ -559,15 +559,20 @@ muse::Ret ProjectActionsController::sendToTape()
         linkFile.close();
     }
 
-    // inside the Studio window: turn to the Tape page
-    if (qEnvironmentVariableIsSet("STUDIO_EMBEDDED")) {
-        QLocalSocket s;
-        s.connectToServer("laurencewho-studio-link");
-        if (s.waitForConnected(200)) {
-            s.write("{\"cmd\":\"show\",\"page\":\"tape\",\"from\":\"score-project\"}\n");
-            s.flush();
-            s.waitForBytesWritten(200);
-            s.disconnectFromServer();
+    // Studio live link: Score keeps these tracks up to date from now on; inside the
+    // Studio window, also turn to the Tape page
+    {
+        QLocalSocket sock;
+        sock.connectToServer("laurencewho-studio-link");
+        if (sock.waitForConnected(200)) {
+            QJsonObject sent { { "cmd", "sent" }, { "folder", folder }, { "title", title }, { "from", "score-project" } };
+            sock.write(QJsonDocument(sent).toJson(QJsonDocument::Compact) + "\n");
+            if (qEnvironmentVariableIsSet("STUDIO_EMBEDDED")) {
+                sock.write("{\"cmd\":\"show\",\"page\":\"tape\",\"from\":\"score-project\"}\n");
+            }
+            sock.flush();
+            sock.waitForBytesWritten(300);
+            sock.disconnectFromServer();
         }
     }
 

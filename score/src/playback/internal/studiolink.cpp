@@ -8,6 +8,21 @@
 
 #include "studiolinkpeer.h"
 
+#include <QDir>
+#include <QFile>
+#include <QFileInfo>
+#include <QJsonArray>
+
+#include "engraving/dom/masterscore.h"
+#include "engraving/dom/part.h"
+#include "engraving/dom/staff.h"
+#include "notation/iexcerptnotation.h"
+#include "notation/imasternotation.h"
+#include "notation/inotationelements.h"
+#include "notation/inotationundostack.h"
+#include "project/projectcommands.h"
+#include <QUrl>
+
 using namespace mu::playback;
 
 StudioLink::StudioLink(const muse::modularity::ContextPtr& ctx)
@@ -49,6 +64,95 @@ void StudioLink::init()
     });
 
     m_peer->start();
+
+    projectSession()->masterNotationChanged().onNotify(this, [this]() {
+        m_tapeFolder.clear(); // another score: Tape's tracks belong to the old one
+        m_dirtyParts.clear();
+        watchScore();
+    });
+    watchScore();
+}
+
+void StudioLink::watchScore()
+{
+    auto master = projectSession()->masterNotation();
+    if (!master || !master->notation() || !master->notation()->undoStack()) {
+        return;
+    }
+    master->notation()->undoStack()->changesChannel().onReceive(this, [this, master](const mu::engraving::ScoreChanges& ch) {
+        if (m_tapeFolder.isEmpty() || m_rendering) {
+            return;
+        }
+        // which instruments were touched (staff range -> parts); anything without a range: all of them
+        if (ch.staffIdxFrom == muse::nidx || ch.staffIdxTo == muse::nidx) {
+            m_dirtyParts.insert("*");
+            return;
+        }
+        mu::engraving::MasterScore* score = master->masterScore();
+        for (size_t i = ch.staffIdxFrom; i <= ch.staffIdxTo && score && i < score->nstaves(); ++i) {
+            if (const mu::engraving::Staff* st = score->staff(i)) {
+                if (st->part()) {
+                    m_dirtyParts.insert(QString::fromStdString(st->part()->id().toStdString()));
+                }
+            }
+        }
+    }, muse::async::Asyncable::Mode::SetReplace);
+}
+
+// Re-render the instruments edited since the last time and tell Tape to swap their audio.
+void StudioLink::refreshTape()
+{
+    auto master = projectSession()->masterNotation();
+    if (m_tapeFolder.isEmpty() || m_dirtyParts.isEmpty() || !master || m_rendering) {
+        return;
+    }
+    m_rendering = true;
+    const bool all = m_dirtyParts.contains("*");
+
+    notation::INotationPtrList notations;
+    auto consider = [&](const notation::IExcerptNotationPtr& ex) {
+        if (!ex || !ex->notation()) {
+            return;
+        }
+        bool touched = all;
+        if (!touched) {
+            mu::engraving::Score* s = ex->notation()->elements() ? ex->notation()->elements()->msScore() : nullptr;
+            for (const mu::engraving::Part* p : s ? s->parts() : std::vector<mu::engraving::Part*> {}) {
+                if (m_dirtyParts.contains(QString::fromStdString(p->id().toStdString()))) {
+                    touched = true;
+                    break;
+                }
+            }
+        }
+        if (touched) {
+            notations.push_back(ex->notation());
+        }
+    };
+    for (const auto& ex : master->excerpts()) {
+        consider(ex);
+    }
+
+    QStringList files;
+    if (!notations.empty()) {
+        // the export names each file "<title>-<part>.wav"; remove the old ones first so nothing asks to replace
+        for (const auto& n : notations) {
+            QFile::remove(m_tapeFolder + "/" + m_tapeTitle + "-" + QString::fromStdString(muse::io::escapeFileName(muse::io::path_t(n->name())).toStdString()) + ".wav");
+        }
+        const muse::io::path_t base = m_tapeFolder + "/" + m_tapeTitle + ".wav";
+        exportProjectScenario()->exportScores(notations, base, project::INotationWriter::UnitType::PER_PART);
+        for (const auto& n : notations) {
+            const QString f = m_tapeFolder + "/" + m_tapeTitle + "-" + QString::fromStdString(muse::io::escapeFileName(muse::io::path_t(n->name())).toStdString()) + ".wav";
+            if (QFileInfo::exists(f)) {
+                files << QDir::toNativeSeparators(f);
+            }
+        }
+    }
+    m_dirtyParts.clear();
+    m_rendering = false;
+
+    if (!files.isEmpty()) {
+        m_peer->send(QJsonObject { { "cmd", "reload" }, { "files", QJsonArray::fromStringList(files) } });
+    }
 }
 
 bool StudioLink::muted() const
@@ -92,6 +196,30 @@ void StudioLink::onMessage(const QJsonObject& msg)
         if (!state()->isPlaying()) {
             rewindTo(t);
         }
+    } else if (cmd == "sent") {
+        // Send to Tape just put this score's instruments in Tape: keep them up to date from now on
+        m_tapeFolder = msg.value("folder").toString();
+        m_tapeTitle = msg.value("title").toString();
+        m_dirtyParts.clear();
+        watchScore();
+        m_applied.invalidate();
+        return;
+    } else if (cmd == "take") {
+        // a take finished in Tape: open its notes as a score
+        const QString midi = msg.value("midi").toString();
+        if (QFileInfo::exists(midi)) {
+            commandDispatcher()->dispatch(project::PROJECT_OPEN_COMMAND,
+                                          { { "url", muse::Val(QUrl::fromLocalFile(midi).toString()) } });
+        }
+        m_applied.invalidate();
+        return;
+    } else if (cmd == "page" || cmd == "show") {
+        // turning to Tape: bring its tracks up to date with the edits made since
+        if (msg.value("page").toString() == "tape") {
+            QTimer::singleShot(50, m_peer.get(), [this]() { refreshTape(); });
+        }
+        m_applied.invalidate();
+        return;
     } else if (cmd == "hello") {
         m_applied.invalidate();
         sendState(state()->isPlaying() ? "play" : "stop");

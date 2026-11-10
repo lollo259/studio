@@ -11,8 +11,10 @@
 
 #include "framework/global/async/asyncable.h"
 #include "framework/global/modularity/ioc.h"
+#include "framework/actions/iactionsdispatcher.h"
 #include "context/iglobalcontext.h"
 #include "playback/iplayback.h"
+#include "trackedit/itrackeditinteraction.h"
 
 namespace studiolink {
 class Peer;
@@ -23,6 +25,8 @@ class StudioLink : public muse::Contextable, public muse::async::Asyncable
 {
     muse::ContextInject<au::context::IGlobalContext> globalContext{ this };
     muse::ContextInject<au::playback::IPlayback> playback{ this };
+    muse::ContextInject<au::trackedit::ITrackeditInteraction> trackeditInteraction{ this };
+    muse::ContextInject<muse::actions::IActionsDispatcher> dispatcher{ this };
 
 public:
     StudioLink(const muse::modularity::ContextPtr& ctx);
@@ -33,6 +37,7 @@ public:
 private:
     void subscribe();
     void onMessage(const QJsonObject& msg);
+    void reloadTracks(const QStringList& files);
     void sendState(const char* cmd);
     bool muted() const;
     bool isPlaying() const;

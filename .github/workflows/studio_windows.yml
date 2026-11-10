@@ -33,7 +33,7 @@ jobs:
         sudo apt-get install -y -qq p7zip-full gcc-mingw-w64-x86-64 binutils-mingw-w64-x86-64
 
     - name: Latest Score build
-      uses: dawidd6/action-download-artifact@v11
+      uses: dawidd6/action-download-artifact@v28
       with:
         workflow: score_windows.yml
         workflow_conclusion: success
@@ -43,7 +43,7 @@ jobs:
         path: dl/score
 
     - name: Latest Tape build
-      uses: dawidd6/action-download-artifact@v11
+      uses: dawidd6/action-download-artifact@v28
       with:
         workflow: tape_windows.yml
         workflow_conclusion: success

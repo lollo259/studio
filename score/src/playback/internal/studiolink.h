@@ -6,6 +6,8 @@
 
 #include <QElapsedTimer>
 #include <QJsonObject>
+#include <QSet>
+#include <QString>
 #include <QTimer>
 #include <memory>
 
@@ -13,6 +15,8 @@
 #include "modularity/ioc.h"
 #include "rcommand/icommanddispatcher.h"
 #include "../iplaybackcontroller.h"
+#include "project/iexportprojectscenario.h"
+#include "project/iprojectsession.h"
 
 namespace studiolink {
 class Peer;
@@ -24,6 +28,8 @@ class StudioLink : public muse::Contextable, public muse::async::Asyncable
     muse::ContextInject<IPlaybackController> controller = { this };
     muse::ContextInject<IPlaybackState> state = { this };
     muse::ContextInject<muse::rcommand::ICommandDispatcher> commandDispatcher = { this };
+    muse::ContextInject<project::IProjectSession> projectSession = { this };
+    muse::ContextInject<project::IExportProjectScenario> exportProjectScenario = { this };
 
 public:
     StudioLink(const muse::modularity::ContextPtr& ctx);
@@ -36,6 +42,15 @@ private:
     void sendState(const char* cmd);
     bool muted() const;
     void rewindTo(double secs);
+
+    // keeping Tape's tracks up to date with the score
+    void watchScore();
+    void refreshTape();
+
+    QString m_tapeFolder;          // where Send to Tape put the instruments
+    QString m_tapeTitle;           // their file name start ("<title>-<instrument>.wav")
+    QSet<QString> m_dirtyParts;    // part ids edited since the last render ("*" = all)
+    bool m_rendering = false;
 
     std::unique_ptr<studiolink::Peer> m_peer;
     QElapsedTimer m_applied;   // when we last applied a message (to not echo it back)

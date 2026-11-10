@@ -8,6 +8,11 @@
 
 #include "studiolinkpeer.h"
 
+#include <QFileInfo>
+#include <QJsonArray>
+
+#include "framework/actions/actiontypes.h"
+
 using namespace au::instruments;
 using au::playback::PlaybackStatus;
 
@@ -82,8 +87,47 @@ void StudioLink::sendState(const char* cmd)
     m_peer->send(QJsonObject { { "cmd", cmd }, { "t", t } });
 }
 
+// Score re-rendered some instruments: put the new audio into the tracks with the same name
+void StudioLink::reloadTracks(const QStringList& files)
+{
+    auto project = globalContext()->currentProject();
+    auto te = globalContext()->currentTrackeditProject();
+    if (!project || !te) {
+        return;
+    }
+    QStringList newOnes;
+    for (const QString& f : files) {
+        const QString name = QFileInfo(f).completeBaseName();
+        au::trackedit::TrackId id = -1;
+        for (const auto& t : te->trackList()) {
+            if (t.title.toQString() == name) {
+                id = t.id;
+                break;
+            }
+        }
+        if (id < 0) {
+            newOnes << f;
+            continue;
+        }
+        trackeditInteraction()->removeTracksData({ id }, muse::secs_t(0.0), muse::secs_t(1.0e7), false);
+        project->importIntoTrack(muse::io::path_t(f), id, muse::secs_t(0.0));
+    }
+    if (!newOnes.isEmpty()) {
+        dispatcher()->dispatch("project-import", muse::actions::ActionData::make_arg1<QStringList>(newOnes));
+    }
+}
+
 void StudioLink::onMessage(const QJsonObject& msg)
 {
+    if (msg.value("cmd").toString() == "reload") {
+        QStringList files;
+        for (const auto& v : msg.value("files").toArray()) {
+            files << v.toString();
+        }
+        reloadTracks(files);
+        return;
+    }
+
     auto player = playback() ? playback()->player() : nullptr;
     if (!player || !globalContext()->currentProject()) {
         return;

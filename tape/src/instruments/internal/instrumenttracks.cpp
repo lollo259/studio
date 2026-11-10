@@ -8,6 +8,9 @@
 #include <QDir>
 #include <QFileInfo>
 #include <QProcess>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QLocalSocket>
 #include <QSettings>
 #include <QStandardPaths>
 
@@ -125,6 +128,16 @@ QString InstrumentTracks::stopTake()
     const QString audio = QString::fromStdString(r.audioPath);
     if (!r.midiPath.empty()) {
         s_lastMidi = QString::fromStdString(r.midiPath);
+        // Studio live link: Score opens the take's notes straight away
+        QLocalSocket sock;
+        sock.connectToServer("laurencewho-studio-link");
+        if (sock.waitForConnected(200)) {
+            QJsonObject take { { "cmd", "take" }, { "midi", QDir::toNativeSeparators(s_lastMidi) }, { "from", "tape-take" } };
+            sock.write(QJsonDocument(take).toJson(QJsonDocument::Compact) + "\n");
+            sock.flush();
+            sock.waitForBytesWritten(300);
+            sock.disconnectFromServer();
+        }
     }
     if (audio.isEmpty() || r.seconds <= 0.05) {
         return audio;
