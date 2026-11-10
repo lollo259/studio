@@ -21,6 +21,10 @@
  */
 #include "audioconfiguration.h"
 
+#include <QCoreApplication>
+#include <QDir>
+#include <QFileInfo>
+
 //TODO: remove with global clearing of Q_OS_*** defines
 #include <QtGlobal>
 
@@ -209,6 +213,17 @@ io::paths_t AudioConfiguration::soundFontDirectories() const
 {
     io::paths_t paths = userSoundFontDirectories();
     paths.push_back(globalConfiguration()->appDataPath());
+
+    // Studio: the same sounds as Tape: the user's Studio\Sounds and the Sounds folder shipped
+    // with Studio (next to the Score and Tape folders)
+    const QString home = QDir::homePath() + "/Studio/Sounds";
+    if (QFileInfo(home).isDir()) {
+        paths.push_back(io::path_t(home));
+    }
+    const QString shipped = QDir::cleanPath(QCoreApplication::applicationDirPath() + "/../../Sounds");
+    if (QFileInfo(shipped).isDir() && QFileInfo(shipped).canonicalFilePath() != QFileInfo(home).canonicalFilePath()) {
+        paths.push_back(io::path_t(shipped));
+    }
 
     return paths;
 }

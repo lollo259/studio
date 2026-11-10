@@ -128,10 +128,14 @@ QString InstrumentTracks::stopTake()
     const QString audio = QString::fromStdString(r.audioPath);
     if (!r.midiPath.empty()) {
         s_lastMidi = QString::fromStdString(r.midiPath);
-        // Studio live link: Score opens the take's notes straight away
+        // Studio live link: Score opens the take's notes straight away, only if switched on
+        // (off by default: Score quantizes the notes; Record > Open last take in Score does it by hand)
         QLocalSocket sock;
-        sock.connectToServer("laurencewho-studio-link");
-        if (sock.waitForConnected(200)) {
+        const bool toScore = QSettings("LaurenceWho", "Studio").value("takesToScore", false).toBool();
+        if (toScore) {
+            sock.connectToServer("laurencewho-studio-link");
+        }
+        if (toScore && sock.waitForConnected(200)) {
             QJsonObject take { { "cmd", "take" }, { "midi", QDir::toNativeSeparators(s_lastMidi) }, { "from", "tape-take" } };
             sock.write(QJsonDocument(take).toJson(QJsonDocument::Compact) + "\n");
             sock.flush();
