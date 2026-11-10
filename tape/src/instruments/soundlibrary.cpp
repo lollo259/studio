@@ -14,6 +14,8 @@
 
 #include <QCoreApplication>
 
+#include "internal/samplerkit.h"
+
 namespace fs = std::filesystem;
 using namespace au::instruments;
 
@@ -269,6 +271,18 @@ std::vector<SoundEntry> au::instruments::scanAllSounds()
             all.push_back(std::move(e));
         }
         seenLibraries.insert(seenLibraries.end(), here.begin(), here.end());
+    }
+    // the Sampler's kits (Documents/Studio/Sampler) are ordinary .sfz instruments too
+    for (const QString& kit : kitNames()) {
+        SoundEntry e;
+        e.name = kit.toStdString();
+        e.library = "Sampler";
+        e.path = kitSfzPath(kit).toStdString();
+        e.family = SoundFamily::Percussion;
+        std::error_code ec;
+        if (fs::is_regular_file(fs::path(kitSfzPath(kit).toStdWString()), ec)) {
+            all.push_back(std::move(e));
+        }
     }
     std::stable_sort(all.begin(), all.end(), [](const SoundEntry& a, const SoundEntry& b) {
         if (a.family != b.family) return a.family < b.family;

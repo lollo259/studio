@@ -17,6 +17,7 @@ using namespace muse::ui;
 using namespace muse::actions;
 
 static const ActionCode OPEN_CODE("instruments");
+static const ActionCode SAMPLER_CODE("sampler");
 static const ActionCode PANIC_CODE("instruments-panic");
 static const ActionCode NEW_TRACK_CODE("instruments-new-track");
 static const ActionCode OPEN_IN_SCORE_CODE("instruments-open-in-score");
@@ -27,6 +28,11 @@ static const UiActionList s_actions = {
              au::context::CTX_ANY,
              TranslatableString("action", "&Instruments…"),
              TranslatableString("action_description", "Play virtual instruments from your MIDI keyboard")),
+    UiAction(SAMPLER_CODE,
+             au::context::UiCtxAny,
+             au::context::CTX_ANY,
+             TranslatableString("action", "&Sampler…"),
+             TranslatableString("action_description", "16 pads: load sounds, trim them and play them from the pads or your keyboard")),
     UiAction(PANIC_CODE,
              au::context::UiCtxAny,
              au::context::CTX_ANY,
@@ -47,6 +53,7 @@ static const UiActionList s_actions = {
 void InstrumentsActions::init()
 {
     dispatcher()->reg(this, OPEN_CODE, this, &InstrumentsActions::openPanel);
+    dispatcher()->reg(this, SAMPLER_CODE, this, &InstrumentsActions::openSampler);
     dispatcher()->reg(this, PANIC_CODE, this, &InstrumentsActions::panic);
     dispatcher()->reg(this, NEW_TRACK_CODE, this, &InstrumentsActions::newInstrumentTrack);
     dispatcher()->reg(this, OPEN_IN_SCORE_CODE, this, &InstrumentsActions::openInScore);
@@ -76,6 +83,11 @@ void InstrumentsActions::openInScore()
 void InstrumentsActions::openPanel()
 {
     interactive()->open("audacity://instruments");
+}
+
+void InstrumentsActions::openSampler()
+{
+    interactive()->open("audacity://sampler");
 }
 
 void InstrumentsActions::panic()

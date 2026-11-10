@@ -6,8 +6,11 @@ qt_add_qml_module(instruments_qml
     SOURCES
         instrumentspanelmodel.cpp
         instrumentspanelmodel.h
+        samplerpanelmodel.cpp
+        samplerpanelmodel.h
     QML_FILES
         InstrumentsDialog.qml
+        SamplerDialog.qml
     IMPORTS
         TARGET muse_ui_qml
         TARGET muse_uicomponents_qml

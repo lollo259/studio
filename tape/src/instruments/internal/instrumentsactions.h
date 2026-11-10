@@ -37,6 +37,7 @@ public:
 
 private:
     void openPanel();
+    void openSampler();
     void panic();
     void newInstrumentTrack();
     void openInScore();
