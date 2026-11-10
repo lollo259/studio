@@ -200,6 +200,8 @@ void EngravingModule::onInit(const IApplication::RunMode&)
 #ifdef MUSE_LAURENCE_FONT
         addMusicFont("Laurence", FontDataKey(u"Laurence"), ":/fonts/laurence/Laurence.otf");
         fdb->addFont(FontDataKey(u"Laurence Text"), ":/fonts/laurence/LaurenceText.otf");
+        // Studio: the interface draws its note buttons with Laurence too
+        QFontDatabase::addApplicationFont(":/fonts/laurence/Laurence.otf");
 #endif
         addMusicFont("Emmentaler", FontDataKey(u"MScore"), ":/fonts/mscore/MScore.otf");
         fdb->addFont(FontDataKey(u"MScore Text"), ":/fonts/mscore/MScoreText.otf");

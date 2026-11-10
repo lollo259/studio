@@ -116,17 +116,65 @@ Item {
             readonly property MenuItem item: Boolean(itemModel) ? itemModel.item : null
             readonly property bool hasMenu: Boolean(item) && item.subitems.length !== 0
 
-            // Studio (TE): every tool is its own key, with a small gap between keys
-            width: gridView.cellWidth - 4
-            height: gridView.cellWidth - 4
+            width: gridView.cellWidth
+            height: gridView.cellWidth
 
             enabled: noteInputModel.isInputAllowed
 
             accentButton: (Boolean(item) && item.checked) || menuLoader.isMenuOpened
-            transparent: false
+            transparent: !accentButton
 
-            icon: Boolean(item) ? item.icon : IconCode.NONE
+            // Studio: notes, rests, dots, accidentals and articulations drawn with the Laurence font
+            readonly property var laurenceGlyphs: ({
+                [IconCode.NOTE_WHOLE]: 0xE1D2, [IconCode.NOTE_HALF]: 0xE1D3, [IconCode.NOTE_QUARTER]: 0xE1D5,
+                [IconCode.NOTE_8TH]: 0xE1D7, [IconCode.NOTE_16TH]: 0xE1D9, [IconCode.NOTE_32ND]: 0xE1DB,
+                [IconCode.NOTE_64TH]: 0xE1DD, [IconCode.NOTE_128TH]: 0xE1DF, [IconCode.NOTE_WHOLE_DOUBLE]: 0xE1D0,
+                [IconCode.NOTE_DOTTED]: 0xE1E7, [IconCode.REST]: 0xE4E5,
+                [IconCode.FLAT]: 0xE260, [IconCode.NATURAL]: 0xE261, [IconCode.SHARP]: 0xE262,
+                [IconCode.SHARP_DOUBLE]: 0xE263, [IconCode.FLAT_DOUBLE]: 0xE264,
+                [IconCode.ACCENT]: 0xE4A0, [IconCode.STACCATO]: 0xE4A2, [IconCode.TENUTO]: 0xE4A4, [IconCode.MARCATO]: 0xE4AC
+            })
+            readonly property int baseIcon: Boolean(item) ? item.icon : IconCode.NONE
+            // notes are tall, accidentals medium, dots and articulations tiny: size each kind to fill the key alike
+            readonly property real glyphScale: {
+                const g = laurenceGlyphs[baseIcon]
+                if (g === 0xE1E7 || g >= 0xE4A0 && g <= 0xE4AC) return 1.6
+                if (g >= 0xE260 && g <= 0xE264 || g === 0xE4E5) return 1.05
+                if (g === 0xE1D2 || g === 0xE1D0) return 1.25
+                return 0.82
+            }
+            readonly property bool usesLaurence: laurenceGlyphs[baseIcon] !== undefined
+
+            icon: usesLaurence ? IconCode.NONE : baseIcon
             iconFont: ui.theme.toolbarIconsFont
+
+            // a music-font glyph, centred on the key by its real outline (music fonts sit on the staff, not on a text line)
+            contentItem: usesLaurence ? laurenceGlyph : null
+
+            Component {
+                id: laurenceGlyph
+
+                Item {
+                    implicitWidth: btn.width
+                    implicitHeight: btn.height
+
+                    TextMetrics {
+                        id: tm
+                        font: glyph.font
+                        text: glyph.text
+                    }
+
+                    Text {
+                        id: glyph
+                        text: String.fromCodePoint(btn.laurenceGlyphs[btn.baseIcon])
+                        font.family: "Laurence"
+                        font.pixelSize: Math.round(btn.height * btn.glyphScale)
+                        color: btn.iconColor
+                        x: (parent.width - tm.tightBoundingRect.width) / 2 - tm.tightBoundingRect.x
+                        y: parent.height / 2 - (tm.tightBoundingRect.y + tm.tightBoundingRect.height / 2) - baselineOffset
+                    }
+                }
+            }
 
             toolTipTitle: Boolean(item) ? item.title : ""
             toolTipDescription: Boolean(item) ? item.description : ""

@@ -37,6 +37,7 @@ FocusScope {
     property int displayedNumberLength: maxValue.toString().length
 
     property alias font: textField.font
+    property color textColor: ui.theme.fontPrimaryColor
 
     property alias navigation: navCtrl
     property alias accessible: navCtrl.accessible
@@ -161,7 +162,7 @@ FocusScope {
 
         selectByMouse: false
 
-        color: ui.theme.fontPrimaryColor
+        color: root.textColor
         font: ui.theme.largeBodyFont
 
         validator: IntValidator {

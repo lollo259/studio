@@ -31,6 +31,7 @@ Row {
     property alias maxMillisecondsNumber: millisecondsField.maxValue
 
     property font font: ui.theme.largeBodyFont
+    property color textColor: ui.theme.fontPrimaryColor
 
     property NavigationPanel navigationPanel: null
     property int navigationOrderStart: 0
@@ -50,6 +51,8 @@ Row {
 
         font: root.font
 
+        textColor: root.textColor
+
         navigation.panel: root.navigationPanel
         navigation.order: root.navigationOrderStart
         navigation.name: "hours"
@@ -66,6 +69,7 @@ Row {
         anchors.verticalCenter: parent.verticalCenter
         text: ":"
         font: root.font
+        color: root.textColor
     }
 
     NumberInputField {
@@ -76,6 +80,7 @@ Row {
 
         displayedNumberLength: 2
         font: root.font
+        textColor: root.textColor
 
         navigation.panel: root.navigationPanel
         navigation.order: root.navigationOrderStart + 1
@@ -93,6 +98,7 @@ Row {
         anchors.verticalCenter: parent.verticalCenter
         text: ":"
         font: root.font
+        color: root.textColor
     }
 
     NumberInputField {
@@ -103,6 +109,7 @@ Row {
 
         displayedNumberLength: 2
         font: root.font
+        textColor: root.textColor
 
         navigation.panel: root.navigationPanel
         navigation.order: root.navigationOrderStart + 2
@@ -120,6 +127,7 @@ Row {
         anchors.verticalCenter: parent.verticalCenter
         text: ":"
         font: root.font
+        color: root.textColor
     }
 
     NumberInputField {
@@ -132,6 +140,8 @@ Row {
         value: root.time.getMilliseconds() / precision
 
         font: root.font
+
+        textColor: root.textColor
 
         navigation.panel: root.navigationPanel
         navigation.order: root.navigationOrderStart + 3

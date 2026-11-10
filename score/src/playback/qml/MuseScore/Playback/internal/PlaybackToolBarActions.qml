@@ -122,8 +122,25 @@ Item {
         visible: !root.floating
     }
 
+    // Studio (TE): time, bar and tempo sit on a black display
+    Rectangle {
+        id: studioDisplay
+
+        visible: !root.floating
+        anchors.left: timeField.left
+        anchors.leftMargin: -10
+        anchors.right: tempoLoader.right
+        anchors.rightMargin: -6
+        anchors.verticalCenter: parent.verticalCenter
+        height: Math.max(28, root.height - 8)
+        radius: 6
+        color: "#0B0B0C"
+    }
+
     TimeInputField {
         id: timeField
+
+        textColor: root.floating ? ui.theme.fontPrimaryColor : "#E8E8E4"
 
         anchors.left: buttonsSeparator.right
         anchors.leftMargin: 12
@@ -159,7 +176,8 @@ Item {
         readonly property var t: root.playbackModel.maxPlayTime
         text: !t ? "" : "/ " + (t.getHours() > 0 ? Qt.formatTime(t, "h:mm:ss") : Qt.formatTime(t, "m:ss"))
         font: timeField.font
-        opacity: 0.6
+        color: root.floating ? ui.theme.fontPrimaryColor : "#8A8A8E"
+        opacity: root.floating ? 0.6 : 1.0
     }
 
     MeasureAndBeatFields {
@@ -176,6 +194,7 @@ Item {
         maxBeatNumber: root.playbackModel.maxBeatNumber
 
         font: timeField.font
+        textColor: root.floating ? ui.theme.fontPrimaryColor : "#FF6A13"
 
         navigationPanel: root.navPanel
         navigationOrderStart: timeField.navigationOrderEnd + 1
@@ -235,6 +254,7 @@ Item {
                 implicitHeight: root.height
 
                 transparent: !root.isPopupOpened
+                studioKeys: false
 
                 toolTipTitle: qsTrc("playback", "Speed")
 
@@ -242,6 +262,7 @@ Item {
                 navigation.order: measureAndBeatFields.navigationOrderEnd + 1
 
                 contentItem: TempoView {
+                    textColor: "#5B8CFF"
                     anchors.centerIn: parent
                     anchors.verticalCenterOffset: 1 // for nicer visual alignment
 

@@ -33,6 +33,7 @@ RowLayout {
 
     property alias noteSymbolFont: noteSymbolLabel.font
     property alias tempoValueFont: tempoValueLabel.font
+    property color textColor: ui.theme.fontPrimaryColor
 
     property alias noteSymbolTopPadding: noteSymbolLabel.topPadding
 
@@ -48,11 +49,13 @@ RowLayout {
         font.family: ui.theme.musicalFont.family
         font.pixelSize: ui.theme.musicalFont.pixelSize
         font.letterSpacing: 1
+        color: root.textColor
     }
 
     StyledTextLabel {
         id: tempoValueLabel
 
         text: " = " + root.tempoValue
+        color: root.textColor
     }
 }

@@ -77,7 +77,7 @@ FocusScope {
     property bool accentButton: false
 
     // Studio (TE): buttons are light keys; "on" keys keep the light body with an orange edge and lamp
-    property bool studioKeys: true
+    property bool studioKeys: false // raised keys: off, flat buttons as in look E
     property color normalColor:
         transparent && !accentButton ? "transparent" : (accentButton && !studioKeys) ? accentColor : ui.theme.buttonColor
     property color hoverHitColor: (accentButton && !studioKeys) ? accentColor : ui.theme.buttonColor

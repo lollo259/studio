@@ -36,6 +36,7 @@ Item {
     property alias maxBeatNumber: beatNumberField.maxValue
 
     property font font: ui.theme.largeBodyFont
+    property color textColor: ui.theme.fontPrimaryColor
 
     property NavigationPanel navigationPanel: null
     property int navigationOrderStart: 0
@@ -71,6 +72,8 @@ Item {
 
                 font: root.font
 
+                textColor: root.textColor
+
                 navigation.panel: root.navigationPanel
                 navigation.order: root.navigationOrderStart
                 navigation.name: "measure"
@@ -85,6 +88,7 @@ Item {
         StyledTextLabel {
             text: "."
             font: root.font
+            color: root.textColor
         }
 
         Item {
@@ -103,6 +107,8 @@ Item {
                 addLeadingZeros: false
 
                 font: root.font
+
+                textColor: root.textColor
 
                 navigation.panel: root.navigationPanel
                 navigation.order: root.navigationOrderStart + 1
