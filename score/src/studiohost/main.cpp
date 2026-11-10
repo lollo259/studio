@@ -295,6 +295,8 @@ public:
     bool isUp() const { return m_container != nullptr; }
     QString status() const { return m_status; }
 
+    QStringList args; // files to open (double-clicked in Explorer)
+
     void launch()
     {
         if (!QFileInfo::exists(m_exe)) {
@@ -315,7 +317,7 @@ public:
             emit changed();
             update();
         });
-        m_proc->start(m_exe, QStringList());
+        m_proc->start(m_exe, args);
         m_started.start();
         m_status = "starting " + m_name + "…";
         m_find.start();
@@ -483,7 +485,21 @@ public:
         sw->setContext(Qt::ApplicationShortcut);
         connect(sw, &QShortcut::activated, this, [this]() { setPage(m_top->page == "score" ? "tape" : "score"); });
 
-        setPage("score");
+        // files passed to Studio (e.g. a double-clicked score): scores to Score, Tape projects to Tape
+        bool tapeFile = false;
+        for (const QString& a : QCoreApplication::arguments().mid(1)) {
+            if (!QFileInfo::exists(a)) {
+                continue;
+            }
+            if (a.endsWith(".aup4", Qt::CaseInsensitive) || a.endsWith(".aup3", Qt::CaseInsensitive)) {
+                m_tape->args << a;
+                tapeFile = true;
+            } else {
+                m_score->args << a;
+            }
+        }
+
+        setPage(tapeFile ? "tape" : "score");
         resize(1440, 900);
         QTimer::singleShot(100, m_score, &AppSlot::launch);
         QTimer::singleShot(400, m_tape, &AppSlot::launch);

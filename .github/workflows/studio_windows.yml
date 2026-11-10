@@ -21,6 +21,8 @@ jobs:
   studio:
     if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-24.04
+    outputs:
+      studio_name: ${{ steps.name.outputs.studio_name }}
     steps:
     - name: Clone repository
       uses: actions/checkout@v6
@@ -120,10 +122,54 @@ jobs:
           > "Studio/Start here.txt"
         echo "STUDIO_NAME=Studio_$(date -u +%Y%m%d-%H%M)_Windows" >> $GITHUB_ENV
 
+    - name: Name
+      id: name
+      shell: bash
+      run: echo "studio_name=$STUDIO_NAME" >> $GITHUB_OUTPUT
+
     - name: Upload Studio
       uses: actions/upload-artifact@v7
       with:
         name: ${{ env.STUDIO_NAME }}
         path: Studio/
+        compression-level: 0
+        retention-days: 14
+
+  installer:
+    needs: studio
+    runs-on: windows-2022
+    steps:
+    - name: Clone repository
+      uses: actions/checkout@v6
+
+    - name: Get the Studio folder
+      uses: actions/download-artifact@v7
+      with:
+        name: ${{ needs.studio.outputs.studio_name }}
+        path: Studio
+
+    - name: Inno Setup
+      shell: pwsh
+      run: |
+        $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+        if (-not (Test-Path $iscc)) { choco install -y innosetup | Out-Null }
+        Get-ChildItem Studio | Select-Object Name
+
+    - name: Build Studio Setup
+      shell: pwsh
+      working-directory: studio/installer
+      run: |
+        $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+        $ver = (Get-Date -Format "yyyy.MM.dd")
+        & $iscc "/DSrcDir=$env:GITHUB_WORKSPACE\Studio" "/DAppVersion=$ver" studio.iss
+        if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+        Get-ChildItem output | Select-Object Name, Length
+        "Run Studio Setup.exe (keep the .bin files next to it)." | Out-File -Encoding ascii "output\Start here.txt"
+
+    - name: Upload Studio Setup
+      uses: actions/upload-artifact@v7
+      with:
+        name: Studio_Setup_${{ needs.studio.outputs.studio_name }}
+        path: studio/installer/output/
         compression-level: 0
         retention-days: 14
