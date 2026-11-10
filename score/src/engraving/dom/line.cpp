@@ -194,6 +194,11 @@ void LineSegment::startDrag(EditData& ed)
         return;
     }
     eed->pushProperty(Pid::OFFSET2);
+    // Studio: a hairpin dragged anywhere (also up and down) stays where you drop it
+    if (line() && line()->isHairpin()) {
+        eed->pushProperty(Pid::AUTOPLACE);
+        setAutoplace(false);
+    }
 }
 
 //---------------------------------------------------------
@@ -209,7 +214,8 @@ void LineSegment::startDragGrip(EditData& ed)
     eed->pushProperty(Pid::OFFSET);
     eed->pushProperty(Pid::OFFSET2);
     eed->pushProperty(Pid::AUTOPLACE);
-    if (ed.modifiers & AltModifier) {
+    // Studio: a hairpin you shape by hand stays exactly where you put it
+    if ((ed.modifiers & AltModifier) || line()->isHairpin()) {
         setAutoplace(false);
     }
 
@@ -705,7 +711,9 @@ void LineSegment::rebaseAnchors(EditData& ed, Grip grip)
 void LineSegment::dragGrip(EditData& ed)
 {
     // Only for resizing according to the diagonal properties
-    const PointF deltaResize(ed.evtDelta.x(), line()->diagonal() ? ed.evtDelta.y() : 0.0);
+    // Studio: hairpin ends also move up and down freely (the hairpin tilts)
+    const bool freeY = line()->diagonal() || line()->isHairpin();
+    const PointF deltaResize(ed.evtDelta.x(), freeY ? ed.evtDelta.y() : 0.0);
 
     switch (ed.curGrip) {
     case Grip::START:         // Resize the begin of element (left grip)
