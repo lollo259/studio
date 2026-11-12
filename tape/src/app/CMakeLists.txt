@@ -364,6 +364,16 @@ if (OS_IS_WIN)
         "${PROJECT_SOURCE_DIR}/buildscripts/packaging/prune_qt_runtime.cmake"
     )
 
+    # Video window: Qt Multimedia's FFmpeg backend, Qt's FFmpeg DLLs and the QtMultimedia QML module
+    install(CODE "
+        set(STUDIO_QT_BINS \"${QT_INSTALL_BINS}\")
+        set(STUDIO_QT_PLUGINS \"${QT_INSTALL_PLUGINS}\")
+        set(STUDIO_QT_QML \"${QT_INSTALL_QML}\")
+    ")
+    install(SCRIPT
+        "${PROJECT_SOURCE_DIR}/buildscripts/packaging/ensure_qt_multimedia.cmake"
+    )
+
     if (WIN_PORTABLE)
         # deploy the files and directory structure needed for the PortableApps.com format
         install(DIRECTORY ${PROJECT_SOURCE_DIR}/build/PortableApps/App DESTINATION ${CMAKE_INSTALL_PREFIX}/../..)

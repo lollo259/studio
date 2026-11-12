@@ -1193,4 +1193,8 @@
         <key>track-view-item-move-down</key>
         <seq>Ctrl+Down</seq>
     </SC>
+    <SC>
+        <key>video-window</key>
+        <seq>Ctrl+Shift+V</seq>
+    </SC>
 </Shortcuts>

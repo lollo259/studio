@@ -12,6 +12,7 @@ namespace au::instruments {
 class LiveSynth;
 class InstrumentsService;
 class InstrumentsActions;
+class VideoActions;
 
 class InstrumentsModule : public muse::modularity::IModuleSetup
 {
@@ -39,5 +40,6 @@ public:
 private:
     std::shared_ptr<InstrumentsActions> m_actions;
     std::shared_ptr<class StudioLink> m_link;
+    std::shared_ptr<VideoActions> m_video;
 };
 }

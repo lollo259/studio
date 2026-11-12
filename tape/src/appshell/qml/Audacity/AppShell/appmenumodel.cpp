@@ -245,6 +245,7 @@ MenuItem* AppMenuModel::makeFileMenu()
         makeSeparator(),
 
         makeMenuItem("project-import"),
+        makeMenuItem("video-import"),
 
         makeSeparator(),
 
@@ -385,6 +386,8 @@ MenuItem* AppMenuModel::makeRecordMenu()
         makeMenuItem("instruments-new-track"),
         makeMenuItem("instruments-open-in-score"),
         makeMenuItem("instruments-panic"),
+        makeSeparator(),
+        makeMenuItem("video-window"),
         //! makeMenuItem("toggle-sound-activated-recording"),
         //! makeMenuItem("set-sound-activation-level"),
     };

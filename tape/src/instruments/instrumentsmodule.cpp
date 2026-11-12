@@ -12,6 +12,7 @@
 #include "internal/instrumentsservice.h"
 #include "internal/instrumentsactions.h"
 #include "internal/studiolink.h"
+#include "internal/videoactions.h"
 
 using namespace au::instruments;
 using namespace muse;
@@ -45,6 +46,7 @@ void InstrumentsModule::resolveImports()
     if (ir) {
         ir->registerQmlUri(muse::Uri("audacity://instruments"), "Audacity.Instruments", "InstrumentsDialog");
         ir->registerQmlUri(muse::Uri("audacity://sampler"), "Audacity.Instruments", "SamplerDialog");
+        ir->registerQmlUri(muse::Uri("audacity://video"), "Audacity.Instruments", "VideoWindow");
     }
 }
 
@@ -76,11 +78,16 @@ void InstrumentsContext::onInit(const IApplication::RunMode& mode)
     m_actions = std::make_shared<InstrumentsActions>(iocContext());
     m_actions->init();
 
+    // Video: a film locked to the playhead, for scoring to picture
+    m_video = std::make_shared<VideoActions>(iocContext());
+    m_video->init();
+
     // Studio: play, stop and the cursor shared live with Score
     m_link = std::make_shared<StudioLink>(iocContext());
     m_link->init();
     auto ar = ioc()->resolve<muse::ui::IUiActionsRegister>(mname);
     if (ar) {
         ar->reg(m_actions);
+        ar->reg(m_video);
     }
 }
