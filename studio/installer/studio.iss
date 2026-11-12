@@ -27,7 +27,7 @@ WizardStyle=modern
 Compression=lzma2/fast
 LZMANumBlockThreads=4
 SolidCompression=no
-; one single Setup.exe (Inno Setup 6.5.2+ allows up to ~4 GB; compressed it is ~3 GB)
+; one single Setup.exe (Inno Setup 6.5.2+ allows up to ~4 GB; compressed it is ~3.2 GB with Mail)
 DiskSpanning=no
 ChangesAssociations=yes
 PrivilegesRequiredOverridesAllowed=dialog
@@ -36,7 +36,13 @@ PrivilegesRequiredOverridesAllowed=dialog
 Name: "desktopicon"; Description: "Put Studio on the desktop"; GroupDescription: "Shortcuts:"
 Name: "assoc"; Description: "Open scores (.mscz) and Tape projects (.aup4) with Studio"; GroupDescription: "Files:"
 
+[InstallDelete]
+; Mail is a whole Thunderbird: replace it, so files of an older version don't linger
+; (accounts and mail live in the profile under %APPDATA%\LaurenceWho\Studio\MailProfile)
+Type: filesandordirs; Name: "{app}\Mail"
+
 [Files]
+; everything: Score, Tape, Mail (Thunderbird + Studio's profile files), Sounds, launchers
 Source: "{#SrcDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
