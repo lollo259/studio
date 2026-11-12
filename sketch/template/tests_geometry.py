@@ -12,7 +12,7 @@ import traceback
 
 import bmesh
 import bpy
-from mathutils import Vector
+from mathutils import Matrix, Vector
 
 from . import sk_geom as sg
 from . import sk_infer as si
@@ -602,6 +602,73 @@ def tools_draw_into_one_model_and_group():
     check(tools.target_object(ctx) is model, "closed again")
     snap = tools.build_snapshot(ctx)
     check(len(snap.T) > 0 and len(snap.E) > 0, "snapshot of the scene for the inference engine")
+
+
+class FakeTool:
+    """What pick_entity needs from a tool: a view, the mouse and the snapshot."""
+
+    def __init__(self, ctx, view, mouse):
+        from . import tools
+        self.snap = tools.build_snapshot(ctx)
+        self._view = view
+        self.mouse = Vector(mouse)
+
+    def view(self):
+        return self._view
+
+    def refresh(self, ctx):
+        from . import tools
+        self.snap = tools.build_snapshot(ctx)
+
+
+@test
+def tools_select_move_copy_array_erase():
+    from . import tools
+    ctx = bpy.context
+    for obj in list(bpy.data.objects):
+        bpy.data.objects.remove(obj, do_unlink=True)
+    tools.action_line(ctx, [(0, 0, 0), (1, 0, 0), (1, 1, 0), (0, 1, 0)], closed=True)
+    model = tools.model_object(ctx, create=False)
+    fi = 0
+    tools.action_push_pull(ctx, model, fi, 1.0 if model.data.polygons[fi].normal.z > 0 else -1.0)
+    check(len(model.data.polygons) == 6, "a 1 m cube")
+    view = si.View.look_at((3, -4, 5), (0.5, 0.5, 0.5), 1200, 900)
+    # click on the top face: Select picks it; double-click: the face and its edges
+    tool = FakeTool(ctx, view, at(view, (0.5, 0.5, 1.0)))
+    ent = tools.pick_entity(tool, ctx)
+    check(ent is not None and ent[0] == "face" and ent[1] is model, f"picked the top face, got {ent}")
+    check(abs(model.data.polygons[ent[2]].center.z - 1) < 1e-6, "it is the top")
+    tools.select_entity(ctx, ent, "set", "bounded")
+    sel = tools.read_selection(ctx)
+    f, e, _v = sel.items[model.name]
+    check(len(f) == 1 and len(e) == 4, f"face + 4 edges, got {len(f)} faces {len(e)} edges")
+    # click on an edge picks the edge
+    tool = FakeTool(ctx, view, at(view, (0.5, 0.0, 1.0), 0, 1))
+    ent_e = tools.pick_entity(tool, ctx)
+    check(ent_e is not None and ent_e[0] == "edge", f"picked an edge, got {ent_e}")
+    # Move the top face up: the box stretches
+    tools.transform_selection(ctx, sel, Matrix.Translation((0, 0, 0.5)))
+    zs = [v.co.z for v in model.data.vertices]
+    check(abs(max(zs) - 1.5) < 1e-6 and len(model.data.polygons) == 6, f"stretched to 1.5 m, got {max(zs)}")
+    # triple click: everything connected; Ctrl+Move copies it, then 3x makes an array
+    tools.select_entity(ctx, ent, "set", "connected")
+    sel = tools.read_selection(ctx)
+    tools.transform_selection(ctx, sel, Matrix.Translation((2, 0, 0)), copy=True)
+    check(len(model.data.polygons) == 12, f"copied, got {len(model.data.polygons)}")
+    tools.copy_selection_array(ctx, sel, [Matrix.Translation((2 * k, 0, 0)) for k in (2, 3)])
+    check(len(model.data.polygons) == 24, f"array of 4 boxes, got {len(model.data.polygons)}")
+    xs = [v.co.x for v in model.data.vertices]
+    check(abs(max(xs) - 7) < 1e-6, f"last box ends at x=7, got {max(xs)}")
+    # Rotate a copy a quarter turn about the blue axis
+    sel = tools.read_selection(ctx)
+    rot = Matrix.Translation((0, 0, 0)) @ Matrix.Rotation(math.radians(90), 4, "Z")
+    tools.transform_selection(ctx, sel, rot)
+    check(any(v.co.y > 5.9 for v in model.data.vertices), "the selected box turned onto the green axis")
+    # Delete erases the selection
+    tools.erase_selection(ctx)
+    check(len(model.data.polygons) == 18, f"one box erased, got {len(model.data.polygons)}")
+    # the edge softness survives the round trips through the mesh
+    check(model.data.attributes.get(sg.SOFT) is not None, "soft layer kept")
 
 
 def run():
