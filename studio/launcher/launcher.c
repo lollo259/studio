@@ -8,6 +8,10 @@
 #include <windows.h>
 #include <wchar.h>
 
+#ifndef EXTRA
+#define EXTRA L"" /* options put before the files, e.g. L"--mail" */
+#endif
+
 #ifndef TARGET
 #error define TARGET, e.g. L"Score\\bin\\LaurenceWhoScore5.exe"
 #endif
@@ -37,7 +41,7 @@ int WINAPI wWinMain(HINSTANCE inst, HINSTANCE prev, PWSTR args, int show)
     }
 
     static wchar_t cmd[32768];
-    _snwprintf(cmd, 32768, L"\"%s\" %s", exe, args ? args : L"");
+    _snwprintf(cmd, 32768, L"\"%s\" %s %s", exe, EXTRA, args ? args : L"");
     cmd[32767] = 0;
 
     STARTUPINFOW si;

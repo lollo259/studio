@@ -100,6 +100,10 @@ jobs:
         # Studio.exe: the one window with Score and Tape inside (built with Score)
         if [ -f "$GITHUB_WORKSPACE/Studio/Score/bin/Studio.exe" ]; then
           x86_64-w64-mingw32-gcc -municode -mwindows -O2 -static '-DTARGET=L"Score\\bin\\Studio.exe"' launcher.c studio.res -o "$GITHUB_WORKSPACE/Studio/Studio.exe"
+          # Mail.exe: Thunderbird on its own, with Studio's profile and look
+          echo "1 ICON \"$GITHUB_WORKSPACE/studio/icons/mail.ico\"" > mail.rc
+          x86_64-w64-mingw32-windres mail.rc -O coff -o mail.res
+          x86_64-w64-mingw32-gcc -municode -mwindows -O2 -static '-DTARGET=L"Score\\bin\\Studio.exe"' '-DEXTRA=L"--mail"' launcher.c mail.res -o "$GITHUB_WORKSPACE/Studio/Mail.exe"
         fi
         ls -la "$GITHUB_WORKSPACE/Studio"
 

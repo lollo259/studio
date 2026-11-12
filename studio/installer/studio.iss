@@ -49,6 +49,7 @@ Source: "{#SrcDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs cre
 Name: "{autoprograms}\Studio"; Filename: "{app}\Studio.exe"
 Name: "{autoprograms}\Studio\Score"; Filename: "{app}\Score.exe"
 Name: "{autoprograms}\Studio\Tape"; Filename: "{app}\Tape.exe"
+Name: "{autoprograms}\Studio\Mail"; Filename: "{app}\Mail.exe"
 Name: "{autodesktop}\Studio"; Filename: "{app}\Studio.exe"; Tasks: desktopicon
 
 [Registry]

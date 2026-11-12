@@ -55,7 +55,7 @@ const QColor GREEN("#2CD47C");
 const QColor OLED("#0B0B0C");
 
 // the pages, in key order (Ctrl+Tab goes round them)
-const QStringList PAGES { "score", "tape", "mail" };
+const QStringList PAGES { "score", "tape" }; // Mail is its own app (Mail.exe = Studio.exe --mail)
 
 QString fmtTime(double s)
 {
@@ -119,10 +119,9 @@ protected:
         case Back: return QRectF(560, y, s, s);
         case Play: return QRectF(626, y, s, s);
         case Link: return QRectF(692, y, s, s);
-        case PageScore: return QRectF(width() - 4 * 66 - 18, y, s, s);
-        case PageSplit: return QRectF(width() - 3 * 66 - 18, y, s, s);
-        case PageTape: return QRectF(width() - 2 * 66 - 18, y, s, s);
-        case PageMail: return QRectF(width() - 66 - 18, y, s, s);
+        case PageScore: return QRectF(width() - 3 * 66 - 18, y, s, s);
+        case PageSplit: return QRectF(width() - 2 * 66 - 18, y, s, s);
+        case PageTape: return QRectF(width() - 66 - 18, y, s, s);
         case Min: return QRectF(width() - 3 * 34 - 10, 2, 30, 22);
         case Max: return QRectF(width() - 2 * 34 - 10, 2, 30, 22);
         case Close: return QRectF(width() - 34 - 10, 2, 30, 22);
@@ -132,7 +131,7 @@ protected:
 
     Key keyAt(const QPointF& p) const
     {
-        for (Key k : { Back, Play, Link, PageScore, PageSplit, PageTape, PageMail, Min, Max, Close }) {
+        for (Key k : { Back, Play, Link, PageScore, PageSplit, PageTape, Min, Max, Close }) {
             if (keyRect(k).contains(p)) {
                 return k;
             }
@@ -223,8 +222,6 @@ protected:
         p.drawText(QPointF(d.left() + 330, d.top() + 44), "score");
         p.setPen(up.contains("tape") ? GREEN : QColor("#55555A"));
         p.drawText(QPointF(d.left() + 400, d.top() + 44), "tape");
-        p.setPen(up.contains("mail") ? GREEN : QColor("#55555A"));
-        p.drawText(QPointF(d.left() + 456, d.top() + 44), "mail");
         if (!note.isEmpty()) {
             mono.setPixelSize(9);
             p.setFont(mono);
@@ -238,7 +235,7 @@ protected:
         drawKey(p, Link, "link", "", false, linked, BLUE);
 
         // pages
-        for (Key k : { PageScore, PageTape, PageMail }) {
+        for (Key k : { PageScore, PageTape }) {
             const QString pg = pageOf(k);
             const bool o = out.contains(pg);
             drawKey(p, k, o ? pg + " ↗" : pg, "", false, o || page == pg, o ? BLUE : ORANGE);
@@ -804,19 +801,15 @@ public:
         m_split->setStyleSheet("QSplitter::handle { background: #C9CACD; } QSplitter::handle:hover { background: #FF5A1F; }");
         m_slots["score"] = new AppSlot("Score", scoreExe, m_split);
         m_slots["tape"] = new AppSlot("Tape", tapeExe, m_split);
-        m_slots["mail"] = new AppSlot("Mail", mailExe, m_split);
         for (const QString& pg : PAGES) {
             m_split->addWidget(m_slots[pg]);
             connect(m_slots[pg], &AppSlot::changed, this, &StudioWindow::refresh);
         }
         m_split->setStretchFactor(0, 3);
         m_split->setStretchFactor(1, 2);
-        m_split->setStretchFactor(2, 3);
         l->addWidget(m_split, 1);
 
-        // Thunderbird: its own profile, Studio's look, and it may open its window from another process
-        m_slots["mail"]->windowClass = "MozillaWindowClass";
-        m_slots["mail"]->args = { "-profile", QDir::toNativeSeparators(prepareMailProfile(QFileInfo(mailExe).absolutePath())), "-no-remote" };
+        Q_UNUSED(mailExe);
 
         connect(m_top, &TopBar::pressed, this, &StudioWindow::onKey);
         connect(m_top, &TopBar::detach, this, [this](TopBar::Key k, QPoint at) {
@@ -893,7 +886,6 @@ public:
         resize(1440, 900);
         QTimer::singleShot(100, m_slots["score"], &AppSlot::launch);
         QTimer::singleShot(400, m_slots["tape"], &AppSlot::launch);
-        QTimer::singleShot(700, m_slots["mail"], &AppSlot::launch);
     }
 
 protected:
@@ -927,6 +919,7 @@ protected:
     }
 
 private:
+public:
     // Mail's profile: %APPDATA%/LaurenceWho/Studio/MailProfile. Studio's own files (user.js,
     // chrome/userChrome.css, chrome/fonts) are copied over it on every start; Thunderbird's
     // own settings (prefs.js, accounts, mail) are never touched.
@@ -1143,6 +1136,20 @@ int main(int argc, char** argv)
     app.setApplicationName("Studio");
     app.setOrganizationName("LaurenceWho");
     app.setWindowIcon(QIcon(":/studio.png"));
+
+    // Mail.exe = Studio.exe --mail: Thunderbird on its own, with Studio's profile and look
+    if (QCoreApplication::arguments().contains("--mail")) {
+        const QString mailExe = QDir::cleanPath(QDir(QCoreApplication::applicationDirPath()).filePath("../../Mail/thunderbird.exe"));
+        const QString profile = StudioWindow::prepareMailProfile(QFileInfo(mailExe).absolutePath());
+        QStringList args { "-profile", QDir::toNativeSeparators(profile), "-no-remote" };
+        for (const QString& a : QCoreApplication::arguments().mid(1)) {
+            if (a != "--mail") {
+                args << a; // e.g. mailto: links
+            }
+        }
+        return QProcess::startDetached(mailExe, args, QFileInfo(mailExe).absolutePath()) ? 0 : 1;
+    }
+
     StudioWindow w;
     w.show();
     return app.exec();
