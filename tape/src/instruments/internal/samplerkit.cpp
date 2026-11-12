@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: GPL-3.0-only
  */
 #include "samplerkit.h"
+#include "../soundlibrary.h"
 
 #include <algorithm>
 #include <cmath>
@@ -187,6 +188,20 @@ PadMode au::instruments::padModeFromId(const QString& id)
         return PadMode::Keys;
     }
     return PadMode::OneShot;
+}
+
+static void exportKitToSounds(const au::instruments::SamplerKit& kit);
+
+// kits saved before this existed: put them in the Sounds folder too
+void au::instruments::exportKitsToSounds()
+{
+    for (const QString& name : kitNames()) {
+        const QString sfz = QString::fromStdString(defaultSoundsFolder()) + "/Sampler/" + safeKitName(name) + "/" + safeKitName(name) + ".sfz";
+        SamplerKit kit;
+        if (!QFileInfo::exists(sfz) && loadKit(name, kit)) {
+            exportKitToSounds(kit);
+        }
+    }
 }
 
 QString au::instruments::samplerFolder()
@@ -381,7 +396,51 @@ bool au::instruments::saveKit(const SamplerKit& kit, QString* error)
         }
         return false;
     }
+    exportKitToSounds(kit);
     return true;
+}
+
+// Studio: a copy of the kit, with its samples, in Studio/Sounds/Sampler/<kit>/ so that Scenes
+// (and anything else that reads the Sounds folder) finds it next to VSCO and Salamander
+static void exportKitToSounds(const SamplerKit& kit)
+{
+    const QString dir = QString::fromStdString(au::instruments::defaultSoundsFolder()) + "/Sampler/"
+                        + au::instruments::safeKitName(kit.name);
+    const bool empty = std::all_of(kit.pads.begin(), kit.pads.end(), [](const au::instruments::SamplerPad& p) { return p.isEmpty(); });
+    if (empty) {
+        QDir(dir).removeRecursively();
+        return;
+    }
+    QDir().mkpath(dir + "/samples");
+    au::instruments::SamplerKit copy = kit;
+    QStringList keep;
+    for (int i = 0; i < au::instruments::SAMPLER_PADS; ++i) {
+        au::instruments::SamplerPad& p = copy.pads[size_t(i)];
+        if (p.isEmpty()) {
+            continue;
+        }
+        const QFileInfo src(p.file);
+        const QString rel = QString("samples/%1 %2").arg(i + 1, 2, 10, QChar('0')).arg(src.fileName());
+        const QString dst = dir + "/" + rel;
+        const QFileInfo d(dst);
+        if (!d.exists() || d.size() != src.size()) {
+            QFile::remove(dst);
+            QFile::copy(src.absoluteFilePath(), dst);
+        }
+        keep << QFileInfo(dst).fileName();
+        p.file = rel;
+    }
+    // samples of pads that changed since
+    for (const QString& f : QDir(dir + "/samples").entryList(QDir::Files)) {
+        if (!keep.contains(f)) {
+            QFile::remove(dir + "/samples/" + f);
+        }
+    }
+    QSaveFile sfz(dir + "/" + au::instruments::safeKitName(kit.name) + ".sfz");
+    if (sfz.open(QIODevice::WriteOnly | QIODevice::Text)) {
+        sfz.write(au::instruments::makeSfz(copy).toUtf8());
+        sfz.commit();
+    }
 }
 
 bool au::instruments::loadKit(const QString& kitName, SamplerKit& kit)

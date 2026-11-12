@@ -261,6 +261,10 @@ std::vector<SoundEntry> au::instruments::scanAllSounds()
         std::vector<SoundEntry> found = scanSounds(folder);
         std::vector<std::string> here;
         for (SoundEntry& e : found) {
+            // Sounds/Sampler holds copies of the Sampler's kits for Scenes: Tape lists the kits below
+            if (e.library == "Sampler") {
+                continue;
+            }
             // the same library copied in both places is listed once (the user's copy wins)
             if (std::find(seenLibraries.begin(), seenLibraries.end(), e.library) != seenLibraries.end()) {
                 continue;
@@ -273,6 +277,7 @@ std::vector<SoundEntry> au::instruments::scanAllSounds()
         seenLibraries.insert(seenLibraries.end(), here.begin(), here.end());
     }
     // the Sampler's kits (Documents/Studio/Sampler) are ordinary .sfz instruments too
+    exportKitsToSounds();
     for (const QString& kit : kitNames()) {
         SoundEntry e;
         e.name = kit.toStdString();

@@ -72,6 +72,7 @@ bool kitFromJson(const QByteArray& json, SamplerKit& kit);
 
 //! Writes <kit>.sfz and <kit>.studiokit.json in the Sampler folder.
 bool saveKit(const SamplerKit& kit, QString* error = nullptr);
+void exportKitsToSounds(); // Studio: copies of the kits in Studio/Sounds/Sampler, for Scenes
 bool loadKit(const QString& kitName, SamplerKit& kit);
 void removeKitFiles(const QString& kitName);
 }
