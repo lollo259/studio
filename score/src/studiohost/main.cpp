@@ -8,6 +8,8 @@
  *
  * SPDX-License-Identifier: GPL-3.0-only
  */
+#include <algorithm>
+
 #include <QApplication>
 #include <QCloseEvent>
 #include <QDir>
@@ -81,8 +83,12 @@ public:
     QString page = "score";
     QString note;
 
+    bool scoreOut = false; // popped out into its own window
+    bool tapeOut = false;
+
 signals:
     void pressed(TopBar::Key key);
+    void detach(TopBar::Key key, QPoint globalPos);
 
 protected:
     QRectF keyRect(Key k) const
@@ -209,9 +215,9 @@ protected:
         drawKey(p, Link, "link", "", false, linked, BLUE);
 
         // pages
-        drawKey(p, PageScore, "score", "", false, page == "score", ORANGE);
+        drawKey(p, PageScore, scoreOut ? "score ↗" : "score", "", false, scoreOut || page == "score", scoreOut ? BLUE : ORANGE);
         drawKey(p, PageSplit, "both", "", false, page == "split", ORANGE);
-        drawKey(p, PageTape, "tape", "", false, page == "tape", ORANGE);
+        drawKey(p, PageTape, tapeOut ? "tape ↗" : "tape", "", false, tapeOut || page == "tape", tapeOut ? BLUE : ORANGE);
 
         // window keys
         QFont wf("Jost");
@@ -252,13 +258,26 @@ protected:
 
     void mouseDoubleClickEvent(QMouseEvent* e) override
     {
-        if (keyAt(e->position()) == None) {
+        const Key k = keyAt(e->position());
+        if (k == None) {
             emit pressed(Max);
+        } else if (k == PageScore || k == PageTape) {
+            m_down = None;
+            emit detach(k, e->globalPosition().toPoint()); // double-click a page key: it pops out
         }
     }
 
     void mouseMoveEvent(QMouseEvent* e) override
     {
+        // drag a page key out of the bar: it pops out where you drop it
+        if ((m_down == PageScore || m_down == PageTape) && (e->buttons() & Qt::LeftButton)
+            && !rect().adjusted(0, 0, 0, 30).contains(e->position().toPoint())) {
+            const Key d = m_down;
+            m_down = None;
+            update();
+            emit detach(d, e->globalPosition().toPoint());
+            return;
+        }
         const Key k = keyAt(e->position());
         if (k != m_hover) {
             m_hover = k;
@@ -420,8 +439,178 @@ private:
     QTimer m_find;
 };
 
+// ------------------------------------------------------------------ frameless window, resizable from its edges
+class Frameless : public QWidget
+{
+public:
+    Frameless()
+    {
+        setWindowFlags(Qt::FramelessWindowHint | Qt::Window);
+        setMouseTracking(true);
+    }
+
+protected:
+    void paintEvent(QPaintEvent*) override
+    {
+        QPainter p(this);
+        p.fillRect(rect(), ALU_BOTTOM);
+    }
+
+    void mousePressEvent(QMouseEvent* e) override
+    {
+        const Qt::Edges edges = edgesAt(e->position().toPoint());
+        if (edges && windowHandle()) {
+            windowHandle()->startSystemResize(edges);
+        }
+    }
+
+    void mouseMoveEvent(QMouseEvent* e) override
+    {
+        const Qt::Edges ed = edgesAt(e->position().toPoint());
+        if ((ed & Qt::LeftEdge && ed & Qt::TopEdge) || (ed & Qt::RightEdge && ed & Qt::BottomEdge)) {
+            setCursor(Qt::SizeFDiagCursor);
+        } else if ((ed & Qt::RightEdge && ed & Qt::TopEdge) || (ed & Qt::LeftEdge && ed & Qt::BottomEdge)) {
+            setCursor(Qt::SizeBDiagCursor);
+        } else if (ed & (Qt::LeftEdge | Qt::RightEdge)) {
+            setCursor(Qt::SizeHorCursor);
+        } else if (ed & (Qt::TopEdge | Qt::BottomEdge)) {
+            setCursor(Qt::SizeVerCursor);
+        } else {
+            unsetCursor();
+        }
+    }
+
+    Qt::Edges edgesAt(const QPoint& p) const
+    {
+        const int m = 6;
+        Qt::Edges e;
+        if (p.x() < m) e |= Qt::LeftEdge;
+        if (p.x() > width() - m) e |= Qt::RightEdge;
+        if (p.y() < m) e |= Qt::TopEdge;
+        if (p.y() > height() - m) e |= Qt::BottomEdge;
+        return e;
+    }
+};
+
+// ------------------------------------------------------------------ a page popped out into its own window
+class FloatStrip : public QWidget
+{
+    Q_OBJECT
+public:
+    FloatStrip(const QString& name, QWidget* parent)
+        : QWidget(parent), m_name(name)
+    {
+        setFixedHeight(30);
+        setMouseTracking(true);
+    }
+
+signals:
+    void dock();
+    void maximize();
+
+protected:
+    QRectF dockRect() const { return QRectF(width() - 92, 4, 84, 22); }
+
+    void paintEvent(QPaintEvent*) override
+    {
+        QPainter p(this);
+        p.setRenderHint(QPainter::Antialiasing);
+        QLinearGradient bg(0, 0, 0, height());
+        bg.setColorAt(0, ALU_TOP);
+        bg.setColorAt(1, ALU_BOTTOM);
+        p.fillRect(rect(), bg);
+        p.setPen(QColor("#A9AAAE"));
+        p.drawLine(0, height() - 1, width(), height() - 1);
+        QFont jost("Jost");
+        jost.setPixelSize(15);
+        p.setFont(jost);
+        p.setPen(INK);
+        p.drawText(QPointF(14, 20), "studio");
+        p.setPen(ORANGE);
+        const double x = 14 + QFontMetrics(jost).horizontalAdvance("studio");
+        p.drawText(QPointF(x, 20), ".");
+        p.setPen(QColor("#4A4A4F"));
+        p.drawText(QPointF(x + 14, 20), m_name);
+        p.setPen(Qt::NoPen);
+        p.setBrush(m_hover ? ORANGE : QColor("#E3E3E5"));
+        p.drawRoundedRect(dockRect(), 5, 5);
+        QFont f("Consolas");
+        f.setPixelSize(11);
+        p.setFont(f);
+        p.setPen(m_hover ? QColor("#FFFFFF") : INK);
+        p.drawText(dockRect(), Qt::AlignCenter, "↙ dock");
+    }
+
+    void mousePressEvent(QMouseEvent* e) override
+    {
+        if (dockRect().contains(e->position())) {
+            emit dock();
+        } else if (e->button() == Qt::LeftButton && window()->windowHandle()) {
+            window()->windowHandle()->startSystemMove();
+        }
+    }
+
+    void mouseDoubleClickEvent(QMouseEvent* e) override
+    {
+        if (!dockRect().contains(e->position())) {
+            emit maximize();
+        }
+    }
+
+    void mouseMoveEvent(QMouseEvent* e) override
+    {
+        const bool h = dockRect().contains(e->position());
+        if (h != m_hover) {
+            m_hover = h;
+            update();
+        }
+    }
+
+    void leaveEvent(QEvent*) override
+    {
+        m_hover = false;
+        update();
+    }
+
+private:
+    QString m_name;
+    bool m_hover = false;
+};
+
+class FloatWindow : public Frameless
+{
+    Q_OBJECT
+public:
+    FloatWindow(const QString& name, QWidget* slot)
+    {
+        setWindowTitle("Studio · " + name);
+        setMinimumSize(700, 400);
+        auto* l = new QVBoxLayout(this);
+        l->setContentsMargins(4, 0, 4, 4);
+        l->setSpacing(4);
+        auto* strip = new FloatStrip(name, this);
+        l->addWidget(strip);
+        slot->setParent(this);
+        l->addWidget(slot, 1);
+        slot->show();
+        connect(strip, &FloatStrip::dock, this, &FloatWindow::dock);
+        connect(strip, &FloatStrip::maximize, this, [this]() { isMaximized() ? showNormal() : showMaximized(); });
+    }
+
+signals:
+    void dock();
+
+protected:
+    void closeEvent(QCloseEvent* e) override
+    {
+        // closing the popped-out window puts the page back in Studio (the app keeps running)
+        e->ignore();
+        emit dock();
+    }
+};
+
 // ------------------------------------------------------------------ the window
-class StudioWindow : public QWidget
+class StudioWindow : public Frameless
 {
     Q_OBJECT
 public:
@@ -429,9 +618,7 @@ public:
         : m_link("studio")
     {
         setWindowTitle("Studio");
-        setWindowFlags(Qt::FramelessWindowHint | Qt::Window);
         setMinimumSize(900, 600);
-        setMouseTracking(true);
 
         // Studio/Score/bin/StudioHost.exe -> Studio/Score/bin/<score>.exe and Studio/Tape/bin/Audacity4.exe
         const QDir bin(QCoreApplication::applicationDirPath());
@@ -458,6 +645,9 @@ public:
         l->addWidget(m_split, 1);
 
         connect(m_top, &TopBar::pressed, this, &StudioWindow::onKey);
+        connect(m_top, &TopBar::detach, this, [this](TopBar::Key k, QPoint at) {
+            popOut(k == TopBar::PageScore ? "score" : "tape", at);
+        });
         connect(m_score, &AppSlot::changed, this, &StudioWindow::refresh);
         connect(m_tape, &AppSlot::changed, this, &StudioWindow::refresh);
 
@@ -508,57 +698,20 @@ public:
     }
 
 protected:
-    void paintEvent(QPaintEvent*) override
-    {
-        QPainter p(this);
-        p.fillRect(rect(), ALU_BOTTOM);
-    }
-
-    // resize from the edges (the window has no system frame)
-    void mousePressEvent(QMouseEvent* e) override
-    {
-        const Qt::Edges edges = edgesAt(e->position().toPoint());
-        if (edges && windowHandle()) {
-            windowHandle()->startSystemResize(edges);
-        }
-    }
-
-    void mouseMoveEvent(QMouseEvent* e) override
-    {
-        const Qt::Edges ed = edgesAt(e->position().toPoint());
-        if ((ed & Qt::LeftEdge && ed & Qt::TopEdge) || (ed & Qt::RightEdge && ed & Qt::BottomEdge)) {
-            setCursor(Qt::SizeFDiagCursor);
-        } else if ((ed & Qt::RightEdge && ed & Qt::TopEdge) || (ed & Qt::LeftEdge && ed & Qt::BottomEdge)) {
-            setCursor(Qt::SizeBDiagCursor);
-        } else if (ed & (Qt::LeftEdge | Qt::RightEdge)) {
-            setCursor(Qt::SizeHorCursor);
-        } else if (ed & (Qt::TopEdge | Qt::BottomEdge)) {
-            setCursor(Qt::SizeVerCursor);
-        } else {
-            unsetCursor();
-        }
-    }
-
     void closeEvent(QCloseEvent* e) override
     {
         // let each app ask about unsaved work, then go
         m_score->closeApp();
         m_tape->closeApp();
+        for (FloatWindow* f : { m_scoreFloat, m_tapeFloat }) {
+            if (f) {
+                f->hide();
+            }
+        }
         e->accept();
     }
 
 private:
-    Qt::Edges edgesAt(const QPoint& p) const
-    {
-        const int m = 6;
-        Qt::Edges e;
-        if (p.x() < m) e |= Qt::LeftEdge;
-        if (p.x() > width() - m) e |= Qt::RightEdge;
-        if (p.y() < m) e |= Qt::TopEdge;
-        if (p.y() > height() - m) e |= Qt::BottomEdge;
-        return e;
-    }
-
     void refresh()
     {
         m_top->scoreUp = m_score->isUp();
@@ -567,15 +720,76 @@ private:
         m_top->update();
     }
 
-    void setPage(const QString& page)
+    FloatWindow*& floatOf(const QString& page) { return page == "score" ? m_scoreFloat : m_tapeFloat; }
+    AppSlot* slotOf(const QString& page) const { return page == "score" ? m_score : m_tape; }
+
+    void setPage(QString page)
     {
+        // a popped-out page lives in its own window: its key brings that window to the front
+        if (page != "split" && floatOf(page)) {
+            FloatWindow* f = floatOf(page);
+            f->showNormal();
+            f->raise();
+            f->activateWindow();
+            m_link.send(QJsonObject { { "cmd", "page" }, { "page", page } });
+            return;
+        }
+        if (page == "split" && (m_scoreFloat || m_tapeFloat)) {
+            return; // both are already on screen
+        }
         if (m_top->page != page) {
             m_link.send(QJsonObject { { "cmd", "page" }, { "page", page } }); // Score refreshes Tape's tracks on the way in
         }
         m_top->page = page;
-        m_score->setVisible(page != "tape");
-        m_tape->setVisible(page != "score");
+        if (!m_scoreFloat) {
+            m_score->setVisible(page != "tape");
+        }
+        if (!m_tapeFloat) {
+            m_tape->setVisible(page != "score");
+        }
         m_top->update();
+    }
+
+    // take a page out of Studio into its own window (drag it to another screen)
+    void popOut(const QString& page, QPoint at)
+    {
+        const QString other = page == "score" ? "tape" : "score";
+        if (floatOf(page) || floatOf(other)) {
+            if (floatOf(page)) {
+                setPage(page);
+            }
+            return; // one page always stays in Studio
+        }
+        AppSlot* slot = slotOf(page);
+        auto* f = new FloatWindow(page == "score" ? "score" : "tape", slot);
+        floatOf(page) = f;
+        connect(f, &FloatWindow::dock, this, [this, page]() { dockBack(page); });
+        const QSize sz(std::max(900, width() * 3 / 4), std::max(600, height() * 3 / 4));
+        f->resize(sz);
+        f->move(at - QPoint(sz.width() / 2, 15));
+        f->show();
+        m_top->scoreOut = m_scoreFloat;
+        m_top->tapeOut = m_tapeFloat;
+        m_top->page = "";
+        setPage(other);
+    }
+
+    void dockBack(const QString& page)
+    {
+        FloatWindow*& f = floatOf(page);
+        if (!f) {
+            return;
+        }
+        AppSlot* slot = slotOf(page);
+        m_split->insertWidget(page == "score" ? 0 : 1, slot);
+        f->deleteLater();
+        f = nullptr;
+        m_top->scoreOut = m_scoreFloat;
+        m_top->tapeOut = m_tapeFloat;
+        m_top->page = "";
+        setPage(page);
+        raise();
+        activateWindow();
     }
 
     void onKey(TopBar::Key k)
@@ -614,6 +828,8 @@ private:
     QSplitter* m_split = nullptr;
     AppSlot* m_score = nullptr;
     AppSlot* m_tape = nullptr;
+    FloatWindow* m_scoreFloat = nullptr;
+    FloatWindow* m_tapeFloat = nullptr;
 };
 
 int main(int argc, char** argv)
