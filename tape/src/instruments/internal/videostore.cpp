@@ -15,7 +15,7 @@
 
 using namespace au::instruments;
 
-namespace {
+namespace videostore {
 double validFps(double fps)
 {
     static const double rates[] = { 24.0, 25.0, 29.97, 30.0 };
@@ -27,6 +27,8 @@ double validFps(double fps)
     return 25.0;
 }
 }
+
+using namespace videostore;
 
 VideoStore* VideoStore::instance()
 {

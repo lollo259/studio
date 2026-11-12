@@ -21,18 +21,18 @@ using namespace muse;
 using namespace muse::ui;
 using namespace muse::actions;
 
-static const ActionCode IMPORT_CODE("video-import");
-static const ActionCode TOGGLE_CODE("video-window");
+static const ActionCode VIDEO_IMPORT_CODE("video-import");
+static const ActionCode VIDEO_TOGGLE_CODE("video-window");
 static const char* VIDEO_URI = "audacity://video";
-static const char* KEY_DIR = "video/lastFolder";
+static const char* VIDEO_KEY_DIR = "video/lastFolder";
 
-static const UiActionList s_actions = {
-    UiAction(IMPORT_CODE,
+static const UiActionList s_videoActions = {
+    UiAction(VIDEO_IMPORT_CODE,
              au::context::UiCtxAny,
              au::context::CTX_ANY,
              TranslatableString("action", "Import &video…"),
              TranslatableString("action_description", "Import a film to score to: it plays in the Video window, locked to the playhead")),
-    UiAction(TOGGLE_CODE,
+    UiAction(VIDEO_TOGGLE_CODE,
              au::context::UiCtxAny,
              au::context::CTX_ANY,
              TranslatableString("action", "Show/hide &video window"),
@@ -41,8 +41,8 @@ static const UiActionList s_actions = {
 
 void VideoActions::init()
 {
-    dispatcher()->reg(this, IMPORT_CODE, this, &VideoActions::importVideo);
-    dispatcher()->reg(this, TOGGLE_CODE, this, &VideoActions::toggleWindow);
+    dispatcher()->reg(this, VIDEO_IMPORT_CODE, this, &VideoActions::importVideo);
+    dispatcher()->reg(this, VIDEO_TOGGLE_CODE, this, &VideoActions::toggleWindow);
 
     globalContext()->currentProjectChanged().onNotify(this, [this]() { onProjectChanged(); });
 }
@@ -109,7 +109,7 @@ void VideoActions::importVideo()
     }
 
     QSettings settings;
-    QString dir = settings.value(KEY_DIR).toString();
+    QString dir = settings.value(VIDEO_KEY_DIR).toString();
     if (dir.isEmpty() || !QFileInfo(dir).isDir()) {
         dir = QStandardPaths::writableLocation(QStandardPaths::MoviesLocation);
     }
@@ -121,7 +121,7 @@ void VideoActions::importVideo()
         return;
     }
     const QString file = QFileInfo(picked.toQString()).absoluteFilePath();
-    settings.setValue(KEY_DIR, QFileInfo(file).absolutePath());
+    settings.setValue(VIDEO_KEY_DIR, QFileInfo(file).absolutePath());
 
     // a new picture starts at the beginning of the timeline; the frame rate stays what the project used
     VideoSettings s = VideoStore::instance()->get(projectPath());
@@ -139,7 +139,7 @@ void VideoActions::importVideo()
 
 const UiActionList& VideoActions::actionsList() const
 {
-    return s_actions;
+    return s_videoActions;
 }
 
 bool VideoActions::actionEnabled(const UiAction&) const

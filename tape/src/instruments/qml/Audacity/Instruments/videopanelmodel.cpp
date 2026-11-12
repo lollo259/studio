@@ -25,7 +25,7 @@
 
 using namespace au::instruments;
 
-namespace {
+namespace videopanel {
 const char* KEY_GEOMETRY = "video/geometry";
 
 constexpr qint64 DRIFT_MS = 40;          // reseek when the picture is further than this from the playhead
@@ -38,6 +38,8 @@ int timecodeBase(double fps)
     return std::abs(fps - 29.97) < 0.01 ? 30 : int(std::lround(fps));
 }
 }
+
+using namespace videopanel;
 
 VideoPanelModel::VideoPanelModel(QObject* parent)
     : QObject(parent), muse::Contextable(muse::iocCtxForQmlObject(this))
