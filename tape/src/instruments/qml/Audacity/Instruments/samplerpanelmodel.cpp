@@ -23,9 +23,9 @@ using namespace au::instruments;
 namespace {
 const char* KEY_KIT = "sampler/kit";
 const char* KEY_DIR = "sampler/lastFolder";
-const char* KEY_SOUND = "instruments/sound"; // the sound the live synth reloads at start
+const char* KEY_LIVE_SOUND = "instruments/sound"; // the sound the live synth reloads at start
 
-std::shared_ptr<InstrumentsService> svc()
+std::shared_ptr<InstrumentsService> samplerService()
 {
     return InstrumentsModule::service();
 }
@@ -75,7 +75,7 @@ SamplerPanelModel::SamplerPanelModel(QObject* parent)
 
 void SamplerPanelModel::load()
 {
-    if (auto s = svc()) {
+    if (auto s = samplerService()) {
         s->changed().onNotify(this, [this]() { emit statusChanged(); });
         if (!s->synth()->isRunning()) {
             s->synth()->start();
@@ -132,7 +132,7 @@ void SamplerPanelModel::setKitName(const QString& name)
     if (old.compare(clean, Qt::CaseInsensitive) != 0) {
         removeKitFiles(old);
     }
-    if (auto s = svc()) {
+    if (auto s = samplerService()) {
         s->rescan();
     }
     emit kitChanged();
@@ -216,7 +216,7 @@ void SamplerPanelModel::apply()
     QSettings settings("LaurenceWho", "Tape");
     settings.setValue(KEY_KIT, m_kit.name);
 
-    auto s = svc();
+    auto s = samplerService();
     if (!s) {
         emit statusChanged();
         return;
@@ -228,7 +228,7 @@ void SamplerPanelModel::apply()
         e.path = kitSfzPath(m_kit.name).toStdString();
         e.family = SoundFamily::Percussion;
         s->synth()->loadSound(e);
-        settings.setValue(KEY_SOUND, QString::fromStdString(e.path));
+        settings.setValue(KEY_LIVE_SOUND, QString::fromStdString(e.path));
     }
     if (existed != QFile::exists(kitSfzPath(m_kit.name))) {
         s->rescan(); // the kit appears in (or leaves) the Instruments sound list
@@ -562,7 +562,7 @@ void SamplerPanelModel::previewPad(int index, bool on)
     if (index < 0 || index >= SAMPLER_PADS) {
         return;
     }
-    auto s = svc();
+    auto s = samplerService();
     if (!s) {
         return;
     }
@@ -584,7 +584,7 @@ void SamplerPanelModel::previewPad(int index, bool on)
 
 void SamplerPanelModel::allNotesOff()
 {
-    if (auto s = svc()) {
+    if (auto s = samplerService()) {
         s->synth()->allNotesOff();
     }
     m_pressed = 0;
@@ -594,7 +594,7 @@ void SamplerPanelModel::allNotesOff()
 void SamplerPanelModel::pollLit()
 {
     int mask = m_pressed;
-    if (auto s = svc()) {
+    if (auto s = samplerService()) {
         bool keysHeld = false;
         for (int n = SAMPLER_KEYS_LO; n <= SAMPLER_KEYS_HI && !keysHeld; ++n) {
             keysHeld = s->isNoteHeld(n);
@@ -622,7 +622,7 @@ QString SamplerPanelModel::status() const
     if (!m_error.isEmpty()) {
         return m_error;
     }
-    auto s = svc();
+    auto s = samplerService();
     if (!s) {
         return "instruments unavailable";
     }

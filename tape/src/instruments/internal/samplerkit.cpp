@@ -21,17 +21,17 @@
 using namespace au::instruments;
 
 namespace {
-uint32_t le32(const unsigned char* p)
+uint32_t wavLe32(const unsigned char* p)
 {
     return uint32_t(p[0]) | (uint32_t(p[1]) << 8) | (uint32_t(p[2]) << 16) | (uint32_t(p[3]) << 24);
 }
 
-uint16_t le16(const unsigned char* p)
+uint16_t wavLe16(const unsigned char* p)
 {
     return uint16_t(p[0] | (p[1] << 8));
 }
 
-float sampleAt(const unsigned char* p, int bits, bool isFloat)
+float wavSampleAt(const unsigned char* p, int bits, bool isFloat)
 {
     if (isFloat) {
         if (bits == 32) {
@@ -47,13 +47,13 @@ float sampleAt(const unsigned char* p, int bits, bool isFloat)
     case 8:
         return (int(p[0]) - 128) / 128.0f;
     case 16:
-        return int16_t(le16(p)) / 32768.0f;
+        return int16_t(wavLe16(p)) / 32768.0f;
     case 24: {
         int32_t v = int32_t(uint32_t(p[0]) << 8 | uint32_t(p[1]) << 16 | uint32_t(p[2]) << 24) >> 8;
         return float(v) / 8388608.0f;
     }
     case 32:
-        return float(int32_t(le32(p))) / 2147483648.0f;
+        return float(int32_t(wavLe32(p))) / 2147483648.0f;
     default:
         return 0.0f;
     }
@@ -79,7 +79,7 @@ WavPeaks au::instruments::readWavPeaks(const QString& path, int pairs)
         if (f.read(reinterpret_cast<char*>(ch), 8) != 8) {
             break;
         }
-        const qint64 size = le32(ch + 4);
+        const qint64 size = wavLe32(ch + 4);
         const qint64 body = f.pos();
         if (std::memcmp(ch, "fmt ", 4) == 0 && size >= 16) {
             unsigned char fmt[40] = {};
@@ -87,13 +87,13 @@ WavPeaks au::instruments::readWavPeaks(const QString& path, int pairs)
             if (n < 16) {
                 return out;
             }
-            format = le16(fmt);
-            channels = le16(fmt + 2);
-            rate = int(le32(fmt + 4));
-            blockAlign = le16(fmt + 12);
-            bits = le16(fmt + 14);
+            format = wavLe16(fmt);
+            channels = wavLe16(fmt + 2);
+            rate = int(wavLe32(fmt + 4));
+            blockAlign = wavLe16(fmt + 12);
+            bits = wavLe16(fmt + 14);
             if (format == 0xFFFE && n >= 26) {
-                format = le16(fmt + 24); // WAVE_FORMAT_EXTENSIBLE: the sub-format GUID starts with the real tag
+                format = wavLe16(fmt + 24); // WAVE_FORMAT_EXTENSIBLE: the sub-format GUID starts with the real tag
             }
         } else if (std::memcmp(ch, "data", 4) == 0) {
             dataPos = body;
@@ -147,7 +147,7 @@ WavPeaks au::instruments::readWavPeaks(const QString& path, int pairs)
             const unsigned char* fp = p + i * blockAlign;
             float sum = 0.0f;
             for (int c = 0; c < channels; ++c) {
-                sum += sampleAt(fp + c * bytesPerSample, bits, isFloat);
+                sum += wavSampleAt(fp + c * bytesPerSample, bits, isFloat);
             }
             const float v = sum / float(channels);
             const size_t b = size_t(frame * pairs / out.frames);
