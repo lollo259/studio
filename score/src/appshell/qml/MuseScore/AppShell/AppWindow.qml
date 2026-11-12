@@ -83,6 +83,79 @@ ApplicationWindow {
         anchors.fill: parent
     }
 
+    // Studio: little arrows at the edges fold the panels away and bring them back
+    //   left   palettes, layout, properties
+    //   top    the toolbars (note input bar and the others)
+    //   bottom mixer, piano keyboard, timeline
+    Item {
+        id: edgeArrows
+        anchors.fill: parent
+        z: 1000
+
+        PanelsModel {
+            id: edgePanels
+        }
+
+        Component.onCompleted: edgePanels.init()
+
+        component EdgeArrow: Rectangle {
+            id: arrow
+
+            property string group: ""
+            property bool open: false
+            property bool vertical: false // a tab on the left edge (tall) or a tab on top/bottom (wide)
+            property string glyph: ""
+
+            width: vertical ? 14 : 44
+            height: vertical ? 44 : 14
+            radius: 4
+            color: arrowArea.containsMouse ? ui.theme.accentColor : ui.theme.buttonColor
+            opacity: arrowArea.containsMouse ? 1.0 : 0.75
+            border.width: 1
+            border.color: ui.theme.strokeColor
+
+            Text {
+                anchors.centerIn: parent
+                text: arrow.glyph
+                color: arrowArea.containsMouse ? "#FFFFFF" : ui.theme.fontPrimaryColor
+                font.pixelSize: 11
+            }
+
+            MouseArea {
+                id: arrowArea
+                anchors.fill: parent
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
+                onClicked: edgePanels.toggle(arrow.group)
+            }
+        }
+
+        EdgeArrow {
+            group: "side"
+            vertical: true
+            open: edgePanels.sideOpen
+            glyph: open ? "‹" : "›"
+            x: 0
+            y: (parent.height - height) / 2
+        }
+
+        EdgeArrow {
+            group: "top"
+            open: edgePanels.topOpen
+            glyph: open ? "˄" : "˅"
+            x: (parent.width - width) / 2
+            y: 8 // in the middle of the menu bar, which always stays
+        }
+
+        EdgeArrow {
+            group: "bottom"
+            open: edgePanels.bottomOpen
+            glyph: open ? "˅" : "˄"
+            x: (parent.width - width) / 2
+            y: parent.height - height - 32
+        }
+    }
+
     //! NOTE Must be declared after windowContentItem so toasts render on top of the main content
     ToastProvider { }
 
