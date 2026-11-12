@@ -1,4 +1,4 @@
-# Ben - Laurence Who Studio
+# Sketch - Laurence Who Studio
 # SPDX-License-Identifier: GPL-3.0-or-later
 """SketchUp-style tools and shortcuts.
 
@@ -273,9 +273,9 @@ def lift(points, normal, amount=0.0005):
 
 # ------------------------------------------------------------------ Line (L)
 
-class BEN_OT_line(DrawToolBase, bpy.types.Operator):
+class SKETCH_OT_line(DrawToolBase, bpy.types.Operator):
     """Line (L): click to draw edges. Close the loop on the first point to make a face"""
-    bl_idname = "ben.line"
+    bl_idname = "sketch.line"
     bl_label = "Line"
 
     def hint(self):
@@ -341,9 +341,9 @@ class BEN_OT_line(DrawToolBase, bpy.types.Operator):
 
 # ------------------------------------------------------------------ Rectangle (R)
 
-class BEN_OT_draw_rectangle(DrawToolBase, bpy.types.Operator):
+class SKETCH_OT_draw_rectangle(DrawToolBase, bpy.types.Operator):
     """Rectangle (R): click two opposite corners, or type width,depth"""
-    bl_idname = "ben.draw_rectangle"
+    bl_idname = "sketch.draw_rectangle"
     bl_label = "Rectangle"
 
     def hint(self):
@@ -400,9 +400,9 @@ class BEN_OT_draw_rectangle(DrawToolBase, bpy.types.Operator):
 
 # ------------------------------------------------------------------ Circle (C) and Arc (A)
 
-class BEN_OT_draw_circle(DrawToolBase, bpy.types.Operator):
+class SKETCH_OT_draw_circle(DrawToolBase, bpy.types.Operator):
     """Circle (C): click the centre, then the radius (or type it)"""
-    bl_idname = "ben.draw_circle"
+    bl_idname = "sketch.draw_circle"
     bl_label = "Circle"
 
     segments: IntProperty(name="Sides", default=24, min=3, max=256)
@@ -454,9 +454,9 @@ class BEN_OT_draw_circle(DrawToolBase, bpy.types.Operator):
         return self.finish(context)
 
 
-class BEN_OT_draw_arc(DrawToolBase, bpy.types.Operator):
+class SKETCH_OT_draw_arc(DrawToolBase, bpy.types.Operator):
     """Arc (A): click the start, the end, then the bulge"""
-    bl_idname = "ben.draw_arc"
+    bl_idname = "sketch.draw_arc"
     bl_label = "Arc"
 
     segments: IntProperty(name="Segments", default=16, min=2, max=256)
@@ -558,9 +558,9 @@ def select_face_under_mouse(context, event):
     return True
 
 
-class BEN_OT_push_pull(bpy.types.Operator):
+class SKETCH_OT_push_pull(bpy.types.Operator):
     """Push/Pull (P): click a face and move the mouse to extrude it. Type a distance + Enter for an exact size"""
-    bl_idname = "ben.push_pull"
+    bl_idname = "sketch.push_pull"
     bl_label = "Push/Pull"
     bl_options = {"REGISTER", "UNDO"}
 
@@ -577,9 +577,9 @@ class BEN_OT_push_pull(bpy.types.Operator):
             return bpy.ops.view3d.edit_mesh_extrude_move_normal("INVOKE_DEFAULT")
 
 
-class BEN_OT_offset(bpy.types.Operator):
+class SKETCH_OT_offset(bpy.types.Operator):
     """Offset (F): click a face to draw a smaller copy inside its edges"""
-    bl_idname = "ben.offset"
+    bl_idname = "sketch.offset"
     bl_label = "Offset"
     bl_options = {"REGISTER", "UNDO"}
 
@@ -598,9 +598,9 @@ class BEN_OT_offset(bpy.types.Operator):
 
 # ------------------------------------------------------------------ Eraser (E), Paint (B), Group (G)
 
-class BEN_OT_erase(bpy.types.Operator):
+class SKETCH_OT_erase(bpy.types.Operator):
     """Eraser (E): delete what is under the mouse (in edit mode: the selection)"""
-    bl_idname = "ben.erase"
+    bl_idname = "sketch.erase"
     bl_label = "Eraser"
     bl_options = {"REGISTER", "UNDO"}
 
@@ -621,12 +621,12 @@ class BEN_OT_erase(bpy.types.Operator):
 
 def paint_material(rgb):
     hexname = "#%02X%02X%02X" % tuple(int(max(0, min(1, c)) * 255) for c in rgb)
-    return g.material(f"Ben paint {hexname}", tuple(rgb), 0.6)
+    return g.material(f"Sketch paint {hexname}", tuple(rgb), 0.6)
 
 
-class BEN_OT_paint(bpy.types.Operator):
+class SKETCH_OT_paint(bpy.types.Operator):
     """Paint Bucket (B): click a face (or object) to paint it with the current colour"""
-    bl_idname = "ben.paint"
+    bl_idname = "sketch.paint"
     bl_label = "Paint Bucket"
     bl_options = {"REGISTER", "UNDO"}
 
@@ -635,7 +635,7 @@ class BEN_OT_paint(bpy.types.Operator):
         _l, _n, obj, index = ray_hit(context, origin, direction)
         if obj is None or obj.type != "MESH":
             return {"CANCELLED"}
-        mat = paint_material(context.scene.ben_paint_color)
+        mat = paint_material(context.scene.sketch_paint_color)
         me = obj.data
         if mat.name not in me.materials:
             me.materials.append(mat)
@@ -649,9 +649,9 @@ class BEN_OT_paint(bpy.types.Operator):
         return {"FINISHED"}
 
 
-class BEN_OT_make_group(bpy.types.Operator):
+class SKETCH_OT_make_group(bpy.types.Operator):
     """Make Group (G): join the selected shapes into one object"""
-    bl_idname = "ben.make_group"
+    bl_idname = "sketch.make_group"
     bl_label = "Make Group"
     bl_options = {"REGISTER", "UNDO"}
 
@@ -671,9 +671,9 @@ class BEN_OT_make_group(bpy.types.Operator):
         return {"FINISHED"}
 
 
-class BEN_OT_select_tool(bpy.types.Operator):
+class SKETCH_OT_select_tool(bpy.types.Operator):
     """Select (Space)"""
-    bl_idname = "ben.select_tool"
+    bl_idname = "sketch.select_tool"
     bl_label = "Select"
 
     def execute(self, context):
@@ -683,9 +683,9 @@ class BEN_OT_select_tool(bpy.types.Operator):
         return {"FINISHED"}
 
 
-class BEN_OT_tape(bpy.types.Operator):
+class SKETCH_OT_tape(bpy.types.Operator):
     """Tape Measure (T)"""
-    bl_idname = "ben.tape"
+    bl_idname = "sketch.tape"
     bl_label = "Tape Measure"
 
     def execute(self, context):
@@ -697,20 +697,20 @@ class BEN_OT_tape(bpy.types.Operator):
 
 # (operator, key, shift, ctrl, properties)
 SHORTCUTS = [
-    ("ben.select_tool", "SPACE", False, False, {}),
-    ("ben.line", "L", False, False, {}),
-    ("ben.draw_rectangle", "R", False, False, {}),
-    ("ben.draw_circle", "C", False, False, {}),
-    ("ben.draw_arc", "A", False, False, {}),
-    ("ben.push_pull", "P", False, False, {}),
-    ("ben.offset", "F", False, False, {}),
+    ("sketch.select_tool", "SPACE", False, False, {}),
+    ("sketch.line", "L", False, False, {}),
+    ("sketch.draw_rectangle", "R", False, False, {}),
+    ("sketch.draw_circle", "C", False, False, {}),
+    ("sketch.draw_arc", "A", False, False, {}),
+    ("sketch.push_pull", "P", False, False, {}),
+    ("sketch.offset", "F", False, False, {}),
     ("transform.translate", "M", False, False, {}),
     ("transform.rotate", "Q", False, False, {}),
     ("transform.resize", "S", False, False, {}),
-    ("ben.tape", "T", False, False, {}),
-    ("ben.paint", "B", False, False, {}),
-    ("ben.erase", "E", False, False, {}),
-    ("ben.make_group", "G", False, False, {}),
+    ("sketch.tape", "T", False, False, {}),
+    ("sketch.paint", "B", False, False, {}),
+    ("sketch.erase", "E", False, False, {}),
+    ("sketch.make_group", "G", False, False, {}),
     ("view3d.rotate", "O", False, False, {}),
     ("view3d.move", "H", False, False, {}),
     ("view3d.zoom", "Z", False, False, {}),
@@ -745,7 +745,7 @@ def unregister_keymaps():
 
 
 classes = (
-    BEN_OT_line, BEN_OT_draw_rectangle, BEN_OT_draw_circle, BEN_OT_draw_arc,
-    BEN_OT_push_pull, BEN_OT_offset, BEN_OT_erase, BEN_OT_paint, BEN_OT_make_group,
-    BEN_OT_select_tool, BEN_OT_tape,
+    SKETCH_OT_line, SKETCH_OT_draw_rectangle, SKETCH_OT_draw_circle, SKETCH_OT_draw_arc,
+    SKETCH_OT_push_pull, SKETCH_OT_offset, SKETCH_OT_erase, SKETCH_OT_paint, SKETCH_OT_make_group,
+    SKETCH_OT_select_tool, SKETCH_OT_tape,
 )

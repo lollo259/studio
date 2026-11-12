@@ -104,6 +104,10 @@ jobs:
           echo "1 ICON \"$GITHUB_WORKSPACE/studio/icons/mail.ico\"" > mail.rc
           x86_64-w64-mingw32-windres mail.rc -O coff -o mail.res
           x86_64-w64-mingw32-gcc -municode -mwindows -O2 -static '-DTARGET=L"Score\\bin\\Studio.exe"' '-DEXTRA=L"--mail"' launcher.c mail.res -o "$GITHUB_WORKSPACE/Studio/Mail.exe"
+          # Sketch.exe: Blender with the Sketch template, on its own
+          echo "1 ICON \"$GITHUB_WORKSPACE/studio/icons/sketch.ico\"" > sketch.rc
+          x86_64-w64-mingw32-windres sketch.rc -O coff -o sketch.res
+          x86_64-w64-mingw32-gcc -municode -mwindows -O2 -static '-DTARGET=L"Sketch\\blender.exe"' '-DEXTRA=L"--app-template sketch"' launcher.c sketch.res -o "$GITHUB_WORKSPACE/Studio/Sketch.exe"
         fi
         ls -la "$GITHUB_WORKSPACE/Studio"
 
@@ -137,6 +141,35 @@ jobs:
         cp studio/mail/distribution/policies.json Studio/Mail/distribution/
         find Studio/Mail/studio-profile Studio/Mail/distribution -type f
         du -sh Studio/Mail
+
+    - name: Sketch (Blender)
+      shell: bash
+      run: |
+        set -e
+        # the official portable Blender for Windows (newest release), checked against blender.org's checksums
+        dir=$(curl -fsSL https://download.blender.org/release/ | grep -oE 'Blender[0-9]+\.[0-9]+/' | sort -uV | tail -1)
+        list=$(curl -fsSL "https://download.blender.org/release/$dir")
+        file=$(echo "$list" | grep -oE 'blender-[0-9.]+-windows-x64\.zip' | sort -uV | tail -1)
+        ver=${file#blender-}; ver=${ver%-windows-x64.zip}
+        echo "Blender $ver ($dir$file)"
+        mkdir -p dl/sketch
+        curl -fsSL "https://download.blender.org/release/$dir$file" -o dl/sketch/blender.zip
+        if curl -fsSL "https://download.blender.org/release/${dir}blender-$ver.sha256" -o dl/sketch/sums; then
+          want=$(grep -F "$file" dl/sketch/sums | head -1 | cut -d' ' -f1)
+          have=$(sha256sum dl/sketch/blender.zip | cut -d' ' -f1)
+          echo "want $want"; echo "have $have"
+          test -n "$want" && test "$want" = "$have"
+        fi
+        unzip -q dl/sketch/blender.zip -d dl/sketch/x
+        mv dl/sketch/x/blender-*-windows-x64 Studio/Sketch
+        test -f Studio/Sketch/blender.exe
+        rm -rf dl/sketch
+        # Sketch = Blender with the Sketch application template, built in
+        vdir=$(ls Studio/Sketch | grep -E '^[0-9]+\.[0-9]+$' | head -1)
+        mkdir -p "Studio/Sketch/$vdir/scripts/startup/bl_app_templates_system/sketch"
+        cp -r sketch/template/. "Studio/Sketch/$vdir/scripts/startup/bl_app_templates_system/sketch/"
+        echo "$ver" > Studio/Sketch/studio-blender-version.txt
+        du -sh Studio/Sketch
 
     - name: Sounds
       shell: bash

@@ -1,4 +1,4 @@
-# Ben - Laurence Who Studio
+# Sketch - Laurence Who Studio
 # SPDX-License-Identifier: GPL-3.0-or-later
 """SketchUp-style modelling helpers: rectangles, floor plans, walls, rooms."""
 
@@ -30,9 +30,9 @@ def _to_edit(context, obj, select_mode):
     context.tool_settings.mesh_select_mode = select_mode
 
 
-class BEN_OT_rectangle(bpy.types.Operator):
+class SKETCH_OT_rectangle(bpy.types.Operator):
     """Draw a flat rectangle on the ground at the 3D cursor, ready for Push/Pull"""
-    bl_idname = "ben.rectangle"
+    bl_idname = "sketch.rectangle"
     bl_label = "Rectangle"
     bl_options = {"REGISTER", "UNDO"}
 
@@ -51,9 +51,9 @@ class BEN_OT_rectangle(bpy.types.Operator):
         return {"FINISHED"}
 
 
-class BEN_OT_start_plan(bpy.types.Operator):
+class SKETCH_OT_start_plan(bpy.types.Operator):
     """Start a floor plan: one point at the 3D cursor. Ctrl+right-click to draw each next corner"""
-    bl_idname = "ben.start_plan"
+    bl_idname = "sketch.start_plan"
     bl_label = "Draw floor plan"
     bl_options = {"REGISTER", "UNDO"}
 
@@ -69,9 +69,9 @@ class BEN_OT_start_plan(bpy.types.Operator):
         return {"FINISHED"}
 
 
-class BEN_OT_walls_from_plan(bpy.types.Operator):
+class SKETCH_OT_walls_from_plan(bpy.types.Operator):
     """Raise walls from the edges of the active object (a drawn plan, a rectangle, any outline)"""
-    bl_idname = "ben.walls_from_plan"
+    bl_idname = "sketch.walls_from_plan"
     bl_label = "Walls from plan"
     bl_options = {"REGISTER", "UNDO"}
 
@@ -120,9 +120,9 @@ class BEN_OT_walls_from_plan(bpy.types.Operator):
         return {"FINISHED"}
 
 
-class BEN_OT_room(bpy.types.Operator):
+class SKETCH_OT_room(bpy.types.Operator):
     """Add a closed room or cube installation, measured from the inside"""
-    bl_idname = "ben.add_room"
+    bl_idname = "sketch.add_room"
     bl_label = "Room / cube"
     bl_options = {"REGISTER", "UNDO"}
 
@@ -156,9 +156,9 @@ class BEN_OT_room(bpy.types.Operator):
         return {"FINISHED"}
 
 
-class BEN_OT_units(bpy.types.Operator):
+class SKETCH_OT_units(bpy.types.Operator):
     """Use metres and centimetres, real-world scale"""
-    bl_idname = "ben.metric"
+    bl_idname = "sketch.metric"
     bl_label = "Metric units"
     bl_options = {"REGISTER", "UNDO"}
 
@@ -174,4 +174,4 @@ def apply_units(scene):
     us.length_unit = "METERS"
 
 
-classes = (BEN_OT_rectangle, BEN_OT_start_plan, BEN_OT_walls_from_plan, BEN_OT_room, BEN_OT_units)
+classes = (SKETCH_OT_rectangle, SKETCH_OT_start_plan, SKETCH_OT_walls_from_plan, SKETCH_OT_room, SKETCH_OT_units)

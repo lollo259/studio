@@ -55,7 +55,7 @@ const QColor GREEN("#2CD47C");
 const QColor OLED("#0B0B0C");
 
 // the pages, in key order (Ctrl+Tab goes round them)
-const QStringList PAGES { "score", "tape" }; // Mail is its own app (Mail.exe = Studio.exe --mail)
+const QStringList PAGES { "score", "tape", "sketch" }; // Mail is its own app (Mail.exe = Studio.exe --mail)
 
 QString fmtTime(double s)
 {
@@ -79,7 +79,7 @@ class TopBar : public QWidget
 {
     Q_OBJECT
 public:
-    enum Key { None, Back, Play, Link, PageScore, PageSplit, PageTape, PageMail, Min, Max, Close };
+    enum Key { None, Back, Play, Link, PageScore, PageSplit, PageTape, PageSketch, Min, Max, Close };
 
     explicit TopBar(QWidget* parent)
         : QWidget(parent)
@@ -101,7 +101,7 @@ public:
         switch (k) {
         case PageScore: return "score";
         case PageTape: return "tape";
-        case PageMail: return "mail";
+        case PageSketch: return "sketch";
         default: return {};
         }
     }
@@ -119,9 +119,10 @@ protected:
         case Back: return QRectF(560, y, s, s);
         case Play: return QRectF(626, y, s, s);
         case Link: return QRectF(692, y, s, s);
-        case PageScore: return QRectF(width() - 3 * 66 - 18, y, s, s);
-        case PageSplit: return QRectF(width() - 2 * 66 - 18, y, s, s);
-        case PageTape: return QRectF(width() - 66 - 18, y, s, s);
+        case PageScore: return QRectF(width() - 4 * 66 - 18, y, s, s);
+        case PageSplit: return QRectF(width() - 3 * 66 - 18, y, s, s);
+        case PageTape: return QRectF(width() - 2 * 66 - 18, y, s, s);
+        case PageSketch: return QRectF(width() - 66 - 18, y, s, s);
         case Min: return QRectF(width() - 3 * 34 - 10, 2, 30, 22);
         case Max: return QRectF(width() - 2 * 34 - 10, 2, 30, 22);
         case Close: return QRectF(width() - 34 - 10, 2, 30, 22);
@@ -131,7 +132,7 @@ protected:
 
     Key keyAt(const QPointF& p) const
     {
-        for (Key k : { Back, Play, Link, PageScore, PageSplit, PageTape, Min, Max, Close }) {
+        for (Key k : { Back, Play, Link, PageScore, PageSplit, PageTape, PageSketch, Min, Max, Close }) {
             if (keyRect(k).contains(p)) {
                 return k;
             }
@@ -235,7 +236,7 @@ protected:
         drawKey(p, Link, "link", "", false, linked, BLUE);
 
         // pages
-        for (Key k : { PageScore, PageTape }) {
+        for (Key k : { PageScore, PageTape, PageSketch }) {
             const QString pg = pageOf(k);
             const bool o = out.contains(pg);
             drawKey(p, k, o ? pg + " ↗" : pg, "", false, o || page == pg, o ? BLUE : ORANGE);
@@ -454,6 +455,11 @@ private:
     void restartIfNeeded()
     {
         if (m_quitting) {
+            return;
+        }
+        if (m_name == "Sketch") { // closing Blender is a choice: it comes back when you click its page
+            m_status = "Sketch closed - click here to open it";
+            update();
             return;
         }
         if (!m_restarts.isValid() || m_restarts.elapsed() > 60000) {
@@ -801,6 +807,8 @@ public:
         m_split->setStyleSheet("QSplitter::handle { background: #C9CACD; } QSplitter::handle:hover { background: #FF5A1F; }");
         m_slots["score"] = new AppSlot("Score", scoreExe, m_split);
         m_slots["tape"] = new AppSlot("Tape", tapeExe, m_split);
+        m_slots["sketch"] = new AppSlot("Sketch", QDir::cleanPath(bin.filePath("../../Sketch/blender.exe")), m_split);
+        m_slots["sketch"]->args = { "--app-template", "sketch" };
         for (const QString& pg : PAGES) {
             m_split->addWidget(m_slots[pg]);
             connect(m_slots[pg], &AppSlot::changed, this, &StudioWindow::refresh);
@@ -1002,9 +1010,13 @@ public:
             m_link.send(QJsonObject { { "cmd", "page" }, { "page", page } }); // Score refreshes Tape's tracks on the way in
         }
         m_top->page = page;
+        // Sketch (Blender) is heavy: it starts the first time you turn to its page
+        if (page == "sketch" && !m_slots["sketch"]->isRunning() && !m_slots["sketch"]->isUp()) {
+            m_slots["sketch"]->launch();
+        }
         for (const QString& pg : PAGES) {
             if (docked(pg)) {
-                m_slots[pg]->setVisible(page == pg || (page == "split" && pg != "mail"));
+                m_slots[pg]->setVisible(page == pg || (page == "split" && pg != "sketch"));
             }
         }
         m_top->update();
@@ -1101,7 +1113,7 @@ public:
             break;
         case TopBar::PageScore:
         case TopBar::PageTape:
-        case TopBar::PageMail: setPage(TopBar::pageOf(k));
+        case TopBar::PageSketch: setPage(TopBar::pageOf(k));
             break;
         case TopBar::PageSplit: setPage("split");
             break;

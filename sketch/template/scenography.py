@@ -1,4 +1,4 @@
-# Ben - Laurence Who Studio
+# Sketch - Laurence Who Studio
 # SPDX-License-Identifier: GPL-3.0-or-later
 """Scenography: stage lights, truss, projection screens, cameras and lighting moods."""
 
@@ -28,7 +28,7 @@ TEMPS = {
 
 
 def focus_target(context, location, name="Light focus"):
-    col = g.ben_collection(context, "Lights")
+    col = g.sketch_collection(context, "Lights")
     empty = bpy.data.objects.new(name, None)
     empty.empty_display_type = "SPHERE"
     empty.empty_display_size = 0.2
@@ -37,7 +37,7 @@ def focus_target(context, location, name="Light focus"):
 
 
 def spot(context, name, location, target, power=800.0, angle=25.0, blend=0.3, temp="3200"):
-    col = g.ben_collection(context, "Lights")
+    col = g.sketch_collection(context, "Lights")
     data = bpy.data.lights.new(name, "SPOT")
     data.energy = power
     data.spot_size = math.radians(angle)
@@ -57,7 +57,7 @@ def spot(context, name, location, target, power=800.0, angle=25.0, blend=0.3, te
 
 
 def area(context, name, location, size, power, temp="3200", rotation=(0, 0, 0)):
-    col = g.ben_collection(context, "Lights")
+    col = g.sketch_collection(context, "Lights")
     data = bpy.data.lights.new(name, "AREA")
     data.energy = power
     data.size = size
@@ -70,7 +70,7 @@ def area(context, name, location, size, power, temp="3200", rotation=(0, 0, 0)):
 
 def truss(context, length, location, name="Truss"):
     """Square box truss along X, 30 cm section."""
-    col = g.ben_collection(context, "Lights")
+    col = g.sketch_collection(context, "Lights")
     bm = bmesh.new()
     s = 0.15
     for dy in (-s, s):
@@ -101,7 +101,7 @@ def build_concert_lights(context, centre, hall_width, hall_height):
 
 
 def audience_camera(context, eye, target, name="Audience view"):
-    col = g.ben_collection(context, "Cameras")
+    col = g.sketch_collection(context, "Cameras")
     data = bpy.data.cameras.new(name)
     data.lens = 35.0
     data.clip_end = 500.0
@@ -114,7 +114,7 @@ def audience_camera(context, eye, target, name="Audience view"):
 
 
 def dark_world(context, strength=0.02):
-    world = context.scene.world or bpy.data.worlds.new("Ben world")
+    world = context.scene.world or bpy.data.worlds.new("Sketch world")
     context.scene.world = world
     world.color = (0.0, 0.0, 0.0)
     if world.node_tree:
@@ -126,9 +126,9 @@ def dark_world(context, strength=0.02):
 
 # ------------------------------------------------------------------ operators
 
-class BEN_OT_spot(bpy.types.Operator):
+class SKETCH_OT_spot(bpy.types.Operator):
     """Add a stage spotlight at the 3D cursor, aimed at a focus point you can move"""
-    bl_idname = "ben.add_spot"
+    bl_idname = "sketch.add_spot"
     bl_label = "Spotlight"
     bl_options = {"REGISTER", "UNDO"}
 
@@ -149,9 +149,9 @@ class BEN_OT_spot(bpy.types.Operator):
         return {"FINISHED"}
 
 
-class BEN_OT_wash(bpy.types.Operator):
+class SKETCH_OT_wash(bpy.types.Operator):
     """Add a soft wash light (area light) pointing down"""
-    bl_idname = "ben.add_wash"
+    bl_idname = "sketch.add_wash"
     bl_label = "Wash light"
     bl_options = {"REGISTER", "UNDO"}
 
@@ -167,9 +167,9 @@ class BEN_OT_wash(bpy.types.Operator):
         return {"FINISHED"}
 
 
-class BEN_OT_truss(bpy.types.Operator):
+class SKETCH_OT_truss(bpy.types.Operator):
     """Add a square box truss (30 cm) along X at the 3D cursor"""
-    bl_idname = "ben.add_truss"
+    bl_idname = "sketch.add_truss"
     bl_label = "Truss"
     bl_options = {"REGISTER", "UNDO"}
 
@@ -180,9 +180,9 @@ class BEN_OT_truss(bpy.types.Operator):
         return {"FINISHED"}
 
 
-class BEN_OT_screen(bpy.types.Operator, ImportHelper):
+class SKETCH_OT_screen(bpy.types.Operator, ImportHelper):
     """Add a projection screen showing an image or a video"""
-    bl_idname = "ben.add_screen"
+    bl_idname = "sketch.add_screen"
     bl_label = "Projection screen"
     bl_options = {"REGISTER", "UNDO"}
 
@@ -197,7 +197,7 @@ class BEN_OT_screen(bpy.types.Operator, ImportHelper):
         return ImportHelper.invoke(self, context, event)
 
     def execute(self, context):
-        col = g.ben_collection(context, "Projection")
+        col = g.sketch_collection(context, "Projection")
         img = None
         aspect = 16 / 9
         if self.filepath and os.path.exists(self.filepath):
@@ -238,16 +238,16 @@ class BEN_OT_screen(bpy.types.Operator, ImportHelper):
         return {"FINISHED"}
 
 
-class BEN_OT_mood(bpy.types.Operator):
+class SKETCH_OT_mood(bpy.types.Operator):
     """Switch the whole room between lighting moods"""
-    bl_idname = "ben.lighting_mood"
+    bl_idname = "sketch.lighting_mood"
     bl_label = "Lighting mood"
     bl_options = {"REGISTER", "UNDO"}
 
     mood: EnumProperty(name="Mood", items=[
         ("CONCERT", "Concert", "Stage lights on, house dark"),
         ("HOUSE", "House lights", "Everything evenly lit, like before the concert"),
-        ("BLACKOUT", "Blackout", "All Ben lights off"),
+        ("BLACKOUT", "Blackout", "All Sketch lights off"),
     ], default="CONCERT")
 
     def execute(self, context):
@@ -276,9 +276,9 @@ class BEN_OT_mood(bpy.types.Operator):
         return {"FINISHED"}
 
 
-class BEN_OT_camera_here(bpy.types.Operator):
+class SKETCH_OT_camera_here(bpy.types.Operator):
     """Make a seated-audience camera from the 3D cursor, looking at the stage centre"""
-    bl_idname = "ben.camera_from_seat"
+    bl_idname = "sketch.camera_from_seat"
     bl_label = "Camera from seat"
     bl_options = {"REGISTER", "UNDO"}
 
@@ -291,14 +291,14 @@ class BEN_OT_camera_here(bpy.types.Operator):
         return {"FINISHED"}
 
 
-classes = (BEN_OT_spot, BEN_OT_wash, BEN_OT_truss, BEN_OT_screen, BEN_OT_mood, BEN_OT_camera_here)
+classes = (SKETCH_OT_spot, SKETCH_OT_wash, SKETCH_OT_truss, SKETCH_OT_screen, SKETCH_OT_mood, SKETCH_OT_camera_here)
 
 
 # ------------------------------------------------------------------ film cameras and live screens
 
 def camera_body(context, cam):
     """A small video camera on a tripod, attached to the Blender camera so you can see it in the scene."""
-    col = g.ben_collection(context, "Cameras")
+    col = g.sketch_collection(context, "Cameras")
     bm = bmesh.new()
     # everything sits behind the lens (+Z), so the camera never films itself
     g.add_cylinder(bm, 0.035, 0.10, (0, 0, 0.05), segments=16)           # lens
@@ -324,9 +324,9 @@ def camera_body(context, cam):
     return body, legs
 
 
-class BEN_OT_film_camera(bpy.types.Operator):
+class SKETCH_OT_film_camera(bpy.types.Operator):
     """Add a film camera at the 3D cursor: a real Blender camera with a visible camera body and tripod"""
-    bl_idname = "ben.add_film_camera"
+    bl_idname = "sketch.add_film_camera"
     bl_label = "Film camera"
     bl_options = {"REGISTER", "UNDO"}
 
@@ -336,7 +336,7 @@ class BEN_OT_film_camera(bpy.types.Operator):
                              description="Point to look at, relative to the camera")
 
     def execute(self, context):
-        col = g.ben_collection(context, "Cameras")
+        col = g.sketch_collection(context, "Cameras")
         n = len([o for o in bpy.data.objects if o.type == "CAMERA" and o.name.startswith("Film camera")]) + 1
         data = bpy.data.cameras.new(f"Film camera {n}")
         data.lens = self.lens
@@ -349,14 +349,14 @@ class BEN_OT_film_camera(bpy.types.Operator):
 
 
 def live_dir():
-    path = bpy.path.abspath("//ben_live") if bpy.data.filepath else os.path.join(
-        __import__("tempfile").gettempdir(), "ben_live")
+    path = bpy.path.abspath("//sketch_live") if bpy.data.filepath else os.path.join(
+        __import__("tempfile").gettempdir(), "sketch_live")
     os.makedirs(path, exist_ok=True)
     return path
 
 
 def live_screens(scene):
-    return [o for o in scene.objects if o.get("ben_live_camera")]
+    return [o for o in scene.objects if o.get("sketch_live_camera")]
 
 
 def screen_feed_material(screen, image, brightness=1.5):
@@ -386,7 +386,7 @@ def update_live_screens(context):
     keep_res = (scene.render.resolution_x, scene.render.resolution_y, scene.render.resolution_percentage)
     done = 0
     for screen in live_screens(scene):
-        cam = bpy.data.objects.get(screen["ben_live_camera"])
+        cam = bpy.data.objects.get(screen["sketch_live_camera"])
         if cam is None:
             continue
         scene.camera = cam
@@ -404,9 +404,9 @@ def update_live_screens(context):
     return done
 
 
-class BEN_OT_live_screen(bpy.types.Operator):
+class SKETCH_OT_live_screen(bpy.types.Operator):
     """Show what a film camera sees on the selected screen"""
-    bl_idname = "ben.live_screen"
+    bl_idname = "sketch.live_screen"
     bl_label = "Live screen"
     bl_options = {"REGISTER", "UNDO"}
 
@@ -429,7 +429,7 @@ class BEN_OT_live_screen(bpy.types.Operator):
         if self.camera == "NONE":
             self.report({"WARNING"}, "Add a film camera first")
             return {"CANCELLED"}
-        screen["ben_live_camera"] = self.camera
+        screen["sketch_live_camera"] = self.camera
         if not screen.data.uv_layers:
             screen.data.uv_layers.new(name="UVMap")
         n = update_live_screens(context)
@@ -437,9 +437,9 @@ class BEN_OT_live_screen(bpy.types.Operator):
         return {"FINISHED"}
 
 
-class BEN_OT_update_screens(bpy.types.Operator):
+class SKETCH_OT_update_screens(bpy.types.Operator):
     """Re-film every live screen (do this after you change the scene)"""
-    bl_idname = "ben.update_live_screens"
+    bl_idname = "sketch.update_live_screens"
     bl_label = "Update live screens"
 
     def execute(self, context):
@@ -448,9 +448,9 @@ class BEN_OT_update_screens(bpy.types.Operator):
         return {"FINISHED"}
 
 
-class BEN_OT_render_with_screens(bpy.types.Operator):
+class SKETCH_OT_render_with_screens(bpy.types.Operator):
     """Render the main camera with live screens up to date (image or whole video)"""
-    bl_idname = "ben.render_with_screens"
+    bl_idname = "sketch.render_with_screens"
     bl_label = "Render with live screens"
 
     video: BoolProperty(name="Whole video", default=False,
@@ -477,4 +477,4 @@ class BEN_OT_render_with_screens(bpy.types.Operator):
         return {"FINISHED"}
 
 
-classes = classes + (BEN_OT_film_camera, BEN_OT_live_screen, BEN_OT_update_screens, BEN_OT_render_with_screens)
+classes = classes + (SKETCH_OT_film_camera, SKETCH_OT_live_screen, SKETCH_OT_update_screens, SKETCH_OT_render_with_screens)

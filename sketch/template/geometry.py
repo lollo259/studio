@@ -1,19 +1,19 @@
-# Ben - Laurence Who Studio
+# Sketch - Laurence Who Studio
 # SPDX-License-Identifier: GPL-3.0-or-later
-"""Small mesh/material helpers shared by Ben's generators. All sizes in metres."""
+"""Small mesh/material helpers shared by Sketch's generators. All sizes in metres."""
 
 import math
 import bmesh
 import bpy
 from mathutils import Matrix, Vector
 
-COLLECTION_NAME = "Ben"
+COLLECTION_NAME = "Sketch"
 
 
 # ---------------------------------------------------------------- collections
 
-def ben_collection(context, sub=None):
-    """Return (and create) the 'Ben' collection, optionally a sub-collection."""
+def sketch_collection(context, sub=None):
+    """Return (and create) the 'Sketch' collection, optionally a sub-collection."""
     scene_col = context.scene.collection
     root = bpy.data.collections.get(COLLECTION_NAME)
     if root is None:
@@ -79,7 +79,7 @@ MATS = {
 
 def mat(key):
     rgb, rough = MATS[key]
-    return material(f"Ben {key}", rgb, rough)
+    return material(f"Sketch {key}", rgb, rough)
 
 
 # ---------------------------------------------------------------- meshes

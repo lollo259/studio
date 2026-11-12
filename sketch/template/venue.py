@@ -1,4 +1,4 @@
-# Ben - Laurence Who Studio
+# Sketch - Laurence Who Studio
 # SPDX-License-Identifier: GPL-3.0-or-later
 """Venue generators: halls, chapels, stages, seating, pianos, ensembles.
 
@@ -22,7 +22,7 @@ def cursor(context):
 # ------------------------------------------------------------------ hall
 
 def build_hall(context, width, length, height, wall, ceiling, origin, name="Hall"):
-    col = g.ben_collection(context, name)
+    col = g.sketch_collection(context, name)
     ox, oy, oz = origin
     g.box(f"{name} floor", (width, length, 0.05), (ox, oy + length / 2, oz - 0.025), col, "floor")
     walls = bmesh.new()
@@ -38,9 +38,9 @@ def build_hall(context, width, length, height, wall, ceiling, origin, name="Hall
     return col
 
 
-class BEN_OT_hall(bpy.types.Operator):
+class SKETCH_OT_hall(bpy.types.Operator):
     """Add a rectangular hall: floor, four walls and an optional ceiling"""
-    bl_idname = "ben.add_hall"
+    bl_idname = "sketch.add_hall"
     bl_label = "Hall"
     bl_options = {"REGISTER", "UNDO"}
 
@@ -58,9 +58,9 @@ class BEN_OT_hall(bpy.types.Operator):
 
 # ------------------------------------------------------------------ chapel
 
-class BEN_OT_chapel(bpy.types.Operator):
+class SKETCH_OT_chapel(bpy.types.Operator):
     """Add a small single-nave church: walls, gable roof and a round apse"""
-    bl_idname = "ben.add_chapel"
+    bl_idname = "sketch.add_chapel"
     bl_label = "Chapel"
     bl_options = {"REGISTER", "UNDO"}
 
@@ -75,7 +75,7 @@ class BEN_OT_chapel(bpy.types.Operator):
 
     def execute(self, context):
         o = cursor(context)
-        col = g.ben_collection(context, "Chapel")
+        col = g.sketch_collection(context, "Chapel")
         W, L, H, T = self.width, self.length, self.height, self.wall
         g.box("Chapel floor", (W, L, 0.05), (o.x, o.y + L / 2, o.z - 0.025), col, "stone")
         walls = bmesh.new()
@@ -118,7 +118,7 @@ class BEN_OT_chapel(bpy.types.Operator):
 # ------------------------------------------------------------------ stage
 
 def build_stage(context, width, depth, height, origin, steps=True):
-    col = g.ben_collection(context, "Stage")
+    col = g.sketch_collection(context, "Stage")
     ox, oy, oz = origin
     stage = g.box("Stage", (width, depth, height), (ox, oy + depth / 2, oz + height / 2), col, "stage")
     if steps and height > 0.12:
@@ -131,9 +131,9 @@ def build_stage(context, width, depth, height, origin, steps=True):
     return stage
 
 
-class BEN_OT_stage(bpy.types.Operator):
+class SKETCH_OT_stage(bpy.types.Operator):
     """Add a stage platform. Its front edge sits at the 3D cursor"""
-    bl_idname = "ben.add_stage"
+    bl_idname = "sketch.add_stage"
     bl_label = "Stage"
     bl_options = {"REGISTER", "UNDO"}
 
@@ -150,7 +150,7 @@ class BEN_OT_stage(bpy.types.Operator):
 # ------------------------------------------------------------------ seating
 
 def seat_mesh():
-    me = bpy.data.meshes.get("Ben seat")
+    me = bpy.data.meshes.get("Sketch seat")
     if me is not None:
         return me
     bm = bmesh.new()
@@ -158,7 +158,7 @@ def seat_mesh():
     g.add_box(bm, (0.50, 0.07, 0.48), (0, -0.22, 0.70))    # back
     g.add_box(bm, (0.05, 0.45, 0.62), (-0.26, -0.02, 0.31))  # arms / sides
     g.add_box(bm, (0.05, 0.45, 0.62), (0.26, -0.02, 0.31))
-    me = bpy.data.meshes.new("Ben seat")
+    me = bpy.data.meshes.new("Sketch seat")
     bm.to_mesh(me)
     bm.free()
     me.materials.append(g.mat("seat"))
@@ -167,7 +167,7 @@ def seat_mesh():
 
 def build_seating(context, rows, per_row, seat_w, pitch, rise, aisle, curve, origin):
     """Front row at origin, rows going back (-Y), everyone facing +Y."""
-    col = g.ben_collection(context, "Audience")
+    col = g.sketch_collection(context, "Audience")
     me = seat_mesh()
     ox, oy, oz = origin
     risers = bmesh.new()
@@ -200,9 +200,9 @@ def build_seating(context, rows, per_row, seat_w, pitch, rise, aisle, curve, ori
     return count
 
 
-class BEN_OT_seating(bpy.types.Operator):
+class SKETCH_OT_seating(bpy.types.Operator):
     """Add audience seating facing +Y. The front row sits at the 3D cursor"""
-    bl_idname = "ben.add_seating"
+    bl_idname = "sketch.add_seating"
     bl_label = "Audience seating"
     bl_options = {"REGISTER", "UNDO"}
 
@@ -246,7 +246,7 @@ def grand_outline(L, W, samples=14):
 
 
 def build_piano(context, model, lid_open, origin, rot_z, bench=True):
-    col = g.ben_collection(context, "Instruments")
+    col = g.sketch_collection(context, "Instruments")
     if model == "UPRIGHT":
         bm = bmesh.new()
         g.add_box(bm, (1.50, 0.60, 1.30), (0, 0.30, 0.65))
@@ -286,9 +286,9 @@ def build_piano(context, model, lid_open, origin, rot_z, bench=True):
     return piano
 
 
-class BEN_OT_piano(bpy.types.Operator):
+class SKETCH_OT_piano(bpy.types.Operator):
     """Add a piano at real size. The keyboard faces stage left (-X), the lid opens towards the audience"""
-    bl_idname = "ben.add_piano"
+    bl_idname = "sketch.add_piano"
     bl_label = "Piano"
     bl_options = {"REGISTER", "UNDO"}
 
@@ -310,7 +310,7 @@ class BEN_OT_piano(bpy.types.Operator):
 # ------------------------------------------------------------------ ensemble
 
 def chair_stand_meshes():
-    chair = bpy.data.meshes.get("Ben chair")
+    chair = bpy.data.meshes.get("Sketch chair")
     if chair is None:
         bm = bmesh.new()
         g.add_box(bm, (0.44, 0.44, 0.04), (0, 0, 0.46))
@@ -318,25 +318,25 @@ def chair_stand_meshes():
         for sx in (-0.19, 0.19):
             for sy in (-0.19, 0.19):
                 g.add_box(bm, (0.03, 0.03, 0.46), (sx, sy, 0.23))
-        chair = bpy.data.meshes.new("Ben chair")
+        chair = bpy.data.meshes.new("Sketch chair")
         bm.to_mesh(chair)
         bm.free()
         chair.materials.append(g.mat("seat"))
-    stand = bpy.data.meshes.get("Ben music stand")
+    stand = bpy.data.meshes.get("Sketch music stand")
     if stand is None:
         bm = bmesh.new()
         g.add_cylinder(bm, 0.012, 1.05, (0, 0, 0.525), segments=8)
         g.add_box(bm, (0.50, 0.02, 0.34), (0, 0, 1.15))
-        stand = bpy.data.meshes.new("Ben music stand")
+        stand = bpy.data.meshes.new("Sketch music stand")
         bm.to_mesh(stand)
         bm.free()
         stand.materials.append(g.mat("metal"))
     return chair, stand
 
 
-class BEN_OT_ensemble(bpy.types.Operator):
+class SKETCH_OT_ensemble(bpy.types.Operator):
     """Add chairs and music stands for an ensemble, in an arc facing the audience"""
-    bl_idname = "ben.add_ensemble"
+    bl_idname = "sketch.add_ensemble"
     bl_label = "Ensemble chairs"
     bl_options = {"REGISTER", "UNDO"}
 
@@ -346,7 +346,7 @@ class BEN_OT_ensemble(bpy.types.Operator):
                           max=math.radians(200), subtype="ANGLE")
 
     def execute(self, context):
-        col = g.ben_collection(context, "Ensemble")
+        col = g.sketch_collection(context, "Ensemble")
         chair, stand = chair_stand_meshes()
         o = cursor(context)
         n = self.players
@@ -364,9 +364,9 @@ class BEN_OT_ensemble(bpy.types.Operator):
 
 # ------------------------------------------------------------------ figure
 
-class BEN_OT_figure(bpy.types.Operator):
+class SKETCH_OT_figure(bpy.types.Operator):
     """Add a simple standing figure for scale"""
-    bl_idname = "ben.add_figure"
+    bl_idname = "sketch.add_figure"
     bl_label = "Scale figure"
     bl_options = {"REGISTER", "UNDO"}
 
@@ -374,7 +374,7 @@ class BEN_OT_figure(bpy.types.Operator):
     seated: BoolProperty(name="Seated", default=False)
 
     def execute(self, context):
-        col = g.ben_collection(context, "People")
+        col = g.sketch_collection(context, "People")
         h = self.height * (0.72 if self.seated else 1.0)
         bm = bmesh.new()
         head = self.height * 0.13
@@ -387,9 +387,9 @@ class BEN_OT_figure(bpy.types.Operator):
 
 # ------------------------------------------------------------------ whole venue
 
-class BEN_OT_concert_hall(bpy.types.Operator):
+class SKETCH_OT_concert_hall(bpy.types.Operator):
     """Build a complete concert setup: hall, stage, raked seating, piano, lights and an audience camera"""
-    bl_idname = "ben.add_concert_hall"
+    bl_idname = "sketch.add_concert_hall"
     bl_label = "Concert hall (complete)"
     bl_options = {"REGISTER", "UNDO"}
 
@@ -436,6 +436,6 @@ class BEN_OT_concert_hall(bpy.types.Operator):
 
 
 classes = (
-    BEN_OT_hall, BEN_OT_chapel, BEN_OT_stage, BEN_OT_seating, BEN_OT_piano,
-    BEN_OT_ensemble, BEN_OT_figure, BEN_OT_concert_hall,
+    SKETCH_OT_hall, SKETCH_OT_chapel, SKETCH_OT_stage, SKETCH_OT_seating, SKETCH_OT_piano,
+    SKETCH_OT_ensemble, SKETCH_OT_figure, SKETCH_OT_concert_hall,
 )

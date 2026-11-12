@@ -1,4 +1,4 @@
-# Ben - Laurence Who Studio
+# Sketch - Laurence Who Studio
 # SPDX-License-Identifier: GPL-3.0-or-later
 """Liquids, smoke and fire made simple.
 
@@ -96,7 +96,7 @@ class LiquidSettings:
 
     def material(self):
         ior = LIQUIDS.get(self.liquid, (None, None, None, 1.34, None))[3]
-        return liquid_material(f"Ben liquid {self.liquid.title()}", tuple(self.color), self.transparency,
+        return liquid_material(f"Sketch liquid {self.liquid.title()}", tuple(self.color), self.transparency,
                                max(0.0, 1.0 - self.reflect), ior)
 
     def draw_settings(self, layout):
@@ -109,9 +109,9 @@ class LiquidSettings:
             col.prop(self, "viscosity")
 
 
-class BEN_OT_liquid_still(LiquidSettings, bpy.types.Operator):
+class SKETCH_OT_liquid_still(LiquidSettings, bpy.types.Operator):
     """Fill the selected container with liquid instantly (no simulation)"""
-    bl_idname = "ben.liquid_still"
+    bl_idname = "sketch.liquid_still"
     bl_label = "Fill with liquid (still)"
     bl_options = {"REGISTER", "UNDO"}
 
@@ -161,9 +161,9 @@ class BEN_OT_liquid_still(LiquidSettings, bpy.types.Operator):
         return {"FINISHED"}
 
 
-class BEN_OT_liquid_pour(LiquidSettings, bpy.types.Operator):
+class SKETCH_OT_liquid_pour(LiquidSettings, bpy.types.Operator):
     """Set up a real liquid simulation: liquid falls into the selected container. Then press Simulate"""
-    bl_idname = "ben.liquid_pour"
+    bl_idname = "sketch.liquid_pour"
     bl_label = "Pour liquid (simulation)"
     bl_options = {"REGISTER", "UNDO"}
 
@@ -190,10 +190,10 @@ class BEN_OT_liquid_pour(LiquidSettings, bpy.types.Operator):
         cont = context.active_object
         lo, hi = bounds_world(cont)
         size = hi - lo
-        coll = g.ben_collection(context, "Simulation")
+        coll = g.sketch_collection(context, "Simulation")
 
         # container = solid obstacle
-        eff = cont.modifiers.get("Ben fluid") or cont.modifiers.new("Ben fluid", "FLUID")
+        eff = cont.modifiers.get("Sketch fluid") or cont.modifiers.new("Sketch fluid", "FLUID")
         eff.fluid_type = "EFFECTOR"
         eff.effector_settings.effector_type = "COLLISION"
         eff.effector_settings.use_plane_init = True   # thin-walled containers stay watertight
@@ -210,7 +210,7 @@ class BEN_OT_liquid_pour(LiquidSettings, bpy.types.Operator):
             src = g.mesh_object(f"{self.liquid.title()} source", bmc, coll, location=centre)
         else:
             src = g.box(f"{self.liquid.title()} source", (size.x * 0.7, size.y * 0.7, h), centre, coll)
-        f = src.modifiers.new("Ben fluid", "FLUID")
+        f = src.modifiers.new("Sketch fluid", "FLUID")
         f.fluid_type = "FLOW"
         f.flow_settings.flow_type = "LIQUID"
         f.flow_settings.flow_behavior = "GEOMETRY"
@@ -222,7 +222,7 @@ class BEN_OT_liquid_pour(LiquidSettings, bpy.types.Operator):
         dlo = Vector((lo.x - size.x * 0.15, lo.y - size.y * 0.15, lo.z))  # floor = container base, no gap to leak under
         dhi = Vector((hi.x + size.x * 0.15, hi.y + size.y * 0.15, top))
         dom = g.box("Liquid", tuple(dhi - dlo), tuple((dlo + dhi) / 2), coll)
-        m = dom.modifiers.new("Ben fluid", "FLUID")
+        m = dom.modifiers.new("Sketch fluid", "FLUID")
         m.fluid_type = "DOMAIN"
         d = m.domain_settings
         d.domain_type = "LIQUID"
@@ -234,7 +234,7 @@ class BEN_OT_liquid_pour(LiquidSettings, bpy.types.Operator):
         d.cache_type = "ALL"
         d.cache_frame_start = scene.frame_start
         d.cache_frame_end = scene.frame_start + int(self.seconds * scene.render.fps)
-        d.cache_directory = os.path.join(tempfile.gettempdir(), "ben_cache", dom.name.replace(" ", "_"))
+        d.cache_directory = os.path.join(tempfile.gettempdir(), "sketch_cache", dom.name.replace(" ", "_"))
         if self.viscosity > 0:
             d.use_viscosity = True
             d.viscosity_value = 0.05 + self.viscosity * 2.0
@@ -262,9 +262,9 @@ def find_domain(context):
     return None, None
 
 
-class BEN_OT_simulate(bpy.types.Operator):
+class SKETCH_OT_simulate(bpy.types.Operator):
     """Run the liquid / smoke / fire simulation"""
-    bl_idname = "ben.simulate"
+    bl_idname = "sketch.simulate"
     bl_label = "Simulate"
 
     def invoke(self, context, event):
@@ -286,9 +286,9 @@ class BEN_OT_simulate(bpy.types.Operator):
         return bpy.ops.fluid.bake_all()
 
 
-class BEN_OT_clear_sim(bpy.types.Operator):
+class SKETCH_OT_clear_sim(bpy.types.Operator):
     """Delete the simulated result so you can change settings and simulate again"""
-    bl_idname = "ben.clear_simulation"
+    bl_idname = "sketch.clear_simulation"
     bl_label = "Clear simulation"
 
     def execute(self, context):
@@ -299,9 +299,9 @@ class BEN_OT_clear_sim(bpy.types.Operator):
         return bpy.ops.fluid.free_all()
 
 
-class BEN_OT_smoke_fire(bpy.types.Operator):
+class SKETCH_OT_smoke_fire(bpy.types.Operator):
     """Make the selected object emit smoke, fire, or both"""
-    bl_idname = "ben.smoke_fire"
+    bl_idname = "sketch.smoke_fire"
     bl_label = "Smoke / fire"
     bl_options = {"REGISTER", "UNDO"}
 
@@ -322,14 +322,14 @@ class BEN_OT_smoke_fire(bpy.types.Operator):
         lo, hi = bounds_world(src)
         size = hi - lo
         s = max(size.x, size.y, 0.3)
-        f = src.modifiers.get("Ben fluid") or src.modifiers.new("Ben fluid", "FLUID")
+        f = src.modifiers.get("Sketch fluid") or src.modifiers.new("Sketch fluid", "FLUID")
         f.fluid_type = "FLOW"
         f.flow_settings.flow_type = self.kind
         f.flow_settings.flow_behavior = "INFLOW"
-        coll = g.ben_collection(context, "Simulation")
+        coll = g.sketch_collection(context, "Simulation")
         c = (lo + hi) / 2
         dom = g.box("Smoke / fire", (s * 3, s * 3, s * 6), (c.x, c.y, lo.z + s * 3 - 0.05), coll)
-        m = dom.modifiers.new("Ben fluid", "FLUID")
+        m = dom.modifiers.new("Sketch fluid", "FLUID")
         m.fluid_type = "DOMAIN"
         d = m.domain_settings
         d.domain_type = "GAS"
@@ -337,11 +337,11 @@ class BEN_OT_smoke_fire(bpy.types.Operator):
         d.cache_type = "ALL"
         d.cache_frame_start = scene.frame_start
         d.cache_frame_end = scene.frame_start + int(self.seconds * scene.render.fps)
-        d.cache_directory = os.path.join(tempfile.gettempdir(), "ben_cache", dom.name.replace(" ", "_").replace("/", ""))
+        d.cache_directory = os.path.join(tempfile.gettempdir(), "sketch_cache", dom.name.replace(" ", "_").replace("/", ""))
         scene.frame_end = d.cache_frame_end
         dom.display_type = "WIRE"
         # simple volume shader; fire glows through blackbody emission
-        mat = bpy.data.materials.new("Ben smoke")
+        mat = bpy.data.materials.new("Sketch smoke")
         if hasattr(mat, "use_nodes"):
             try:
                 mat.use_nodes = True
@@ -360,4 +360,4 @@ class BEN_OT_smoke_fire(bpy.types.Operator):
         return {"FINISHED"}
 
 
-classes = (BEN_OT_liquid_still, BEN_OT_liquid_pour, BEN_OT_simulate, BEN_OT_clear_sim, BEN_OT_smoke_fire)
+classes = (SKETCH_OT_liquid_still, SKETCH_OT_liquid_pour, SKETCH_OT_simulate, SKETCH_OT_clear_sim, SKETCH_OT_smoke_fire)

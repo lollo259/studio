@@ -1,30 +1,27 @@
-# Ben - Laurence Who Studio
+# Sketch - Laurence Who Studio
 # SPDX-License-Identifier: GPL-3.0-or-later
-"""Ben's own interface: top menus, SketchUp-style tool row and the right sidebar.
-
-Blender's top bar, 3D-view header and sidebar panels are replaced while Ben
-is active and restored when you switch back to plain Blender.
-"""
+"""Sketch's additions to Blender's interface: the SketchUp-style tool row, the Sketch
+sidebar tab and the Sketch Add menu. Blender's own interface stays as it is."""
 
 import bpy
 
 # ------------------------------------------------------------------ menus
 
-class BEN_MT_file(bpy.types.Menu):
-    bl_idname = "BEN_MT_file"
+class SKETCH_MT_file(bpy.types.Menu):
+    bl_idname = "SKETCH_MT_file"
     bl_label = "File"
 
     def draw(self, context):
         l = self.layout
-        l.operator("wm.read_homefile", text="New", icon="FILE_NEW").app_template = "ben"
+        l.operator("wm.read_homefile", text="New", icon="FILE_NEW").app_template = "sketch"
         l.operator("wm.open_mainfile", text="Open…", icon="FILE_FOLDER")
         l.menu("TOPBAR_MT_file_open_recent", text="Open recent")
         l.separator()
         l.operator("wm.save_mainfile", text="Save", icon="FILE_TICK")
         l.operator("wm.save_as_mainfile", text="Save as…")
         l.separator()
-        l.menu("BEN_MT_import", text="Import")
-        l.menu("BEN_MT_export", text="Export")
+        l.menu("SKETCH_MT_import", text="Import")
+        l.menu("SKETCH_MT_export", text="Export")
         l.separator()
         l.operator("wm.quit_blender", text="Quit", icon="QUIT")
 
@@ -35,8 +32,8 @@ def _op_if(layout, idname, text):
         layout.operator(idname, text=text)
 
 
-class BEN_MT_import(bpy.types.Menu):
-    bl_idname = "BEN_MT_import"
+class SKETCH_MT_import(bpy.types.Menu):
+    bl_idname = "SKETCH_MT_import"
     bl_label = "Import"
 
     def draw(self, context):
@@ -46,11 +43,11 @@ class BEN_MT_import(bpy.types.Menu):
         _op_if(l, "import_scene.gltf", "glTF (.glb/.gltf)")
         _op_if(l, "wm.stl_import", "STL (.stl)")
         _op_if(l, "wm.usd_import", "USD (.usd)")
-        l.operator("ben.add_screen", text="Image / video as a screen")
+        l.operator("sketch.add_screen", text="Image / video as a screen")
 
 
-class BEN_MT_export(bpy.types.Menu):
-    bl_idname = "BEN_MT_export"
+class SKETCH_MT_export(bpy.types.Menu):
+    bl_idname = "SKETCH_MT_export"
     bl_label = "Export"
 
     def draw(self, context):
@@ -62,8 +59,8 @@ class BEN_MT_export(bpy.types.Menu):
         _op_if(l, "wm.usd_export", "USD (.usd)")
 
 
-class BEN_MT_edit(bpy.types.Menu):
-    bl_idname = "BEN_MT_edit"
+class SKETCH_MT_edit(bpy.types.Menu):
+    bl_idname = "SKETCH_MT_edit"
     bl_label = "Edit"
 
     def draw(self, context):
@@ -76,21 +73,21 @@ class BEN_MT_edit(bpy.types.Menu):
         l.operator("object.select_all", text="Select all").action = "SELECT"
         l.operator("object.select_all", text="Select none").action = "DESELECT"
         l.separator()
-        l.operator("ben.make_group", text="Make group")
+        l.operator("sketch.make_group", text="Make group")
         l.operator("object.hide_view_set", text="Hide").unselected = False
         l.operator("object.hide_view_clear", text="Unhide all")
 
 
-class BEN_MT_view(bpy.types.Menu):
-    bl_idname = "BEN_MT_view"
+class SKETCH_MT_view(bpy.types.Menu):
+    bl_idname = "SKETCH_MT_view"
     bl_label = "View"
 
     def draw(self, context):
         l = self.layout
-        l.operator("ben.view", text="Iso").view = "ISO"
-        l.operator("ben.view", text="Top (plan)").view = "TOP"
-        l.operator("ben.view", text="Front").view = "FRONT"
-        l.operator("ben.view", text="Right").view = "RIGHT"
+        l.operator("sketch.view", text="Iso").view = "ISO"
+        l.operator("sketch.view", text="Top (plan)").view = "TOP"
+        l.operator("sketch.view", text="Front").view = "FRONT"
+        l.operator("sketch.view", text="Right").view = "RIGHT"
         l.separator()
         l.operator("view3d.view_persportho", text="Perspective / Parallel")
         l.operator("view3d.view_all", text="Zoom extents").center = False
@@ -98,11 +95,11 @@ class BEN_MT_view(bpy.types.Menu):
         l.operator("view3d.walk", text="Walk")
         l.separator()
         l.operator("view3d.view_camera", text="Camera view")
-        l.operator("ben.camera_from_seat", text="New camera from here")
+        l.operator("sketch.camera_from_seat", text="New camera from here")
 
 
-class BEN_MT_render(bpy.types.Menu):
-    bl_idname = "BEN_MT_render"
+class SKETCH_MT_render(bpy.types.Menu):
+    bl_idname = "SKETCH_MT_render"
     bl_label = "Render"
 
     def draw(self, context):
@@ -121,34 +118,34 @@ def topbar_draw(self, context):
     if context.region.alignment == "RIGHT":
         return
     row = layout.row(align=True)
-    row.label(text="Ben")
+    row.label(text="Sketch")
     row.separator(factor=2.0)
-    row.menu("BEN_MT_file")
-    row.menu("BEN_MT_edit")
-    row.menu("BEN_MT_view")
-    row.menu("BEN_MT_render")
+    row.menu("SKETCH_MT_file")
+    row.menu("SKETCH_MT_edit")
+    row.menu("SKETCH_MT_view")
+    row.menu("SKETCH_MT_render")
 
 
 # ------------------------------------------------------------------ tool row (3D view header)
 
 TOOLS = (
-    ("ben.select_tool", "RESTRICT_SELECT_OFF", "Select (Space)"),
-    ("ben.erase", "TRASH", "Eraser (E)"),
+    ("sketch.select_tool", "RESTRICT_SELECT_OFF", "Select (Space)"),
+    ("sketch.erase", "TRASH", "Eraser (E)"),
     None,
-    ("ben.line", "GREASEPENCIL", "Line (L)"),
-    ("ben.draw_arc", "SPHERECURVE", "Arc (A)"),
-    ("ben.draw_rectangle", "MESH_PLANE", "Rectangle (R)"),
-    ("ben.draw_circle", "MESH_CIRCLE", "Circle (C)"),
+    ("sketch.line", "GREASEPENCIL", "Line (L)"),
+    ("sketch.draw_arc", "SPHERECURVE", "Arc (A)"),
+    ("sketch.draw_rectangle", "MESH_PLANE", "Rectangle (R)"),
+    ("sketch.draw_circle", "MESH_CIRCLE", "Circle (C)"),
     None,
-    ("ben.push_pull", "EMPTY_SINGLE_ARROW", "Push/Pull (P)"),
-    ("ben.offset", "FULLSCREEN_EXIT", "Offset (F)"),
+    ("sketch.push_pull", "EMPTY_SINGLE_ARROW", "Push/Pull (P)"),
+    ("sketch.offset", "FULLSCREEN_EXIT", "Offset (F)"),
     ("transform.translate", "ORIENTATION_GLOBAL", "Move (M)"),
     ("transform.rotate", "ORIENTATION_GIMBAL", "Rotate (Q)"),
     ("transform.resize", "FULLSCREEN_ENTER", "Scale (S)"),
     None,
-    ("ben.tape", "DRIVER_DISTANCE", "Tape Measure (T)"),
-    ("ben.paint", "BRUSH_DATA", "Paint Bucket (B)"),
-    ("ben.make_group", "GROUP", "Make Group (G)"),
+    ("sketch.tape", "DRIVER_DISTANCE", "Tape Measure (T)"),
+    ("sketch.paint", "BRUSH_DATA", "Paint Bucket (B)"),
+    ("sketch.make_group", "GROUP", "Make Group (G)"),
 )
 
 
@@ -164,9 +161,9 @@ def header_draw(self, context):
         row.operator(op, text="", icon=icon)
     layout.separator_spacer()
     row = layout.row(align=True)
-    row.operator("ben.view", text="", icon="VIEW3D").view = "ISO"
-    row.operator("ben.view", text="", icon="AXIS_TOP").view = "TOP"
-    row.operator("ben.view", text="", icon="AXIS_FRONT").view = "FRONT"
+    row.operator("sketch.view", text="", icon="VIEW3D").view = "ISO"
+    row.operator("sketch.view", text="", icon="AXIS_TOP").view = "TOP"
+    row.operator("sketch.view", text="", icon="AXIS_FRONT").view = "FRONT"
     row.operator("view3d.view_all", text="", icon="ZOOM_ALL").center = False
     layout.separator(factor=1.5)
     shading = context.space_data.shading
@@ -176,9 +173,9 @@ def header_draw(self, context):
     row.prop_enum(shading, "type", "RENDERED", text="", icon="SHADING_RENDERED")
 
 
-class BEN_OT_view(bpy.types.Operator):
+class SKETCH_OT_view(bpy.types.Operator):
     """Standard SketchUp views"""
-    bl_idname = "ben.view"
+    bl_idname = "sketch.view"
     bl_label = "View"
 
     view: bpy.props.EnumProperty(items=[("ISO", "Iso", ""), ("TOP", "Top", ""),
@@ -207,10 +204,10 @@ class BEN_OT_view(bpy.types.Operator):
 class BenPanel:
     bl_space_type = "VIEW_3D"
     bl_region_type = "UI"
-    bl_category = "Ben"
+    bl_category = "Sketch"
 
 
-class BEN_PT_entity(BenPanel, bpy.types.Panel):
+class SKETCH_PT_entity(BenPanel, bpy.types.Panel):
     bl_label = "Entity info"
 
     def draw(self, context):
@@ -227,7 +224,7 @@ class BEN_PT_entity(BenPanel, bpy.types.Panel):
         layout.prop(obj, "rotation_euler", index=2, text="Turn")
 
 
-class BEN_PT_layers(BenPanel, bpy.types.Panel):
+class SKETCH_PT_layers(BenPanel, bpy.types.Panel):
     bl_label = "Layers"
 
     def draw(self, context):
@@ -237,32 +234,32 @@ class BEN_PT_layers(BenPanel, bpy.types.Panel):
         if not r.children:
             layers.active_layer(context)
         row = layout.row()
-        row.template_list("BEN_UL_layers", "", r, "children", context.scene, "ben_layer_index", rows=4)
+        row.template_list("SKETCH_UL_layers", "", r, "children", context.scene, "sketch_layer_index", rows=4)
         col = row.column(align=True)
-        col.operator("ben.layer_add", text="", icon="ADD")
-        col.operator("ben.layer_remove", text="", icon="REMOVE")
-        layout.operator("ben.move_to_layer", icon="FORWARD")
+        col.operator("sketch.layer_add", text="", icon="ADD")
+        col.operator("sketch.layer_remove", text="", icon="REMOVE")
+        layout.operator("sketch.move_to_layer", icon="FORWARD")
 
 
-class BEN_PT_materials(BenPanel, bpy.types.Panel):
+class SKETCH_PT_materials(BenPanel, bpy.types.Panel):
     bl_label = "Materials"
 
     def draw(self, context):
         layout = self.layout
-        layout.prop(context.scene, "ben_paint_color", text="Paint colour")
+        layout.prop(context.scene, "sketch_paint_color", text="Paint colour")
         layout.label(text="B: click a face · Shift+B click: whole object")
 
 
-class BEN_PT_library(BenPanel, bpy.types.Panel):
+class SKETCH_PT_library(BenPanel, bpy.types.Panel):
     bl_label = "Library"
     bl_options = {"DEFAULT_CLOSED"}
 
     def draw(self, context):
         layout = self.layout
         for title, ops in (
-            ("Rooms", ("ben.add_room", "ben.add_hall", "ben.add_chapel", "ben.walls_from_plan")),
-            ("Stage & audience", ("ben.add_concert_hall", "ben.add_stage", "ben.add_seating", "ben.add_ensemble")),
-            ("Instruments & people", ("ben.add_piano", "ben.add_figure")),
+            ("Rooms", ("sketch.add_room", "sketch.add_hall", "sketch.add_chapel", "sketch.walls_from_plan")),
+            ("Stage & audience", ("sketch.add_concert_hall", "sketch.add_stage", "sketch.add_seating", "sketch.add_ensemble")),
+            ("Instruments & people", ("sketch.add_piano", "sketch.add_figure")),
         ):
             layout.label(text=title)
             col = layout.column(align=True)
@@ -270,30 +267,30 @@ class BEN_PT_library(BenPanel, bpy.types.Panel):
                 col.operator(op)
 
 
-class BEN_PT_lighting(BenPanel, bpy.types.Panel):
+class SKETCH_PT_lighting(BenPanel, bpy.types.Panel):
     bl_label = "Lights, cameras & screens"
     bl_options = {"DEFAULT_CLOSED"}
 
     def draw(self, context):
         layout = self.layout
         col = layout.column(align=True)
-        for op in ("ben.add_spot", "ben.add_wash", "ben.add_truss", "ben.add_screen"):
+        for op in ("sketch.add_spot", "sketch.add_wash", "sketch.add_truss", "sketch.add_screen"):
             col.operator(op)
         layout.label(text="Film & live screens")
         col = layout.column(align=True)
-        col.operator("ben.add_film_camera", icon="CAMERA_DATA")
-        col.operator("ben.live_screen", text="Selected screen shows camera…", icon="IMAGE_PLANE")
-        col.operator("ben.update_live_screens", icon="FILE_REFRESH")
+        col.operator("sketch.add_film_camera", icon="CAMERA_DATA")
+        col.operator("sketch.live_screen", text="Selected screen shows camera…", icon="IMAGE_PLANE")
+        col.operator("sketch.update_live_screens", icon="FILE_REFRESH")
         row = col.row(align=True)
-        row.operator("ben.render_with_screens", text="Render image", icon="RENDER_STILL").video = False
-        row.operator("ben.render_with_screens", text="Render video", icon="RENDER_ANIMATION").video = True
+        row.operator("sketch.render_with_screens", text="Render image", icon="RENDER_STILL").video = False
+        row.operator("sketch.render_with_screens", text="Render video", icon="RENDER_ANIMATION").video = True
         row = layout.row(align=True)
-        row.operator("ben.lighting_mood", text="Concert").mood = "CONCERT"
-        row.operator("ben.lighting_mood", text="House").mood = "HOUSE"
-        row.operator("ben.lighting_mood", text="Dark").mood = "BLACKOUT"
+        row.operator("sketch.lighting_mood", text="Concert").mood = "CONCERT"
+        row.operator("sketch.lighting_mood", text="House").mood = "HOUSE"
+        row.operator("sketch.lighting_mood", text="Dark").mood = "BLACKOUT"
 
 
-class BEN_PT_physics(BenPanel, bpy.types.Panel):
+class SKETCH_PT_physics(BenPanel, bpy.types.Panel):
     bl_label = "Liquids, smoke & fire"
     bl_options = {"DEFAULT_CLOSED"}
 
@@ -301,20 +298,20 @@ class BEN_PT_physics(BenPanel, bpy.types.Panel):
         layout = self.layout
         layout.label(text="Select a container or object, then:")
         col = layout.column(align=True)
-        col.operator("ben.liquid_still", icon="MOD_FLUIDSIM")
-        col.operator("ben.liquid_pour", icon="MOD_FLUID")
-        col.operator("ben.smoke_fire", icon="FORCE_FORCE")
+        col.operator("sketch.liquid_still", icon="MOD_FLUIDSIM")
+        col.operator("sketch.liquid_pour", icon="MOD_FLUID")
+        col.operator("sketch.smoke_fire", icon="FORCE_FORCE")
         row = layout.row(align=True)
         row.scale_y = 1.3
-        row.operator("ben.simulate", icon="PLAY")
-        row.operator("ben.clear_simulation", text="", icon="TRASH")
+        row.operator("sketch.simulate", icon="PLAY")
+        row.operator("sketch.clear_simulation", text="", icon="TRASH")
         scene = context.scene
         row = layout.row(align=True)
         row.prop(scene, "frame_current", text="Moment")
         row.operator("screen.animation_play", text="", icon="PLAY")
 
 
-class BEN_PT_fabric(BenPanel, bpy.types.Panel):
+class SKETCH_PT_fabric(BenPanel, bpy.types.Panel):
     bl_label = "Fabric, plastic & cardboard"
     bl_options = {"DEFAULT_CLOSED"}
 
@@ -323,34 +320,34 @@ class BEN_PT_fabric(BenPanel, bpy.types.Panel):
         layout.label(text="Draw a shape (R, C, L), then:")
         col = layout.column(align=True)
         col.scale_y = 1.2
-        col.operator("ben.make_fabric", icon="MOD_CLOTH")
-        col.operator("ben.nail", icon="PINNED")
+        col.operator("sketch.make_fabric", icon="MOD_CLOTH")
+        col.operator("sketch.nail", icon="PINNED")
         row = col.row(align=True)
-        row.operator("ben.nail_quick", text="Corners").where = "CORNERS"
-        row.operator("ben.nail_quick", text="Back edge").where = "EDGE_BACK"
-        row.operator("ben.nail_quick", text="All edges").where = "EDGES"
-        col.operator("ben.drop", icon="SORT_ASC")
-        col.operator("ben.keep_shape", icon="FREEZE")
-        col.operator("ben.soften", icon="MOD_SOFT")
+        row.operator("sketch.nail_quick", text="Corners").where = "CORNERS"
+        row.operator("sketch.nail_quick", text="Back edge").where = "EDGE_BACK"
+        row.operator("sketch.nail_quick", text="All edges").where = "EDGES"
+        col.operator("sketch.drop", icon="SORT_ASC")
+        col.operator("sketch.keep_shape", icon="FREEZE")
+        col.operator("sketch.soften", icon="MOD_SOFT")
         col.separator()
-        col.operator("ben.metal_web", icon="MOD_WIREFRAME")
+        col.operator("sketch.metal_web", icon="MOD_WIREFRAME")
         layout.label(text="Floating fabric: move it with M, then Drop")
 
 
-class BEN_MT_add(bpy.types.Menu):
-    bl_idname = "BEN_MT_add"
-    bl_label = "Ben"
+class SKETCH_MT_add(bpy.types.Menu):
+    bl_idname = "SKETCH_MT_add"
+    bl_label = "Sketch"
 
     def draw(self, context):
         layout = self.layout
-        for op in ("ben.add_room", "ben.add_hall", "ben.add_chapel", "ben.add_concert_hall", "ben.add_stage",
-                   "ben.add_seating", "ben.add_piano", "ben.add_ensemble", "ben.add_figure",
-                   "ben.add_spot", "ben.add_wash", "ben.add_truss", "ben.add_screen"):
+        for op in ("sketch.add_room", "sketch.add_hall", "sketch.add_chapel", "sketch.add_concert_hall", "sketch.add_stage",
+                   "sketch.add_seating", "sketch.add_piano", "sketch.add_ensemble", "sketch.add_figure",
+                   "sketch.add_spot", "sketch.add_wash", "sketch.add_truss", "sketch.add_screen"):
             layout.operator(op)
 
 
 def add_menu(self, context):
-    self.layout.menu(BEN_MT_add.bl_idname)
+    self.layout.menu(SKETCH_MT_add.bl_idname)
     self.layout.separator()
 
 
@@ -360,38 +357,31 @@ _original = {}
 _hidden_panels = []
 
 
+def tool_row(self, context):
+    """Sketch's SketchUp-style tools, in front of Blender's own 3D-view header."""
+    row = self.layout.row(align=True)
+    for item in TOOLS:
+        if item is None:
+            row.separator(factor=1.0)
+            continue
+        op, icon, _tip = item
+        row.operator(op, text="", icon=icon)
+    self.layout.separator(factor=2.0)
+
+
 def install():
-    _original["topbar"] = bpy.types.TOPBAR_HT_upper_bar.draw
-    _original["header"] = bpy.types.VIEW3D_HT_header.draw
-    bpy.types.TOPBAR_HT_upper_bar.draw = topbar_draw
-    bpy.types.VIEW3D_HT_header.draw = header_draw
-    # Blender's own sidebar tabs (Item, Tool, View, ...) are hidden while Ben is active
-    panels = [cls for cls in bpy.types.Panel.__subclasses__()
-              if getattr(cls, "bl_space_type", "") == "VIEW_3D" and getattr(cls, "bl_region_type", "") == "UI"
-              and getattr(cls, "bl_category", "") != "Ben" and getattr(cls, "is_registered", False)]
-    # children before parents
-    panels.sort(key=lambda c: 0 if getattr(c, "bl_parent_id", "") else 1)
-    for cls in panels:
-        try:
-            bpy.utils.unregister_class(cls)
-            _hidden_panels.append(cls)
-        except RuntimeError:
-            pass
+    # Studio decision: Sketch keeps Blender's real interface (its top bar, header and sidebar
+    # tabs stay); Sketch adds its tool row, its sidebar tab and its Add menu on top of it
+    bpy.types.VIEW3D_HT_header.prepend(tool_row)
 
 
 def uninstall():
-    if "topbar" in _original:
-        bpy.types.TOPBAR_HT_upper_bar.draw = _original.pop("topbar")
-    if "header" in _original:
-        bpy.types.VIEW3D_HT_header.draw = _original.pop("header")
-    for cls in reversed(_hidden_panels):  # parents first
-        try:
-            bpy.utils.register_class(cls)
-        except Exception:
-            pass
-    _hidden_panels.clear()
+    try:
+        bpy.types.VIEW3D_HT_header.remove(tool_row)
+    except Exception:
+        pass
 
 
-classes = (BEN_MT_file, BEN_MT_import, BEN_MT_export, BEN_MT_edit, BEN_MT_view, BEN_MT_render,
-           BEN_OT_view, BEN_PT_entity, BEN_PT_layers, BEN_PT_materials, BEN_PT_library,
-           BEN_PT_lighting, BEN_PT_physics, BEN_PT_fabric, BEN_MT_add)
+classes = (SKETCH_MT_file, SKETCH_MT_import, SKETCH_MT_export, SKETCH_MT_edit, SKETCH_MT_view, SKETCH_MT_render,
+           SKETCH_OT_view, SKETCH_PT_entity, SKETCH_PT_layers, SKETCH_PT_materials, SKETCH_PT_library,
+           SKETCH_PT_lighting, SKETCH_PT_physics, SKETCH_PT_fabric, SKETCH_MT_add)

@@ -1,8 +1,8 @@
-# Ben - Laurence Who Studio
+# Sketch - Laurence Who Studio
 # SPDX-License-Identifier: GPL-3.0-or-later
 """Layers (SketchUp tags): named groups you can show, hide and lock.
 
-Every layer is a collection inside the 'Ben' collection. New drawings go
+Every layer is a collection inside the 'Sketch' collection. New drawings go
 to the active layer.
 """
 
@@ -13,7 +13,7 @@ from . import geometry as g
 
 
 def root(context):
-    return g.ben_collection(context)
+    return g.sketch_collection(context)
 
 
 def layers(context):
@@ -35,7 +35,7 @@ def layer_collection(context, coll):
 def active_layer(context):
     """The layer new geometry goes to (created on first use)."""
     r = root(context)
-    idx = context.scene.ben_layer_index
+    idx = context.scene.sketch_layer_index
     kids = list(r.children)
     if 0 <= idx < len(kids):
         return kids[idx]
@@ -46,7 +46,7 @@ def active_layer(context):
     return coll
 
 
-class BEN_UL_layers(bpy.types.UIList):
+class SKETCH_UL_layers(bpy.types.UIList):
     def draw_item(self, context, layout, data, item, icon, active_data, active_propname, index):
         row = layout.row(align=True)
         row.prop(item, "name", text="", emboss=False)
@@ -58,9 +58,9 @@ class BEN_UL_layers(bpy.types.UIList):
                  icon="LOCKED" if item.hide_select else "UNLOCKED")
 
 
-class BEN_OT_layer_add(bpy.types.Operator):
+class SKETCH_OT_layer_add(bpy.types.Operator):
     """Add a new layer and make it active"""
-    bl_idname = "ben.layer_add"
+    bl_idname = "sketch.layer_add"
     bl_label = "Add layer"
     bl_options = {"REGISTER", "UNDO"}
 
@@ -70,20 +70,20 @@ class BEN_OT_layer_add(bpy.types.Operator):
         r = root(context)
         coll = bpy.data.collections.new(self.name)
         r.children.link(coll)
-        context.scene.ben_layer_index = len(r.children) - 1
+        context.scene.sketch_layer_index = len(r.children) - 1
         return {"FINISHED"}
 
 
-class BEN_OT_layer_remove(bpy.types.Operator):
+class SKETCH_OT_layer_remove(bpy.types.Operator):
     """Delete the active layer. Its objects move to the first layer"""
-    bl_idname = "ben.layer_remove"
+    bl_idname = "sketch.layer_remove"
     bl_label = "Delete layer"
     bl_options = {"REGISTER", "UNDO"}
 
     def execute(self, context):
         r = root(context)
         kids = list(r.children)
-        idx = context.scene.ben_layer_index
+        idx = context.scene.sketch_layer_index
         if not (0 <= idx < len(kids)) or len(kids) < 2:
             return {"CANCELLED"}
         coll = kids[idx]
@@ -92,13 +92,13 @@ class BEN_OT_layer_remove(bpy.types.Operator):
             if keep not in obj.users_collection:
                 keep.objects.link(obj)
         bpy.data.collections.remove(coll)
-        context.scene.ben_layer_index = max(0, idx - 1)
+        context.scene.sketch_layer_index = max(0, idx - 1)
         return {"FINISHED"}
 
 
-class BEN_OT_move_to_layer(bpy.types.Operator):
+class SKETCH_OT_move_to_layer(bpy.types.Operator):
     """Move the selected objects to the active layer"""
-    bl_idname = "ben.move_to_layer"
+    bl_idname = "sketch.move_to_layer"
     bl_label = "Move selection here"
     bl_options = {"REGISTER", "UNDO"}
 
@@ -116,11 +116,11 @@ class BEN_OT_move_to_layer(bpy.types.Operator):
 
 
 def register_props():
-    bpy.types.Scene.ben_layer_index = IntProperty(name="Active layer", default=0, min=0)
+    bpy.types.Scene.sketch_layer_index = IntProperty(name="Active layer", default=0, min=0)
 
 
 def unregister_props():
-    del bpy.types.Scene.ben_layer_index
+    del bpy.types.Scene.sketch_layer_index
 
 
-classes = (BEN_UL_layers, BEN_OT_layer_add, BEN_OT_layer_remove, BEN_OT_move_to_layer)
+classes = (SKETCH_UL_layers, SKETCH_OT_layer_add, SKETCH_OT_layer_remove, SKETCH_OT_move_to_layer)

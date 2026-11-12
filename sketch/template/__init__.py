@@ -1,9 +1,9 @@
-# Ben - Laurence Who Studio
+# Sketch - Laurence Who Studio
 # SPDX-License-Identifier: GPL-3.0-or-later
-"""Ben: venues, stages, scenography and architecture, built on Blender.
+"""Sketch: venues, stages, scenography and architecture, built on Blender.
 
 A Blender application template by Laurence Who. Start it with
-`blender --app-template ben` or from File > New > Ben.
+`blender --app-template sketch` or from File > New > Sketch.
 """
 
 import os
@@ -16,15 +16,21 @@ HERE = os.path.dirname(__file__)
 
 # ------------------------------------------------------------------ look
 
-BLACK = (0.0, 0.0, 0.0)
-NIGHT = (0.043, 0.043, 0.043)    # #0B0B0B
-PANEL = (0.078, 0.078, 0.078)    # #141414
-WIDGET = (0.102, 0.102, 0.102)   # #1A1A1A
-LINE = (0.15, 0.15, 0.15)        # #262626
-TEXT = (0.95, 0.95, 0.95)
-MUTED = (0.55, 0.55, 0.55)
-BLUE = (0.122, 0.373, 0.682)     # #1F5FAE (laurencewho.com)
-BLUE_HI = (0.30, 0.55, 1.0)
+# Studio look E: light aluminium, flat keys, orange accent (same palette as Score and Tape)
+def _hex(h):
+    h = h.lstrip("#")
+    return tuple(int(h[i:i + 2], 16) / 255.0 for i in (0, 2, 4))
+
+
+BLACK = _hex("#26262A")          # headers' text and lines on aluminium
+NIGHT = _hex("#C3C4C8")          # editor backgrounds (one step darker than panels)
+PANEL = _hex("#CDCED1")          # panels: the aluminium body
+WIDGET = _hex("#E3E4E6")         # keys
+LINE = _hex("#A9AAAD")
+TEXT = _hex("#26262A")
+MUTED = _hex("#6C6C70")
+BLUE = _hex("#FF6A13")           # accent (orange; the name stays for the code below)
+BLUE_HI = _hex("#FF8A40")
 
 _saved = []  # (owner, attribute, old value) so the template can be switched off cleanly
 
@@ -44,7 +50,7 @@ def _set(owner, attr, value):
         setattr(owner, attr, value)
         _saved.append((owner, attr, old))
     except Exception as exc:  # theme layout differs between Blender versions
-        print(f"Ben: could not set {attr}: {exc}")
+        print(f"Sketch: could not set {attr}: {exc}")
 
 
 def apply_look():
@@ -64,6 +70,7 @@ def apply_look():
         _set(w, "outline", LINE)
         _set(w, "text", TEXT)
         _set(w, "text_sel", (1.0, 1.0, 1.0))
+        _set(w, "roundness", 0.3)
         _set(w, "item", BLUE_HI if name in ("wcol_numslider", "wcol_scroll", "wcol_option") else MUTED)
         _set(w, "show_shaded", False)
 
@@ -79,27 +86,28 @@ def apply_look():
         if sp is None:
             continue
         _set(sp, "back", NIGHT)
-        _set(sp, "header", BLACK)
+        _set(sp, "header", PANEL)
         _set(sp, "text", TEXT)
         _set(sp, "header_text", TEXT)
-        _set(sp, "text_hi", (1.0, 1.0, 1.0))
+        _set(sp, "text_hi", BLUE)
 
     v3d = theme.view_3d
     _set(v3d.space.gradients, "background_type", "SINGLE_COLOR")
-    _set(v3d.space.gradients, "high_gradient", NIGHT)
-    _set(v3d.space.gradients, "gradient", BLACK)
-    _set(v3d.space, "header", BLACK)
+    _set(v3d.space.gradients, "high_gradient", _hex("#D7D8DB"))
+    _set(v3d.space.gradients, "gradient", _hex("#D7D8DB"))
+    _set(v3d.space, "header", PANEL)
     _set(v3d.space, "text", TEXT)
     _set(v3d.space, "header_text", TEXT)
     _set(v3d, "object_active", BLUE_HI)
     _set(v3d, "object_selected", BLUE)
-    _set(v3d, "grid", (0.22, 0.22, 0.22))
+    _set(v3d, "grid", _hex("#A9AAAD"))
+    _set(v3d, "wire", _hex("#26262A"))
     sidebars = getattr(getattr(theme, "regions", None), "sidebars", None)
     if sidebars is not None:
         _set(sidebars, "back", PANEL)
-        _set(sidebars, "tab_back", BLACK)
+        _set(sidebars, "tab_back", NIGHT)
 
-    font = os.path.join(HERE, "fonts", "WorkSans-Regular.ttf")
+    font = os.path.join(HERE, "fonts", "Jost-Regular.ttf")
     if os.path.exists(font):
         _set(prefs.view, "font_path_ui", font)
 
@@ -117,7 +125,7 @@ def restore_look():
 
 @persistent
 def factory_startup(_):
-    """Every new Ben file: empty metric scene, dark world, real-size grid, Eevee."""
+    """Every new Sketch file: empty metric scene, dark world, real-size grid, Eevee."""
     for scene in bpy.data.scenes:
         modelling.apply_units(scene)
         for name in ("Cube", "Light", "Camera"):
@@ -130,9 +138,9 @@ def factory_startup(_):
                 break
             except TypeError:
                 continue
-        world = scene.world or bpy.data.worlds.new("Ben world")
+        world = scene.world or bpy.data.worlds.new("Sketch world")
         scene.world = world
-        world.color = (0.01, 0.01, 0.012)
+        world.color = (0.35, 0.36, 0.38)
     for screen in bpy.data.screens:
         for area in screen.areas:
             if area.type != "VIEW_3D":
@@ -140,9 +148,9 @@ def factory_startup(_):
             for space in area.spaces:
                 if space.type != "VIEW_3D":
                     continue
-                space.show_region_ui = True          # Ben sidebar visible
-                space.show_region_toolbar = False    # Ben's tools live in the header
-                space.show_region_tool_header = False
+                space.show_region_ui = True          # Sketch sidebar visible
+                space.show_region_toolbar = True     # Blender's real interface, as it is
+                space.show_region_tool_header = True
                 space.show_gizmo_navigate = False
                 ov = space.overlay
                 for attr in ("show_text", "show_stats", "show_cursor", "show_object_origins",
@@ -158,7 +166,7 @@ def factory_startup(_):
                 space.clip_end = 1000.0
                 if space.region_3d is not None:
                     space.region_3d.view_distance = 30.0
-        screen.show_statusbar = False
+        screen.show_statusbar = True
 
 
 # ------------------------------------------------------------------ register
@@ -170,7 +178,7 @@ def register():
     for mod in _modules:
         for cls in mod.classes:
             bpy.utils.register_class(cls)
-    bpy.types.Scene.ben_paint_color = bpy.props.FloatVectorProperty(
+    bpy.types.Scene.sketch_paint_color = bpy.props.FloatVectorProperty(
         name="Paint colour", subtype="COLOR", size=3, min=0.0, max=1.0, default=(0.85, 0.84, 0.81))
     layers.register_props()
     tools.register_keymaps()
@@ -188,7 +196,7 @@ def unregister():
     tools.unregister_keymaps()
     ui.uninstall()
     layers.unregister_props()
-    del bpy.types.Scene.ben_paint_color
+    del bpy.types.Scene.sketch_paint_color
     for mod in reversed(_modules):
         for cls in reversed(mod.classes):
             bpy.utils.unregister_class(cls)

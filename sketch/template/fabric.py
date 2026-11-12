@@ -1,4 +1,4 @@
-# Ben - Laurence Who Studio
+# Sketch - Laurence Who Studio
 # SPDX-License-Identifier: GPL-3.0-or-later
 """Fabric: turn a drawn shape into cloth, plastic or cardboard.
 
@@ -35,7 +35,7 @@ FABRIC_ITEMS = [
 
 def is_fabric(obj):
     return obj is not None and obj.type == "MESH" and (
-        obj.modifiers.get("Ben fabric") is not None or obj.get("ben_rigid", False))
+        obj.modifiers.get("Sketch fabric") is not None or obj.get("sketch_rigid", False))
 
 
 def make_grid(obj, cell):
@@ -74,7 +74,7 @@ def surfaces(context, exclude):
 
 def fabric_material(kind):
     _m, _t, _b, rgb, rough, _th = FABRICS[kind]
-    mat = g.material(f"Ben {kind.lower()}", rgb, rough)
+    mat = g.material(f"Sketch {kind.lower()}", rgb, rough)
     if kind == "PLASTIC" and mat.node_tree:
         bsdf = mat.node_tree.nodes.get("Principled BSDF")
         if bsdf:
@@ -85,9 +85,9 @@ def fabric_material(kind):
     return mat
 
 
-class BEN_OT_make_fabric(bpy.types.Operator):
+class SKETCH_OT_make_fabric(bpy.types.Operator):
     """Turn the selected flat shape into fabric. It floats until you press Drop"""
-    bl_idname = "ben.make_fabric"
+    bl_idname = "sketch.make_fabric"
     bl_label = "Make fabric"
     bl_options = {"REGISTER", "UNDO"}
 
@@ -107,10 +107,10 @@ class BEN_OT_make_fabric(bpy.types.Operator):
         mass, tension, bending, _rgb, _r, thick = FABRICS[self.kind]
         if self.kind == "CARDBOARD":
             # cardboard keeps its shape: a rigid sheet that falls, tips and lands
-            sol = obj.modifiers.new("Ben fabric thickness", "SOLIDIFY")
+            sol = obj.modifiers.new("Sketch fabric thickness", "SOLIDIFY")
             sol.thickness = thick
-            obj["ben_rigid"] = True
-            obj["ben_fabric"] = self.kind
+            obj["sketch_rigid"] = True
+            obj["sketch_fabric"] = self.kind
             obj.data.materials.clear()
             obj.data.materials.append(fabric_material(self.kind))
             self.report({"INFO"}, "Cardboard is floating. Move it (M), then press Drop")
@@ -118,7 +118,7 @@ class BEN_OT_make_fabric(bpy.types.Operator):
         dims = obj.dimensions
         cell = max(self.detail, max(dims) / 80)
         make_grid(obj, cell)
-        m = obj.modifiers.new("Ben fabric", "CLOTH")
+        m = obj.modifiers.new("Sketch fabric", "CLOTH")
         s = m.settings
         s.quality = 8
         s.mass = mass
@@ -133,20 +133,20 @@ class BEN_OT_make_fabric(bpy.types.Operator):
         cs.use_self_collision = True
         cs.self_distance_min = max(0.002, thick)
         cs.collision_quality = 4
-        sol = obj.modifiers.new("Ben fabric thickness", "SOLIDIFY")
+        sol = obj.modifiers.new("Sketch fabric thickness", "SOLIDIFY")
         sol.thickness = thick
         sol.offset = 0.0
         obj.data.materials.clear()
         obj.data.materials.append(fabric_material(self.kind))
-        obj["ben_fabric"] = self.kind
+        obj["sketch_fabric"] = self.kind
         context.scene.frame_set(context.scene.frame_start)
         self.report({"INFO"}, "Fabric is floating. Move it (M), then press Drop")
         return {"FINISHED"}
 
 
-class BEN_OT_drop(bpy.types.Operator):
+class SKETCH_OT_drop(bpy.types.Operator):
     """Let the fabric fall and drape over what is below it"""
-    bl_idname = "ben.drop"
+    bl_idname = "sketch.drop"
     bl_label = "Drop"
     bl_options = {"REGISTER", "UNDO"}
 
@@ -161,12 +161,12 @@ class BEN_OT_drop(bpy.types.Operator):
         cloths = [o for o in context.selected_objects if is_fabric(o)] or [context.active_object]
         for o in surfaces(context, cloths):
             if not any(m.type == "COLLISION" for m in o.modifiers):
-                o.modifiers.new("Ben surface", "COLLISION")
+                o.modifiers.new("Sketch surface", "COLLISION")
                 o.collision.thickness_outer = 0.005
                 o.collision.cloth_friction = 8.0
         frames = max(2, int(self.seconds * scene.render.fps))
         start = scene.frame_start
-        rigid = [o for o in cloths if o.get("ben_rigid")]
+        rigid = [o for o in cloths if o.get("sketch_rigid")]
         if rigid:
             if scene.rigidbody_world is None:
                 with context.temp_override(scene=scene):
@@ -187,8 +187,8 @@ class BEN_OT_drop(bpy.types.Operator):
                 o.rigid_body.mass = 0.2
                 o.rigid_body.friction = 0.8
             rbw.point_cache.frame_end = start + frames
-        for o in [c for c in cloths if not c.get("ben_rigid")]:
-            m = o.modifiers["Ben fabric"]
+        for o in [c for c in cloths if not c.get("sketch_rigid")]:
+            m = o.modifiers["Sketch fabric"]
             m.settings.effector_weights.gravity = 1.0
             m.point_cache.frame_start = start
             m.point_cache.frame_end = start + frames
@@ -199,9 +199,9 @@ class BEN_OT_drop(bpy.types.Operator):
         return {"FINISHED"}
 
 
-class BEN_OT_keep_shape(bpy.types.Operator):
+class SKETCH_OT_keep_shape(bpy.types.Operator):
     """Freeze the fabric as it is now. You can then move it and make it fabric again to re-drop"""
-    bl_idname = "ben.keep_shape"
+    bl_idname = "sketch.keep_shape"
     bl_label = "Keep shape"
     bl_options = {"REGISTER", "UNDO"}
 
@@ -211,21 +211,21 @@ class BEN_OT_keep_shape(bpy.types.Operator):
 
     def execute(self, context):
         obj = context.active_object
-        kind = obj.get("ben_fabric", "COTTON")
-        if obj.get("ben_rigid"):
+        kind = obj.get("sketch_fabric", "COTTON")
+        if obj.get("sketch_rigid"):
             mw = obj.matrix_world.copy()
             if obj.rigid_body is not None:
                 with context.temp_override(object=obj, active_object=obj, selected_objects=[obj]):
                     bpy.ops.rigidbody.object_remove()
             obj.matrix_world = mw
-            obj["ben_rigid"] = False
+            obj["sketch_rigid"] = False
             context.scene.frame_set(context.scene.frame_start)
             obj.matrix_world = mw
             return {"FINISHED"}
         depsgraph = context.evaluated_depsgraph_get()
         ev = obj.evaluated_get(depsgraph)
         # keep the draped surface (before thickness), then re-add thickness
-        sol = obj.modifiers.get("Ben fabric thickness")
+        sol = obj.modifiers.get("Sketch fabric thickness")
         if sol:
             sol.show_viewport = False
             depsgraph.update()
@@ -236,7 +236,7 @@ class BEN_OT_keep_shape(bpy.types.Operator):
         obj.data = new_me
         if old.users == 0:
             bpy.data.meshes.remove(old)
-        s = obj.modifiers.new("Ben fabric thickness", "SOLIDIFY")
+        s = obj.modifiers.new("Sketch fabric thickness", "SOLIDIFY")
         s.thickness = FABRICS.get(kind, FABRICS["COTTON"])[5]
         s.offset = 0.0
         if not obj.data.materials:
@@ -245,27 +245,27 @@ class BEN_OT_keep_shape(bpy.types.Operator):
         return {"FINISHED"}
 
 
-class BEN_OT_redrop(bpy.types.Operator):
+class SKETCH_OT_redrop(bpy.types.Operator):
     """Make a frozen piece of fabric soft again so it can be dropped somewhere else"""
-    bl_idname = "ben.soften"
+    bl_idname = "sketch.soften"
     bl_label = "Make soft again"
     bl_options = {"REGISTER", "UNDO"}
 
     @classmethod
     def poll(cls, context):
         o = context.active_object
-        return o is not None and "ben_fabric" in o and not is_fabric(o)
+        return o is not None and "sketch_fabric" in o and not is_fabric(o)
 
     def execute(self, context):
         obj = context.active_object
-        kind = obj["ben_fabric"]
+        kind = obj["sketch_fabric"]
         if kind == "CARDBOARD":
-            obj["ben_rigid"] = True
+            obj["sketch_rigid"] = True
             return {"FINISHED"}
         for m in list(obj.modifiers):
             obj.modifiers.remove(m)
         mass, tension, bending, _rgb, _r, thick = FABRICS[kind]
-        m = obj.modifiers.new("Ben fabric", "CLOTH")
+        m = obj.modifiers.new("Sketch fabric", "CLOTH")
         s = m.settings
         s.quality = 8
         s.mass = mass
@@ -277,7 +277,7 @@ class BEN_OT_redrop(bpy.types.Operator):
         cs = m.collision_settings
         cs.use_self_collision = True
         cs.distance_min = cs.self_distance_min = max(0.002, thick)
-        sol = obj.modifiers.new("Ben fabric thickness", "SOLIDIFY")
+        sol = obj.modifiers.new("Sketch fabric thickness", "SOLIDIFY")
         sol.thickness = thick
         sol.offset = 0.0
         context.scene.frame_set(context.scene.frame_start)
@@ -286,12 +286,12 @@ class BEN_OT_redrop(bpy.types.Operator):
 
 # ------------------------------------------------------------------ nails (pins)
 
-PIN_GROUP = "Ben nails"
+PIN_GROUP = "Sketch nails"
 
 
 def pin_group(obj):
     vg = obj.vertex_groups.get(PIN_GROUP) or obj.vertex_groups.new(name=PIN_GROUP)
-    cloth = obj.modifiers.get("Ben fabric")
+    cloth = obj.modifiers.get("Sketch fabric")
     if cloth is not None:
         cloth.settings.vertex_group_mass = PIN_GROUP
         cloth.settings.pin_stiffness = 1.0
@@ -309,9 +309,9 @@ def nail_near(obj, world_point, radius):
     return len(idx)
 
 
-class BEN_OT_nail(bpy.types.Operator):
+class SKETCH_OT_nail(bpy.types.Operator):
     """Nail (pin) the fabric: click the points that must stay fixed. Enter or right-click when done"""
-    bl_idname = "ben.nail"
+    bl_idname = "sketch.nail"
     bl_label = "Nail"
     bl_options = {"REGISTER", "UNDO"}
 
@@ -319,7 +319,7 @@ class BEN_OT_nail(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        return is_fabric(context.active_object) and not context.active_object.get("ben_rigid")
+        return is_fabric(context.active_object) and not context.active_object.get("sketch_rigid")
 
     def invoke(self, context, event):
         from . import tools
@@ -348,9 +348,9 @@ class BEN_OT_nail(bpy.types.Operator):
         return {"RUNNING_MODAL"}
 
 
-class BEN_OT_nail_quick(bpy.types.Operator):
+class SKETCH_OT_nail_quick(bpy.types.Operator):
     """Nail the corners or one edge of the fabric"""
-    bl_idname = "ben.nail_quick"
+    bl_idname = "sketch.nail_quick"
     bl_label = "Quick nails"
     bl_options = {"REGISTER", "UNDO"}
 
@@ -361,7 +361,7 @@ class BEN_OT_nail_quick(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        return is_fabric(context.active_object) and not context.active_object.get("ben_rigid")
+        return is_fabric(context.active_object) and not context.active_object.get("sketch_rigid")
 
     def execute(self, context):
         obj = context.active_object
@@ -400,9 +400,9 @@ METALS = {
 }
 
 
-class BEN_OT_metal_web(bpy.types.Operator):
+class SKETCH_OT_metal_web(bpy.types.Operator):
     """Turn a (frozen) fabric into a metal mesh that keeps exactly the same folds"""
-    bl_idname = "ben.metal_web"
+    bl_idname = "sketch.metal_web"
     bl_label = "Metal web"
     bl_options = {"REGISTER", "UNDO"}
 
@@ -419,22 +419,22 @@ class BEN_OT_metal_web(bpy.types.Operator):
 
     def execute(self, context):
         obj = context.active_object
-        if is_fabric(obj) and not obj.get("ben_rigid"):
-            bpy.ops.ben.keep_shape()
+        if is_fabric(obj) and not obj.get("sketch_rigid"):
+            bpy.ops.sketch.keep_shape()
         for m in list(obj.modifiers):
-            if m.type in {"SOLIDIFY", "WIREFRAME", "SUBSURF"} and m.name.startswith("Ben"):
+            if m.type in {"SOLIDIFY", "WIREFRAME", "SUBSURF"} and m.name.startswith("Sketch"):
                 obj.modifiers.remove(m)
         if self.density > 1:
-            sub = obj.modifiers.new("Ben web density", "SUBSURF")
+            sub = obj.modifiers.new("Sketch web density", "SUBSURF")
             sub.subdivision_type = "SIMPLE"
             sub.levels = sub.render_levels = self.density - 1
-        w = obj.modifiers.new("Ben metal web", "WIREFRAME")
+        w = obj.modifiers.new("Sketch metal web", "WIREFRAME")
         w.thickness = self.wire
         w.use_even_offset = True
         w.use_relative_offset = False
         w.use_replace = True
         rgb, rough = METALS[self.metal]
-        mat = g.material(f"Ben metal {self.metal.lower()}", rgb, rough)
+        mat = g.material(f"Sketch metal {self.metal.lower()}", rgb, rough)
         bsdf = mat.node_tree.nodes.get("Principled BSDF") if mat.node_tree else None
         if bsdf and "Metallic" in bsdf.inputs:
             bsdf.inputs["Metallic"].default_value = 1.0
@@ -442,9 +442,9 @@ class BEN_OT_metal_web(bpy.types.Operator):
         obj.data.materials.append(mat)
         for p in obj.data.polygons:
             p.use_smooth = False
-        obj["ben_web"] = self.metal
+        obj["sketch_web"] = self.metal
         return {"FINISHED"}
 
 
-classes = (BEN_OT_make_fabric, BEN_OT_drop, BEN_OT_keep_shape, BEN_OT_redrop,
-           BEN_OT_nail, BEN_OT_nail_quick, BEN_OT_metal_web)
+classes = (SKETCH_OT_make_fabric, SKETCH_OT_drop, SKETCH_OT_keep_shape, SKETCH_OT_redrop,
+           SKETCH_OT_nail, SKETCH_OT_nail_quick, SKETCH_OT_metal_web)

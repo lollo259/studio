@@ -24,7 +24,7 @@ UninstallDisplayIcon={app}\Studio.exe
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 WizardStyle=modern
-Compression=lzma2/fast
+Compression=lzma2/normal ; Blender makes it big: compress harder to stay under 4 GB
 LZMANumBlockThreads=4
 SolidCompression=no
 ; one single Setup.exe (Inno Setup 6.5.2+ allows up to ~4 GB; compressed it is ~3.2 GB with Mail)
@@ -50,6 +50,7 @@ Name: "{autoprograms}\Studio"; Filename: "{app}\Studio.exe"
 Name: "{autoprograms}\Studio\Score"; Filename: "{app}\Score.exe"
 Name: "{autoprograms}\Studio\Tape"; Filename: "{app}\Tape.exe"
 Name: "{autoprograms}\Studio\Mail"; Filename: "{app}\Mail.exe"
+Name: "{autoprograms}\Studio\Sketch"; Filename: "{app}\Sketch.exe"
 Name: "{autodesktop}\Studio"; Filename: "{app}\Studio.exe"; Tasks: desktopicon
 
 [Registry]
