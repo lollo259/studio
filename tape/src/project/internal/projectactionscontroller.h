@@ -89,6 +89,7 @@ private:
     void importFiles(const muse::actions::ActionData& args);
 
     void importStartupMedia(const muse::actions::ActionData& args);
+    void studioScoreProject(const muse::actions::ActionData& args); // Studio: one Tape project per score
     muse::Ret processMediaFiles(const muse::io::paths_t& paths);
 
     muse::Ret openProject(const muse::io::path_t& path,

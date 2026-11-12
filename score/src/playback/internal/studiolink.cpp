@@ -96,6 +96,7 @@ void StudioLink::init()
 
     projectSession()->masterNotationChanged().onNotify(this, [this]() {
         m_tapeFolder.clear(); // another score: Tape's tracks belong to the old one
+        m_tapeProject.clear();
         m_dirtyParts.clear();
         watchScore();
         // inside Studio every score you open is ready in Tape too: its instruments become tracks
@@ -191,7 +192,7 @@ void StudioLink::refreshTape()
     m_rendering = false;
 
     if (!files.isEmpty()) {
-        m_peer->send(QJsonObject { { "cmd", "reload" }, { "files", QJsonArray::fromStringList(files) } });
+        m_peer->send(QJsonObject { { "cmd", "reload" }, { "files", QJsonArray::fromStringList(files) }, { "tapeProject", m_tapeProject } });
     }
 }
 
@@ -262,6 +263,7 @@ void StudioLink::onMessage(const QJsonObject& msg)
         // Send to Tape just put this score's instruments in Tape: keep them up to date from now on
         m_tapeFolder = msg.value("folder").toString();
         m_tapeTitle = msg.value("title").toString();
+        m_tapeProject = msg.value("tapeProject").toString();
         m_dirtyParts.clear();
         watchScore();
         m_applied.invalidate();
@@ -283,6 +285,9 @@ void StudioLink::onMessage(const QJsonObject& msg)
                     // this score isn't in Tape yet: put all its instruments there now
                     commandDispatcher()->dispatch(project::PROJECT_SEND_TO_TAPE_AUTO_COMMAND);
                 } else {
+                    if (!m_tapeProject.isEmpty()) { // Tape shows this score's project
+                        m_peer->send(QJsonObject { { "cmd", "project" }, { "tapeProject", m_tapeProject } });
+                    }
                     refreshTape();
                 }
             });

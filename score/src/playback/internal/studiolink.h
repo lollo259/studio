@@ -53,6 +53,7 @@ private:
     bool m_rendering = false;
 
     std::unique_ptr<studiolink::Peer> m_peer;
+    QString m_tapeProject; // Studio: this score's own Tape project
     // several Score windows can be open (one per file): only the one used last answers play/stop/seek
     bool m_front = false;
     bool m_otherFront = false;

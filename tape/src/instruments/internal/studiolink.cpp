@@ -130,6 +130,17 @@ void StudioLink::reloadTracks(const QStringList& files)
 
 void StudioLink::onMessage(const QJsonObject& msg)
 {
+    // Studio: the score in use has its own Tape project - switch to it first
+    const QString tapeProject = msg.value("tapeProject").toString();
+    if (!tapeProject.isEmpty()) {
+        auto cur = globalContext()->currentProject();
+        if (!cur || cur->path().toQString() != tapeProject) {
+            dispatcher()->dispatch("studio-score-project", muse::actions::ActionData::make_arg1<QString>(tapeProject));
+        }
+    }
+    if (msg.value("cmd").toString() == "project") {
+        return;
+    }
     if (msg.value("cmd").toString() == "reload") {
         QStringList files;
         for (const auto& v : msg.value("files").toArray()) {

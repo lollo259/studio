@@ -571,11 +571,15 @@ muse::Ret ProjectActionsController::sendToTape(bool silent)
         QLocalSocket sock;
         sock.connectToServer("laurencewho-studio-link");
         if (sock.waitForConnected(200)) {
-            QJsonObject sent { { "cmd", "sent" }, { "folder", folder }, { "title", title }, { "from", "score-project" } };
+            // inside Studio each score has its own Tape project
+            const QString tapeProject = embedded
+                                        ? QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation) + "/Studio/Tape Projects/" + title + ".aup4"
+                                        : QString();
+            QJsonObject sent { { "cmd", "sent" }, { "folder", folder }, { "title", title }, { "tapeProject", tapeProject }, { "from", "score-project" } };
             sock.write(QJsonDocument(sent).toJson(QJsonDocument::Compact) + "\n");
             if (embedded) {
                 // the Tape inside Studio takes the files as new tracks
-                QJsonObject reload { { "cmd", "reload" }, { "files", QJsonArray::fromStringList(files) }, { "from", "score-project" } };
+                QJsonObject reload { { "cmd", "reload" }, { "files", QJsonArray::fromStringList(files) }, { "tapeProject", tapeProject }, { "from", "score-project" } };
                 sock.write(QJsonDocument(reload).toJson(QJsonDocument::Compact) + "\n");
                 if (!silent) {
                     sock.write("{\"cmd\":\"show\",\"page\":\"tape\",\"from\":\"score-project\"}\n");

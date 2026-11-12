@@ -1,5 +1,8 @@
 #include "projectactionscontroller.h"
 
+#include <QDir>
+#include <QFileInfo>
+
 #include <QFileDialog>
 
 #include <variant>
@@ -153,6 +156,7 @@ void ProjectActionsController::init()
     dispatcher()->reg(this, "clear-recent", this, &ProjectActionsController::clearRecentProjects);
     dispatcher()->reg(this, "project-import", this, &ProjectActionsController::importFiles);
     dispatcher()->reg(this, "project-import-startup-media", this, &ProjectActionsController::importStartupMedia);
+    dispatcher()->reg(this, "studio-score-project", this, &ProjectActionsController::studioScoreProject);
 
     dispatcher()->reg(this, "file-save", [this]() { saveProject(SaveMode::Save); });
     dispatcher()->reg(this, "file-save-to-cloud", [this]() { saveProject(SaveMode::Save, SaveLocationType::Cloud); });
@@ -482,6 +486,46 @@ void ProjectActionsController::importFiles(const muse::actions::ActionData& args
     }
 
     project->import(filePaths);
+}
+
+// Studio: each score has its own Tape project (Documents/Studio/Tape Projects/<score>.aup4).
+// Switch the Tape window to that project: save and close the one open (Studio's own projects are
+// saved without asking; any other project asks as usual), then open it, or create it the first time.
+void ProjectActionsController::studioScoreProject(const muse::actions::ActionData& args)
+{
+    if (args.empty()) {
+        return;
+    }
+    const io::path_t path(args.arg<QString>(0));
+    if (path.empty()) {
+        return;
+    }
+    const QString studioDir = QFileInfo(path.toQString()).absolutePath();
+
+    IAudacityProjectPtr current = globalContext()->currentProject();
+    if (current && current->path() == path) {
+        return; // already there
+    }
+    if (current) {
+        const bool ours = !current->path().empty()
+                          && QFileInfo(current->path().toQString()).absolutePath() == studioDir;
+        if (ours && current->hasUnsavedChanges()) {
+            doSaveProjectLocally(current->path(), SaveMode::Save);
+        }
+        if (!closeOpenedProject(false)) {
+            return; // the user kept the open project
+        }
+    }
+
+    if (QFileInfo::exists(path.toQString())) {
+        doOpenProject(path);
+        return;
+    }
+    QDir().mkpath(studioDir);
+    if (createProjectInCurrentWindow()) {
+        doSaveProjectLocally(path, SaveMode::SaveAs);
+        openPageIfNeed(PROJECT_PAGE_URI);
+    }
 }
 
 void ProjectActionsController::importStartupMedia(const muse::actions::ActionData& args)
