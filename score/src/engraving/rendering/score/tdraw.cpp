@@ -2381,6 +2381,22 @@ static void drawStudioCluster(const Note* item, Painter* painter, const mu::engr
         painter->drawRect(r.adjusted(lw / 2, lw / 2, -lw / 2, -lw / 2));
         break;
     }
+
+    // grips: when the cluster is selected, its top and bottom edges show handles - drag them up or down
+    bool selected = false;
+    for (const Note* n : ch->notes()) {
+        selected = selected || n->selected();
+    }
+    if (selected && !opt.isPrinting) {
+        const Color grip(255, 90, 31);
+        const double gw = std::max(r.width() * 0.9, sp * 0.9);
+        const double gh = sp * 0.42;
+        const double gx = r.center().x() - gw / 2;
+        painter->setPen(Pen(Color::WHITE, sp * 0.06));
+        painter->setBrush(Brush(grip));
+        painter->drawRoundedRect(RectF(gx, r.top() - gh / 2, gw, gh), gh / 2, gh / 2);
+        painter->drawRoundedRect(RectF(gx, r.bottom() - gh / 2, gw, gh), gh / 2, gh / 2);
+    }
     painter->restore();
 }
 

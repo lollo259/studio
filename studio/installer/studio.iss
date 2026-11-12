@@ -27,9 +27,8 @@ WizardStyle=modern
 Compression=lzma2/fast
 LZMANumBlockThreads=4
 SolidCompression=no
-; the sounds make it ~4.7 GB: split into data files of up to 2 GB next to the setup
-DiskSpanning=yes
-DiskSliceSize=2000000000
+; one single Setup.exe (Inno Setup 6.5.2+ allows up to ~4 GB; compressed it is ~3 GB)
+DiskSpanning=no
 ChangesAssociations=yes
 PrivilegesRequiredOverridesAllowed=dialog
 
