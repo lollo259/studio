@@ -13,7 +13,7 @@ on:
     branches: [main]
   push:
     branches: [main]
-    paths: ['studio/**', '.github/workflows/studio_windows.yml']
+    paths: ['studio/**', 'sketch/**', '.github/workflows/studio_windows.yml']
 
 concurrency:
   group: studio-windows-${{ github.ref }}
