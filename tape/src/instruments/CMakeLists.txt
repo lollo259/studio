@@ -64,7 +64,7 @@ else()
     target_compile_options(tape_fluidsynth PRIVATE -w)
 endif()
 
-find_package(Qt6 REQUIRED COMPONENTS Network)
+find_package(Qt6 REQUIRED COMPONENTS Network Multimedia)
 muse_create_module(instruments)
 
 target_sources(instruments PRIVATE
@@ -89,6 +89,10 @@ target_sources(instruments PRIVATE
     internal/studiolinkpeer.cpp
     internal/studiolinkpeer.h
     internal/instrumentsactions.h
+    internal/videoactions.cpp
+    internal/videoactions.h
+    internal/videostore.cpp
+    internal/videostore.h
 )
 
 if (WIN32)

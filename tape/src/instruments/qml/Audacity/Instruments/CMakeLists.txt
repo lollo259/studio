@@ -8,12 +8,19 @@ qt_add_qml_module(instruments_qml
         instrumentspanelmodel.h
         samplerpanelmodel.cpp
         samplerpanelmodel.h
+        videopanelmodel.cpp
+        videopanelmodel.h
     QML_FILES
         InstrumentsDialog.qml
         SamplerDialog.qml
+        VideoWindow.qml
     IMPORTS
         TARGET muse_ui_qml
         TARGET muse_uicomponents_qml
 )
+
+# the Video window: QMediaPlayer (C++) drawing into a QML VideoOutput
+find_package(Qt6 REQUIRED COMPONENTS Multimedia)
+target_link_libraries(instruments_qml PRIVATE Qt6::Multimedia)
 
 fixup_qml_module_dependencies(instruments_qml)
