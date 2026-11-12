@@ -5562,6 +5562,65 @@ void NotationInteraction::addSlurFromStroke(const std::vector<PointF>& strokeIn)
         static_cast<mu::engraving::EngravingObject*>(seg)->undoChangeProperty(Pid::BEZIER_OFFSET3, PropertyValue(q2 - c2));
     };
 
+    // a stroke that turns more than once (up, down, up...) is kept as drawn: a free slur through its turns
+    if (slur->spannerSegments().size() == 1) {
+        const double ddx = s1.x() - s0.x(), ddy = s1.y() - s0.y();
+        const double dd = ddx * ddx + ddy * ddy;
+        if (dd > 1e-6) {
+            // the stroke along the line between its ends: u 0..1 along, v across (same scale)
+            std::vector<PointF> uv;
+            for (const PointF& q : stroke) {
+                const double zx = q.x() - s0.x(), zy = q.y() - s0.y();
+                uv.push_back(PointF((zx * ddx + zy * ddy) / dd, (zy * ddx - zx * ddy) / dd));
+            }
+            // turns: the across-value changes direction by more than 3% of the length
+            int turns = 0;
+            int dirSign = 0;
+            double extreme = uv.front().y();
+            for (const PointF& q : uv) {
+                const double diff = q.y() - extreme;
+                if (dirSign >= 0 && diff > 0) {
+                    extreme = q.y();
+                    dirSign = 1;
+                } else if (dirSign <= 0 && diff < 0) {
+                    extreme = q.y();
+                    dirSign = -1;
+                } else if (std::abs(diff) > 0.03) {
+                    ++turns; // went the other way far enough: the last extreme was a turn
+                    dirSign = -dirSign;
+                    extreme = q.y();
+                }
+            }
+            if (turns >= 2) {
+                // resample by length to ~32 points
+                std::vector<double> acc { 0.0 };
+                for (size_t i = 1; i < uv.size(); ++i) {
+                    const PointF d = uv[i] - uv[i - 1];
+                    acc.push_back(acc.back() + std::sqrt(d.x() * d.x() + d.y() * d.y()));
+                }
+                const int N = 32;
+                String path;
+                size_t j = 0;
+                for (int k = 0; k <= N; ++k) {
+                    const double target = acc.back() * k / N;
+                    while (j + 1 < acc.size() && acc[j + 1] < target) {
+                        ++j;
+                    }
+                    PointF q = uv[j];
+                    if (j + 1 < acc.size() && acc[j + 1] > acc[j]) {
+                        const double f = (target - acc[j]) / (acc[j + 1] - acc[j]);
+                        q = uv[j] + (uv[j + 1] - uv[j]) * f;
+                    }
+                    if (!path.isEmpty()) {
+                        path += u";";
+                    }
+                    path += String::number(q.x(), 4) + u"," + String::number(q.y(), 4);
+                }
+                slur->undoChangeProperty(Pid::STUDIO_SLUR_PATH, PropertyValue(path));
+            }
+        }
+    }
+
     const auto& segs = slur->spannerSegments();
     if (segs.size() == 1) {
         fitSegment(toSlurSegment(segs.front()), stroke);

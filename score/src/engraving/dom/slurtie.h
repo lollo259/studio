@@ -183,6 +183,10 @@ public:
     AutoOnOff maskSlurTie() const { return m_maskSlurTie; }
     void setMaskSlurTie(AutoOnOff val) { m_maskSlurTie = val; }
 
+    // Studio: a hand-drawn slur that turns more than once keeps its turns (see Pid::STUDIO_SLUR_PATH)
+    const String& freePath() const { return m_freePath; }
+    void setFreePath(const String& p) { m_freePath = p; }
+
     virtual SlurTieSegment* newSlurTieSegment() = 0;
 
     PropertyValue getProperty(Pid propertyId) const override;
@@ -203,5 +207,6 @@ private:
 
     SlurStyleType m_styleType = SlurStyleType::Undefined;
     AutoOnOff m_maskSlurTie = AutoOnOff::AUTO;
+    String m_freePath;
 };
 }

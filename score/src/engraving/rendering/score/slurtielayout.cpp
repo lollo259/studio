@@ -2903,6 +2903,72 @@ void SlurTieLayout::computeBezier(SlurSegment* slurSeg, PointF shoulderOffset)
         path.cubicTo(p4 + thick, p3 + thick, PointF());
     }
 
+    // Studio: a hand-drawn slur with several turns - a smooth line through them, tapered like a slur
+    const String& freePath = slurSeg->slur()->freePath();
+    if (!freePath.isEmpty() && slurSeg->isSingleType() && p2.x() > 0) {
+        std::vector<PointF> pts;
+        for (const String& pair : freePath.split(u';')) {
+            const StringList uv = pair.split(u',');
+            if (uv.size() == 2) {
+                pts.push_back(PointF(uv.at(0).toDouble() * p2.x(), uv.at(1).toDouble() * p2.x()));
+            }
+        }
+        if (pts.size() >= 4) {
+            pts.front() = PointF();
+            pts.back() = p2;
+            // Catmull-Rom through the points, sampled
+            std::vector<PointF> line;
+            for (size_t i = 0; i + 1 < pts.size(); ++i) {
+                const PointF a = pts[i == 0 ? 0 : i - 1];
+                const PointF b = pts[i];
+                const PointF c = pts[i + 1];
+                const PointF d = pts[i + 2 < pts.size() ? i + 2 : i + 1];
+                for (int k = 0; k < 8; ++k) {
+                    const double t = k / 8.0, t2 = t * t, t3 = t2 * t;
+                    line.push_back(0.5 * ((2.0 * b) + (c - a) * t + (2.0 * a - 5.0 * b + 4.0 * c - d) * t2 + (3.0 * b - a - 3.0 * c + d) * t3));
+                }
+            }
+            line.push_back(p2);
+
+            const bool solid = slurSeg->slur()->styleType() == SlurStyleType::Solid;
+            const double mid = solid ? slurSeg->ldata()->midThickness() : 0.0;
+            std::vector<PointF> upper;
+            std::vector<PointF> lower;
+            Shape freeShape(Shape::Type::Composite);
+            const size_t n = line.size();
+            for (size_t i = 0; i < n; ++i) {
+                const PointF prev = line[i == 0 ? 0 : i - 1];
+                const PointF next = line[i + 1 < n ? i + 1 : n - 1];
+                PointF dir = next - prev;
+                const double l = std::sqrt(dir.x() * dir.x() + dir.y() * dir.y());
+                const PointF normal = l > 0 ? PointF(-dir.y() / l, dir.x() / l) : PointF(0, 1);
+                const double t = double(i) / double(n - 1);
+                const double w = mid * std::sin(M_PI * t); // thin at the ends, full in the middle
+                upper.push_back(line[i] - normal * w);
+                lower.push_back(line[i] + normal * w);
+                if (i > 0) {
+                    RectF re = RectF(toSystemCoordinates.map(line[i - 1]), toSystemCoordinates.map(line[i])).normalized();
+                    re.adjust(-mid, -mid, mid, mid);
+                    freeShape.add(re, slurSeg);
+                }
+            }
+            PainterPath fp;
+            fp.moveTo(upper.front());
+            for (size_t i = 1; i < upper.size(); ++i) {
+                fp.lineTo(upper[i]);
+            }
+            if (solid) {
+                for (size_t i = lower.size(); i-- > 0;) {
+                    fp.lineTo(lower[i]);
+                }
+                fp.closeSubpath();
+            }
+            slurSeg->mutldata()->path.set_value(toSystemCoordinates.map(fp));
+            slurSeg->mutldata()->setShape(freeShape);
+            return;
+        }
+    }
+
     path = toSystemCoordinates.map(path);
     slurSeg->mutldata()->path.set_value(path);
 

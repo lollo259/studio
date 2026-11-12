@@ -519,6 +519,7 @@ static constexpr PropertyMetaData propertyList[] = {
     { Pid::SHARED_PART_ENABLED,                 P_TYPE::BOOL,                      PropertyGroup::NONE,       false, "sharedPartEnabled",               QT_TRANSLATE_NOOP("engraving/propertyName", "shared part enabled") },
 
     { Pid::CHORD_CLUSTER,                       P_TYPE::INT,                       PropertyGroup::APPEARANCE, true,  "cluster",                         QT_TRANSLATE_NOOP("engraving/propertyName", "cluster") },
+    { Pid::STUDIO_SLUR_PATH,                    P_TYPE::STRING,                    PropertyGroup::APPEARANCE, false, "freePath",                        QT_TRANSLATE_NOOP("engraving/propertyName", "free slur path") },
 
     { Pid::END,                                 P_TYPE::INT,                       PropertyGroup::NONE,       false, "++end++",                         nullptr }
 };

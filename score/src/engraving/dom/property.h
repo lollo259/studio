@@ -528,6 +528,7 @@ enum class Pid : short {
     SHARED_PART_ENABLED,
 
     CHORD_CLUSTER, // Studio: 0 none, 1 white keys, 2 black keys, 3 all keys
+    STUDIO_SLUR_PATH, // Studio: a hand-drawn slur's turns, "u,v;u,v;..." along the slur (0,0)-(1,0)
 
     END
 };

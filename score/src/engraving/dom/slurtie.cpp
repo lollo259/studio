@@ -362,6 +362,7 @@ SlurTie::SlurTie(const SlurTie& t)
     m_slurDirection = t.m_slurDirection;
     m_styleType     = t.m_styleType;
     m_maskSlurTie   = t.m_maskSlurTie;
+    m_freePath      = t.m_freePath;
 }
 
 //---------------------------------------------------------
@@ -394,6 +395,8 @@ PropertyValue SlurTie::getProperty(Pid propertyId) const
         return PropertyValue::fromValue<DirectionV>(slurDirection());
     case Pid::MASK_SLURTIE:
         return maskSlurTie();
+    case Pid::STUDIO_SLUR_PATH:
+        return freePath();
     default:
         return Spanner::getProperty(propertyId);
     }
@@ -415,6 +418,9 @@ bool SlurTie::setProperty(Pid propertyId, const PropertyValue& v)
     case Pid::MASK_SLURTIE:
         setMaskSlurTie(v.value<AutoOnOff>());
         break;
+    case Pid::STUDIO_SLUR_PATH:
+        setFreePath(v.value<String>());
+        break;
     default:
         return Spanner::setProperty(propertyId, v);
     }
@@ -435,6 +441,8 @@ PropertyValue SlurTie::propertyDefault(Pid id) const
         return PropertyValue::fromValue<DirectionV>(DirectionV::AUTO);
     case Pid::MASK_SLURTIE:
         return AutoOnOff::AUTO;
+    case Pid::STUDIO_SLUR_PATH:
+        return String();
     default:
         return Spanner::propertyDefault(id);
     }
