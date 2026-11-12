@@ -352,8 +352,9 @@ def transform_selection(context, sel, matrix, copy=False):
             verts = [bm.verts[i] for i in v]
             if copy:
                 nv, ne, nf = sg.duplicate(bm, verts, edges, faces)
-                for x in faces + edges + verts:
-                    x.select = False
+                for seq in (bm.faces, bm.edges, bm.verts):
+                    for x in seq:
+                        x.select = False
                 for x in nv + ne + nf:
                     x.select = True
                 moved = nv
