@@ -70,7 +70,7 @@ Dial {
         readonly property real startAngle: -140 * (Math.PI/180) - Math.PI/2
         readonly property real endAngle: 140 * (Math.PI/180) - Math.PI/2
 
-        readonly property color valueArcColor: root.accentControl ? ui.theme.accentColor : Utils.colorWithAlpha(ui.theme.fontPrimaryColor, 0.3)
+        readonly property color valueArcColor: ui.theme.accentColor // Studio: the value arc is always lit
         readonly property color outerArcColor: Utils.colorWithAlpha(ui.theme.buttonColor, 0.7)
         readonly property color innerArcColor: Utils.colorWithAlpha(ui.theme.fontPrimaryColor, 0.5)
 
@@ -155,10 +155,13 @@ Dial {
             ctx.arc(width/2, height/2, root.radius - prv.outerArcLineWidth/2, prv.startValueArcAngle * (Math.PI/180) - Math.PI/2, root.angle * (Math.PI/180) - Math.PI/2, prv.reversed)
             ctx.stroke()
 
-            ctx.lineWidth = prv.innerArcLineWidth
-            ctx.strokeStyle = prv.innerArcColor
+            // Studio: a flat TE-style cap: solid light disc, thin outline
+            ctx.fillStyle = "#F4F4F5"
             ctx.beginPath()
-            ctx.arc(width/2, height/2, root.radius - (prv.outerArcLineWidth + prv.innerArcLineWidth/2), 0, Math.PI * 2, false)
+            ctx.arc(width/2, height/2, root.radius - prv.outerArcLineWidth - 1.5, 0, Math.PI * 2, false)
+            ctx.fill()
+            ctx.lineWidth = 1
+            ctx.strokeStyle = Utils.colorWithAlpha(ui.theme.fontPrimaryColor, 0.35)
             ctx.stroke()
         }
     }

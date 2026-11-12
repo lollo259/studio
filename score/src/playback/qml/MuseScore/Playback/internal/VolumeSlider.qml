@@ -288,40 +288,23 @@ Slider {
             }
         }
 
-        StyledRectangularShadow {
-            anchors.fill: handleRect
-
-            blur: 4
-            color: "#33000000"
-            radius: handleRect.radius
-
-        }
-
+        // Studio: a flat TE-style fader cap - dark key, orange line at the level
         Rectangle {
             id: handleRect
             anchors.fill: parent
-            radius: 2
-            color: "white"
+            radius: 3
+            color: "#26262A"
 
             Rectangle {
-                anchors.fill: parent
-                radius: 2
+                anchors.verticalCenter: parent.verticalCenter
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.leftMargin: 2
+                anchors.rightMargin: 2
 
-                color: Utils.colorWithAlpha(ui.theme.popupBackgroundColor, 0.1)
-                border.color: Qt.rgba(0, 0, 0, 0.7)
-                border.width: 1
-
-                Rectangle {
-                    anchors.verticalCenter: parent.verticalCenter
-                    anchors.left: parent.left
-                    anchors.right: parent.right
-                    anchors.leftMargin: 3
-                    anchors.rightMargin: 3
-
-                    height: 1
-                    radius: height / 2
-                    color: "#000000"
-                }
+                height: 2
+                radius: 1
+                color: ui.theme.accentColor
             }
         }
     }

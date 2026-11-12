@@ -138,21 +138,28 @@ Canvas {
 
         ctx.clearRect(0, 0, root.height, prv.indicatorWidth)
 
-        ctx.fillStyle = "#4D4D4D"
+        // Studio: a TE-style LED meter - black display, white segments turning orange near the top
+        ctx.fillStyle = "#121214"
         ctx.fillRect(prv.overloadHeight, 0, prv.indicatorHeight, prv.indicatorWidth)
 
-        ctx.fillStyle = root.isClipping ? "#FF1C1C" : "#666666"
+        ctx.fillStyle = root.isClipping ? "#FF3B1F" : "#2A2A2E"
         ctx.fillRect(prv.indicatorHeight, 0, prv.overloadHeight, prv.indicatorWidth)
 
         if (!prv.gradient) {
             prv.gradient = ctx.createLinearGradient(prv.overloadHeight, 0, prv.indicatorHeight - prv.overloadHeight, prv.indicatorWidth)
-            prv.gradient.addColorStop(0.0, "#26E386")
-            prv.gradient.addColorStop(0.55, "#CBED41")
-            prv.gradient.addColorStop(0.80, "#FC8226")
+            prv.gradient.addColorStop(0.0, "#E8E8E4")
+            prv.gradient.addColorStop(0.70, "#E8E8E4")
+            prv.gradient.addColorStop(0.85, "#FF6A13")
         }
 
         ctx.fillStyle = prv.gradient
         ctx.fillRect(prv.overloadHeight, 0, prv.divisionPixels * (prv.fullValueRangeLength - Math.abs(root.currentVolumePressure)), prv.indicatorWidth)
+
+        // segments
+        ctx.fillStyle = "#121214"
+        for (var seg = prv.overloadHeight + 3; seg < prv.indicatorHeight; seg += 4) {
+            ctx.fillRect(seg, 0, 1, prv.indicatorWidth)
+        }
 
         if (prv.rulerNeedsPaint) {
             var originVPos = prv.overloadHeight

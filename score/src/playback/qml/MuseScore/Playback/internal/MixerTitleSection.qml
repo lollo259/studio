@@ -49,36 +49,41 @@ MixerPanelSection {
             case MixerChannelItem.Aux:
                 return "#63D47B"
             case MixerChannelItem.Master:
-                return "#F87BDC"
+                return "#F2F2F0"
             }
 
             return ui.theme.accentColor
         }
 
-        function resolveLabelColorOpacity() {
-            if (channelItem.type === MixerChannelItem.SecondaryInstrument) {
-                return 0.25
-            }
-
-            return 0.5
-        }
-
         readonly property color labelColor: resolveLabelColor()
 
-        color: Utils.colorWithAlpha(labelColor, resolveLabelColorOpacity())
-        border.color: labelColor
-        border.width: 1
+        // Studio: the name sits on a little black display, with an LED for the kind of channel
+        color: "#121214"
+        radius: 4
+
+        Rectangle {
+            anchors.left: parent.left
+            anchors.leftMargin: 7
+            anchors.verticalCenter: parent.verticalCenter
+            width: 6
+            height: 6
+            radius: 3
+            color: content.labelColor
+            opacity: content.channelItem.type === MixerChannelItem.SecondaryInstrument ? 0.5 : 1.0
+        }
 
         StyledTextLabel {
             id: textLabel
             anchors.centerIn: parent
 
-            font: ui.theme.bodyBoldFont
+            font.family: "Consolas"
+            font.pixelSize: 11
+            color: "#F2F2F0"
 
-            readonly property int margin: -8
+            readonly property int margin: -16
             width: margin + parent.width + margin
 
-            text: content.channelItem.title
+            text: content.channelItem.title.toLowerCase()
         }
 
         MouseArea {

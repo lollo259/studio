@@ -71,7 +71,8 @@ Loader {
             rightPadding: 12
 
             horizontalAlignment: Qt.AlignRight
-            text: root.headerTitle
+            text: root.headerTitle.toLowerCase()
+            opacity: 0.7
         }
 
         ListView {
