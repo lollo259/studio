@@ -262,7 +262,7 @@ const std::array<StyleDef::StyleValue, size_t(Sid::STYLES)> StyleDef::styleValue
     styleDef(timeSigAcrossNumDist,                       0.1_sp),
     styleDef(timeSigAcrossY,                             0.0_sp),
 
-    styleDef(useStraightNoteFlags,                       false),
+    styleDef(useStraightNoteFlags,                       true), // Studio: modern straight flags
     styleDef(stemWidth,                                  0.10_sp),
     styleDef(shortenStem,                                true),
     styleDef(stemLength,                                 PropertyValue(3.5)),

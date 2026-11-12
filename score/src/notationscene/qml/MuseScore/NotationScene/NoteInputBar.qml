@@ -127,12 +127,18 @@ Item {
             // Studio: notes, rests, dots, accidentals and articulations drawn with the Laurence font
             readonly property var laurenceGlyphs: ({
                 [IconCode.NOTE_WHOLE]: 0xE1D2, [IconCode.NOTE_HALF]: 0xE1D3, [IconCode.NOTE_QUARTER]: 0xE1D5,
-                [IconCode.NOTE_8TH]: 0xE1D7, [IconCode.NOTE_16TH]: 0xE1D9, [IconCode.NOTE_32ND]: 0xE1DB,
-                [IconCode.NOTE_64TH]: 0xE1DD, [IconCode.NOTE_128TH]: 0xE1DF, [IconCode.NOTE_WHOLE_DOUBLE]: 0xE1D0,
+                // eighths and shorter: a quarter note with a straight (modern) flag on top, see straightFlags
+                [IconCode.NOTE_8TH]: 0xE1D5, [IconCode.NOTE_16TH]: 0xE1D5, [IconCode.NOTE_32ND]: 0xE1D5,
+                [IconCode.NOTE_64TH]: 0xE1D5, [IconCode.NOTE_128TH]: 0xE1D5, [IconCode.NOTE_WHOLE_DOUBLE]: 0xE1D0,
                 [IconCode.NOTE_DOTTED]: 0xE1E7, [IconCode.REST]: 0xE4E5,
                 [IconCode.FLAT]: 0xE260, [IconCode.NATURAL]: 0xE261, [IconCode.SHARP]: 0xE262,
                 [IconCode.SHARP_DOUBLE]: 0xE263, [IconCode.FLAT_DOUBLE]: 0xE264,
                 [IconCode.ACCENT]: 0xE4A0, [IconCode.STACCATO]: 0xE4A2, [IconCode.TENUTO]: 0xE4A4, [IconCode.MARCATO]: 0xE4AC
+            })
+            // Studio: straight flags (flag8thUpStraight...), placed at the top of the quarter note's stem
+            readonly property var straightFlags: ({
+                [IconCode.NOTE_8TH]: 0xF40F, [IconCode.NOTE_16TH]: 0xF412, [IconCode.NOTE_32ND]: 0xF415,
+                [IconCode.NOTE_64TH]: 0xF418, [IconCode.NOTE_128TH]: 0xF41B
             })
             readonly property int baseIcon: Boolean(item) ? item.icon : IconCode.NONE
             // notes are tall, accidentals medium, dots and articulations tiny: size each kind to fill the key alike
@@ -159,10 +165,19 @@ Item {
                     implicitHeight: btn.height
 
                     TextMetrics {
+                        id: nbsp
+                        font: glyph.font
+                        text: "\u00A0"
+                    }
+
+                    TextMetrics {
                         id: tm
                         font: glyph.font
                         text: glyph.text
                     }
+
+                    readonly property bool flagged: btn.straightFlags[btn.baseIcon] !== undefined
+                    readonly property real sp: glyph.font.pixelSize / 4 // one staff space (a music font's em is 4 spaces)
 
                     Text {
                         id: glyph
@@ -170,8 +185,21 @@ Item {
                         font.family: "Laurence"
                         font.pixelSize: Math.round(btn.height * btn.glyphScale)
                         color: btn.iconColor
-                        x: (parent.width - tm.tightBoundingRect.width) / 2 - tm.tightBoundingRect.x
+                        // a flagged note is wider on the right: shift it left by half the flag
+                        x: (parent.width - tm.tightBoundingRect.width) / 2 - tm.tightBoundingRect.x - (parent.flagged ? parent.sp * 0.5 : 0)
                         y: parent.height / 2 - (tm.tightBoundingRect.y + tm.tightBoundingRect.height / 2) - baselineOffset
+                    }
+
+                    Text {
+                        visible: parent.flagged
+                        // flag glyphs have no advance width and Qt skips a text made of one alone:
+                        // a no-break space in front makes it draw (and is taken off x below)
+                        text: parent.flagged ? "\u00A0" + String.fromCodePoint(btn.straightFlags[btn.baseIcon]) : ""
+                        font: glyph.font
+                        color: btn.iconColor
+                        // stem: right edge of the notehead (1.005 sp) minus its thickness; top 3.5 sp above the baseline
+                        x: glyph.x + parent.sp * (1.005 - 0.12) - nbsp.advanceWidth
+                        y: glyph.y + glyph.baselineOffset - parent.sp * 3.5 - baselineOffset
                     }
                 }
             }
