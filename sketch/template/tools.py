@@ -828,7 +828,8 @@ class SketchTool:
         pass
 
     def on_double(self, context, event):
-        pass
+        # Blender reports a quick second click as a double click: for most tools it is just a click
+        self.on_press(context, event)
 
     def on_release(self, context, event):
         pass
@@ -1308,6 +1309,9 @@ class SKETCH_OT_push_pull(SketchTool, bpy.types.Operator):
             self.commit(context, self.dist)
 
     def on_double(self, context, event):
+        if self.face is not None and abs(self.dist) > sg.WELD:
+            self.on_press(context, event)
+            return
         if LAST["pushpull"] is None:
             return
         self.reset(context)
@@ -1399,6 +1403,9 @@ class SKETCH_OT_offset(SketchTool, bpy.types.Operator):
             self.commit(context, self.dist)
 
     def on_double(self, context, event):
+        if self.face is not None and abs(self.dist) > sg.WELD:
+            self.on_press(context, event)
+            return
         if LAST["offset"] is None:
             return
         self.reset(context)
