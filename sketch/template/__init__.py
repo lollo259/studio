@@ -10,7 +10,7 @@ import os
 import bpy
 from bpy.app.handlers import persistent
 
-from . import fabric, geometry, layers, modelling, physics, scenography, tools, ui, venue
+from . import fabric, geometry, layers, modelling, objects, physics, scenography, tools, ui, venue
 
 HERE = os.path.dirname(__file__)
 
@@ -171,7 +171,7 @@ def factory_startup(_):
 
 # ------------------------------------------------------------------ register
 
-_modules = (venue, scenography, modelling, tools, layers, physics, fabric, ui)
+_modules = (venue, scenography, objects, modelling, tools, layers, physics, fabric, ui)
 
 
 def register():

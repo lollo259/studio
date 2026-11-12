@@ -201,13 +201,13 @@ class SKETCH_OT_view(bpy.types.Operator):
 
 # ------------------------------------------------------------------ sidebar
 
-class BenPanel:
+class SketchPanel:
     bl_space_type = "VIEW_3D"
     bl_region_type = "UI"
     bl_category = "Sketch"
 
 
-class SKETCH_PT_entity(BenPanel, bpy.types.Panel):
+class SKETCH_PT_entity(SketchPanel, bpy.types.Panel):
     bl_label = "Entity info"
 
     def draw(self, context):
@@ -224,7 +224,7 @@ class SKETCH_PT_entity(BenPanel, bpy.types.Panel):
         layout.prop(obj, "rotation_euler", index=2, text="Turn")
 
 
-class SKETCH_PT_layers(BenPanel, bpy.types.Panel):
+class SKETCH_PT_layers(SketchPanel, bpy.types.Panel):
     bl_label = "Layers"
 
     def draw(self, context):
@@ -241,7 +241,7 @@ class SKETCH_PT_layers(BenPanel, bpy.types.Panel):
         layout.operator("sketch.move_to_layer", icon="FORWARD")
 
 
-class SKETCH_PT_materials(BenPanel, bpy.types.Panel):
+class SKETCH_PT_materials(SketchPanel, bpy.types.Panel):
     bl_label = "Materials"
 
     def draw(self, context):
@@ -250,7 +250,7 @@ class SKETCH_PT_materials(BenPanel, bpy.types.Panel):
         layout.label(text="B: click a face · Shift+B click: whole object")
 
 
-class SKETCH_PT_library(BenPanel, bpy.types.Panel):
+class SKETCH_PT_library(SketchPanel, bpy.types.Panel):
     bl_label = "Library"
     bl_options = {"DEFAULT_CLOSED"}
 
@@ -258,8 +258,13 @@ class SKETCH_PT_library(BenPanel, bpy.types.Panel):
         layout = self.layout
         for title, ops in (
             ("Rooms", ("sketch.add_room", "sketch.add_hall", "sketch.add_chapel", "sketch.walls_from_plan")),
-            ("Stage & audience", ("sketch.add_concert_hall", "sketch.add_stage", "sketch.add_seating", "sketch.add_ensemble")),
-            ("Instruments & people", ("sketch.add_piano", "sketch.add_figure")),
+            ("Stage & audience", ("sketch.add_concert_hall", "sketch.add_stage", "sketch.add_riser",
+                                  "sketch.add_seating", "sketch.add_ensemble")),
+            ("Instruments & people", ("sketch.add_piano", "sketch.add_chair", "sketch.add_music_stand",
+                                      "sketch.add_figure")),
+            ("Sound", ("sketch.add_speaker", "sketch.add_mic_stand")),
+            ("Outside", ("sketch.sun_sky",)),
+            ("Video", ("sketch.video",)),
         ):
             layout.label(text=title)
             col = layout.column(align=True)
@@ -267,7 +272,7 @@ class SKETCH_PT_library(BenPanel, bpy.types.Panel):
                 col.operator(op)
 
 
-class SKETCH_PT_lighting(BenPanel, bpy.types.Panel):
+class SKETCH_PT_lighting(SketchPanel, bpy.types.Panel):
     bl_label = "Lights, cameras & screens"
     bl_options = {"DEFAULT_CLOSED"}
 
@@ -290,7 +295,7 @@ class SKETCH_PT_lighting(BenPanel, bpy.types.Panel):
         row.operator("sketch.lighting_mood", text="Dark").mood = "BLACKOUT"
 
 
-class SKETCH_PT_physics(BenPanel, bpy.types.Panel):
+class SKETCH_PT_physics(SketchPanel, bpy.types.Panel):
     bl_label = "Liquids, smoke & fire"
     bl_options = {"DEFAULT_CLOSED"}
 
@@ -311,7 +316,7 @@ class SKETCH_PT_physics(BenPanel, bpy.types.Panel):
         row.operator("screen.animation_play", text="", icon="PLAY")
 
 
-class SKETCH_PT_fabric(BenPanel, bpy.types.Panel):
+class SKETCH_PT_fabric(SketchPanel, bpy.types.Panel):
     bl_label = "Fabric, plastic & cardboard"
     bl_options = {"DEFAULT_CLOSED"}
 
@@ -341,7 +346,9 @@ class SKETCH_MT_add(bpy.types.Menu):
     def draw(self, context):
         layout = self.layout
         for op in ("sketch.add_room", "sketch.add_hall", "sketch.add_chapel", "sketch.add_concert_hall", "sketch.add_stage",
-                   "sketch.add_seating", "sketch.add_piano", "sketch.add_ensemble", "sketch.add_figure",
+                   "sketch.add_seating", "sketch.add_piano", "sketch.add_ensemble", "sketch.add_chair",
+                   "sketch.add_music_stand", "sketch.add_riser", "sketch.add_speaker", "sketch.add_mic_stand",
+                   "sketch.add_figure",
                    "sketch.add_spot", "sketch.add_wash", "sketch.add_truss", "sketch.add_screen"):
             layout.operator(op)
 
