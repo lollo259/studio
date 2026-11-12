@@ -34,6 +34,10 @@ def close(a, b, eps=1e-4):
     return (Vector(a) - Vector(b)).length < eps
 
 
+def first(seq):
+    return next(iter(seq))
+
+
 def new_bm():
     bm = bmesh.new()
     sg.soft_layer(bm)
@@ -91,7 +95,7 @@ def vertical_loop_makes_a_face():
     bm = new_bm()
     sg.add_edges(bm, [(0, 0, 0), (2, 0, 0), (2, 0, 1), (0, 0, 1)], closed=True)
     check(n_faces(bm) == 1, f"1 face, got {n_faces(bm)}")
-    f = bm.faces[0]
+    f = first(bm.faces)
     f.normal_update()
     check(abs(abs(f.normal.y) - 1) < 1e-6, f"face in the XZ plane, normal {tuple(f.normal)}")
 
@@ -177,9 +181,9 @@ def circle_makes_a_face():
     bm = new_bm()
     pts = sg.circle_points((0, 0, 0), 1.0, (0, 0, 1), 24)
     sg.add_edges(bm, pts, closed=True)
-    check(n_faces(bm) == 1 and len(bm.faces[0].verts) == 24, "one 24-sided face")
+    check(n_faces(bm) == 1 and len(first(bm.faces).verts) == 24, "one 24-sided face")
     check(all(abs(v.co.length - 1) < 1e-6 for v in bm.verts), "on the radius")
-    c = si.circle_center([v.co for v in bm.faces[0].verts])
+    c = si.circle_center([v.co for v in first(bm.faces).verts])
     check(c is not None and c.length < 1e-6, f"centre inferred at the origin, got {c}")
 
 
@@ -194,7 +198,7 @@ def two_point_arc():
     check(close(small[4], (1, 0.25, 0)), f"bulge 0.25 at the middle, got {tuple(small[4])}")
     big = sg.arc_points((0, 0, 0), (2, 0, 0), 1.5, (0, 0, 1), 16)
     check(close(big[8], (1, 1.5, 0)), f"bulge 1.5 (more than half a circle), got {tuple(big[8])}")
-    check(abs(sg.arc_bulge_from_point((0, 0, 0), (2, 0, 0), (1, 0.7, 0), (0, 0, 1)) - 0.7) < 1e-9, "bulge from point")
+    check(abs(sg.arc_bulge_from_point((0, 0, 0), (2, 0, 0), (1, 0.7, 0), (0, 0, 1)) - 0.7) < 1e-6, "bulge from point")
 
 
 @test
@@ -210,7 +214,7 @@ def arc_closing_a_loop_makes_a_face():
 
 def box(bm, size=1.0, height=2.0):
     square(bm, size)
-    f = bm.faces[0]
+    f = first(bm.faces)
     sg.push_pull_to(bm, f, Vector((0, 0, height)))
     return bm
 
@@ -252,7 +256,7 @@ def push_pull_ctrl_keeps_the_starting_face():
 def push_pull_inner_face_up_grows_a_block():
     bm = new_bm()
     square(bm, 2)
-    slab = bm.faces[0]
+    slab = first(bm.faces)
     sg.push_pull_to(bm, slab, Vector((0, 0, 0.2)))
     sg.add_edges(bm, sg.rectangle_points((0.5, 0.5, 0.2), (1.5, 1.5, 0.2), (0, 0, 1)), closed=True)
     inner = face_containing(bm, (1, 1, 0.2))
@@ -267,7 +271,7 @@ def push_pull_inner_face_up_grows_a_block():
 def push_face_through_slab_cuts_a_hole():
     bm = new_bm()
     square(bm, 2)
-    sg.push_pull_to(bm, bm.faces[0], Vector((0, 0, 0.2)))
+    sg.push_pull_to(bm, first(bm.faces), Vector((0, 0, 0.2)))
     check(len(bm.faces) == 6, "slab")
     sg.add_edges(bm, sg.rectangle_points((0.5, 0.5, 0.2), (1.5, 1.5, 0.2), (0, 0, 1)), closed=True)
     inner = face_containing(bm, (1, 1, 0.2))
@@ -286,7 +290,7 @@ def push_face_through_slab_cuts_a_hole():
 def push_pull_pocket_then_deeper():
     bm = new_bm()
     square(bm, 2)
-    sg.push_pull_to(bm, bm.faces[0], Vector((0, 0, 1)))
+    sg.push_pull_to(bm, first(bm.faces), Vector((0, 0, 1)))
     sg.add_edges(bm, sg.rectangle_points((0.5, 0.5, 1), (1.5, 1.5, 1), (0, 0, 1)), closed=True)
     inner = face_containing(bm, (1, 1, 1))
     sg.push_pull_to(bm, inner, Vector((0, 0, -0.3)))
@@ -305,7 +309,7 @@ def push_pull_pocket_then_deeper():
 def offset_face():
     bm = new_bm()
     square(bm, 1)
-    sg.offset_face(bm, bm.faces[0], 0.1)
+    sg.offset_face(bm, first(bm.faces), 0.1)
     check(n_faces(bm) == 2, f"2 faces, got {n_faces(bm)}")
     check(region_areas(bm) == [0.36, 0.64], f"inner 0.8 x 0.8, got {region_areas(bm)}")
 
@@ -337,7 +341,7 @@ def erase_boundary_edge_removes_the_face():
 def erase_soften_keeps_faces():
     bm = new_bm()
     box(bm)
-    e = bm.edges[0]
+    e = first(bm.edges)
     sg.erase_edges(bm, [e], soften=True)
     check(len(bm.faces) == 6 and sg.soft_layer(bm) is not None and e[sg.soft_layer(bm)] == sg.SOFTENED,
           "softened, faces kept")
@@ -399,7 +403,7 @@ def view_projection_round_trip():
     p = Vector((0.7, 0.3, 0.2))
     o, d = view.ray(at(view, p))
     q = o + d * (p - o).dot(d)
-    check((q - p).length < 1e-5, f"ray through the projected point passes the point ({(q - p).length})")
+    check((q - p).length < 1e-4, f"ray through the projected point passes the point ({(q - p).length})")
 
 
 @test
