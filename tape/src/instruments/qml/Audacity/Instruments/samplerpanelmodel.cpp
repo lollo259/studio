@@ -73,6 +73,15 @@ SamplerPanelModel::SamplerPanelModel(QObject* parent)
     connect(&m_litTimer, &QTimer::timeout, this, &SamplerPanelModel::pollLit);
 }
 
+SamplerPanelModel::~SamplerPanelModel()
+{
+    // closing the dialog right after an edit: save and load it now (the timer would never fire)
+    if (m_applyTimer.isActive()) {
+        apply();
+    }
+    m_litTimer.stop();
+}
+
 void SamplerPanelModel::load()
 {
     if (auto s = samplerService()) {

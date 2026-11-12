@@ -47,6 +47,7 @@ class SamplerPanelModel : public QObject, public muse::async::Asyncable, public 
 
 public:
     explicit SamplerPanelModel(QObject* parent = nullptr);
+    ~SamplerPanelModel() override;
 
     Q_INVOKABLE void load();
     Q_INVOKABLE void previewPad(int index, bool on);
