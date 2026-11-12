@@ -98,6 +98,14 @@ void StudioLink::init()
         m_tapeFolder.clear(); // another score: Tape's tracks belong to the old one
         m_dirtyParts.clear();
         watchScore();
+        // inside Studio every score you open is ready in Tape too: its instruments become tracks
+        if (qEnvironmentVariableIsSet("STUDIO_EMBEDDED") && projectSession()->masterNotation()) {
+            QTimer::singleShot(1500, m_peer.get(), [this]() {
+                if (m_tapeFolder.isEmpty() && projectSession()->masterNotation()) {
+                    commandDispatcher()->dispatch(project::PROJECT_SEND_TO_TAPE_AUTO_COMMAND);
+                }
+            });
+        }
     });
     watchScore();
 }
