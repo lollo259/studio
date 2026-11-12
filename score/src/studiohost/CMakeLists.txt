@@ -7,6 +7,9 @@ add_executable(StudioHost WIN32
     ${CMAKE_CURRENT_SOURCE_DIR}/../playback/internal/studiolinkpeer.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../playback/internal/studiolinkpeer.h
 )
+if (WIN32)
+    target_sources(StudioHost PRIVATE studio.rc) # the staff-to-wave icon
+endif()
 target_include_directories(StudioHost PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../playback/internal ${CMAKE_CURRENT_BINARY_DIR})
 target_link_libraries(StudioHost PRIVATE Qt6::Widgets Qt6::Network)
 qt_add_resources(StudioHost studiohost_fonts
@@ -16,6 +19,7 @@ qt_add_resources(StudioHost studiohost_fonts
         "${PROJECT_SOURCE_DIR}/muse/framework/ui/data/Jost-Regular.ttf"
         "${PROJECT_SOURCE_DIR}/muse/framework/ui/data/JostStar-Light.ttf"
 )
+qt_add_resources(StudioHost studiohost_icon PREFIX "/" FILES studio.png)
 if (WIN32)
     set_target_properties(StudioHost PROPERTIES OUTPUT_NAME "Studio")
 endif()

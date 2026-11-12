@@ -15,6 +15,7 @@
 #include <QDir>
 #include <QElapsedTimer>
 #include <QFontDatabase>
+#include <QIcon>
 #include <QFileInfo>
 #include <QJsonObject>
 #include <QLinearGradient>
@@ -840,6 +841,7 @@ int main(int argc, char** argv)
     }
     app.setApplicationName("Studio");
     app.setOrganizationName("LaurenceWho");
+    app.setWindowIcon(QIcon(":/studio.png"));
     StudioWindow w;
     w.show();
     return app.exec();
