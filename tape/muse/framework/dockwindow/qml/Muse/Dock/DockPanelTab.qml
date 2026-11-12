@@ -51,13 +51,23 @@ StyledTabButton {
     contentItem: Row {
         spacing: root.buttonPadding
 
+        // Studio: a small LED - lit orange on the tab in view, like the keys on a TE machine
+        Rectangle {
+            anchors.verticalCenter: parent.verticalCenter
+            width: 6
+            height: 6
+            radius: 3
+            color: root.isCurrent ? ui.theme.accentColor : ui.theme.strokeColor
+        }
+
         StyledTextLabel {
             anchors.verticalCenter: parent.verticalCenter
 
             horizontalAlignment: Qt.AlignLeft
-            font: root.isCurrent ? ui.theme.bodyBoldFont : ui.theme.bodyFont
+            font: ui.theme.bodyFont
+            opacity: root.isCurrent ? 1.0 : 0.7
 
-            text: root.text
+            text: root.text.toLowerCase()
         }
 
         MenuButton {
