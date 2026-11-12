@@ -321,6 +321,7 @@ MenuItem* AppMenuModel::makeAddMenu()
             makeSeparator(),
             makeMenuItem(CLUSTER_NONE_COMMAND),
         }, "menu-cluster"),
+        makeMenuItem(SLUR_PEN_COMMAND), // Studio: free-hand slurs
         makeSeparator(),
         makeMenu(TranslatableString("appshell/menu/add", "&Measures"), makeMeasuresItems(), "menu-measures"),
         makeMenu(TranslatableString("appshell/menu/add", "&Frames"), makeFramesItems(), "menu-frames"),

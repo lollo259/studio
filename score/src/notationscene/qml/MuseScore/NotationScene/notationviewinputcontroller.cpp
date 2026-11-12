@@ -46,6 +46,7 @@
 #include "notation/inotationelements.h" // IWYU pragma: keep
 #include "notation/inotationnoteinput.h"
 #include "notation/inotationpainting.h" // IWYU pragma: keep
+#include "notation/studioslurpen.h"
 #include "notation/inotationselection.h"
 #include "notation/inotationstyle.h"
 #include "notation/inotationviewstate.h" // IWYU pragma: keep
@@ -652,6 +653,14 @@ void NotationViewInputController::mousePressEvent(QMouseEvent* event)
     m_shouldStartEditOnLeftClickRelease = false;
     m_ignoreNextMouseContextMenuEvent = false;
 
+    // Studio: the slur pen draws instead of selecting
+    if (studio::slurPenOn() && button == Qt::LeftButton && !m_readonly) {
+        studio::slurPenStroke().clear();
+        studio::slurPenStroke().push_back(logicPos);
+        m_view->asItem()->setCursor(Qt::CrossCursor);
+        return;
+    }
+
     // When using MiddleButton, just start moving the canvas
     if (button == Qt::MiddleButton) {
         return;
@@ -1044,6 +1053,12 @@ bool NotationViewInputController::tryPercussionShortcut(QKeyEvent* event)
 
 void NotationViewInputController::mouseMoveEvent(QMouseEvent* event)
 {
+    if (studio::slurPenOn() && !studio::slurPenStroke().empty() && (event->buttons() & Qt::LeftButton)) {
+        studio::slurPenStroke().push_back(m_view->toLogical(event->pos()));
+        m_view->asItem()->update();
+        return;
+    }
+
     if (m_mouseDownInfo.dragAction == MouseDownInfo::Nothing) {
         return;
     }
@@ -1188,6 +1203,15 @@ void NotationViewInputController::startDragElements(ElementType elementsType, co
 
 void NotationViewInputController::mouseReleaseEvent(QMouseEvent* event)
 {
+    if (studio::slurPenOn() && !studio::slurPenStroke().empty()) {
+        const std::vector<PointF> stroke = studio::slurPenStroke();
+        studio::slurPenStroke().clear();
+        m_mouseDownInfo.dragAction = MouseDownInfo::Nothing;
+        viewInteraction()->addSlurFromStroke(stroke);
+        m_view->asItem()->update();
+        return;
+    }
+
     if (m_mouseDownInfo.dragAction == MouseDownInfo::Nothing) {
         return;
     }
@@ -1400,6 +1424,13 @@ void NotationViewInputController::mouseDoubleClickEvent(QMouseEvent* event)
 
 void NotationViewInputController::hoverMoveEvent(QHoverEvent* event)
 {
+    // Studio: a cross while the slur pen is on
+    static bool penCursor = false;
+    if (studio::slurPenOn() != penCursor) {
+        penCursor = studio::slurPenOn();
+        m_view->asItem()->setCursor(penCursor ? QCursor(Qt::CrossCursor) : QCursor());
+    }
+
     if (!m_view->isNoteEnterMode()) {
         return;
     }
@@ -1464,6 +1495,15 @@ bool NotationViewInputController::shortcutOverrideEvent(QKeyEvent* event)
 void NotationViewInputController::keyPressEvent(QKeyEvent* event)
 {
     auto key = event->key();
+
+    if (key == Qt::Key_Escape && studio::slurPenOn()) { // Studio: put the slur pen away
+        studio::slurPenOn() = false;
+        studio::slurPenStroke().clear();
+        m_view->asItem()->setCursor(QCursor());
+        m_view->asItem()->update();
+        event->accept();
+        return;
+    }
 
     if (startTextEditingAllowed() && (event->key() == Qt::Key_Return || event->key() == Qt::Key_Enter)) {
         commandDispatcher()->dispatch(SCREEN_EDIT_TEXT_COMMAND);

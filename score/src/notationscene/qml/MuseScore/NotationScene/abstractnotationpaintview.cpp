@@ -40,6 +40,7 @@
 #include "notation/inotationselection.h"
 #include "notation/inotationstyle.h"
 #include "notation/inotationviewstate.h"
+#include "notation/studioslurpen.h"
 
 #include "log.h"
 
@@ -768,6 +769,17 @@ void AbstractNotationPaintView::paint(QPainter* qp)
 
     m_loopInMarker->paint(painter);
     m_loopOutMarker->paint(painter);
+
+    // Studio: the slur being drawn by hand
+    if (studio::slurPenOn() && studio::slurPenStroke().size() > 1) {
+        const auto& stroke = studio::slurPenStroke();
+        muse::draw::Pen pen(muse::draw::Color(255, 90, 31), 2.0 / std::max(0.01, currentScaling()));
+        pen.setCapStyle(muse::draw::PenCapStyle::RoundCap);
+        pen.setJoinStyle(muse::draw::PenJoinStyle::RoundJoin);
+        painter->setPen(pen);
+        painter->setBrush(muse::draw::BrushStyle::NoBrush);
+        painter->drawPolyline(stroke.data(), stroke.size());
+    }
 
     if (notation()->viewMode() == engraving::LayoutMode::LINE) {
         ContinuousPanel::NotationViewContext nvCtx;

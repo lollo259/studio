@@ -217,6 +217,7 @@ public:
     void flipSelection() override;
     void flipSelectionHorizontally() override;
     void setClusterForSelection(int type) override;
+    void addSlurFromStroke(const std::vector<muse::PointF>& stroke) override;
     void mirrorNotes() override;
     void toggleTieForSelection() override;
     void addLaissezVibToSelection() override;
