@@ -253,6 +253,10 @@ void NotationActionController::init()
 
     registerCommand<FlipCommand>(&Controller::flipSelection);
     registerCommand(FLIP_HORIZONTALLY_COMMAND, &Interaction::flipSelectionHorizontally);
+    registerCommand(CLUSTER_WHITE_COMMAND, [this]() { if (auto i = currentNotationInteraction()) { i->setClusterForSelection(1); } });
+    registerCommand(CLUSTER_BLACK_COMMAND, [this]() { if (auto i = currentNotationInteraction()) { i->setClusterForSelection(2); } });
+    registerCommand(CLUSTER_ALL_COMMAND, [this]() { if (auto i = currentNotationInteraction()) { i->setClusterForSelection(3); } });
+    registerCommand(CLUSTER_NONE_COMMAND, [this]() { if (auto i = currentNotationInteraction()) { i->setClusterForSelection(0); } });
 
     registerCommand<AddNoteCommand>(&Controller::addNote);
     registerCommandWithParams(ADD_DRUM_NOTE_COMMAND, &Controller::addDrumNote);

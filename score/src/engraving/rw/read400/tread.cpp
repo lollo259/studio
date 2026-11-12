@@ -2331,6 +2331,8 @@ bool TRead::readProperties(Chord* ch, XmlReader& e, ReadContext& ctx)
         TRead::read(note, e, ctx);
         ch->add(note);
     } else if (TRead::readProperties(toChordRest(ch), e, ctx)) {
+    } else if (tag == "cluster") {
+        ch->setProperty(Pid::CHORD_CLUSTER, e.readInt());
     } else if (tag == "Stem") {
         Stem* s = Factory::createStem(ch);
         TRead::read(s, e, ctx);

@@ -216,6 +216,7 @@ public:
     void deleteSelection() override;
     void flipSelection() override;
     void flipSelectionHorizontally() override;
+    void setClusterForSelection(int type) override;
     void mirrorNotes() override;
     void toggleTieForSelection() override;
     void addLaissezVibToSelection() override;

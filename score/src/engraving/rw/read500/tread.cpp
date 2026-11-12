@@ -2547,6 +2547,8 @@ bool TRead::readProperties(Chord* ch, XmlReader& e, ReadContext& ctx)
         ch->add(cl);
     } else if (tag == "combineVoice") {
         readProperty(ch, tag, e, ctx, Pid::COMBINE_VOICE);
+    } else if (tag == "cluster") {
+        readProperty(ch, tag, e, ctx, Pid::CHORD_CLUSTER);
     } else if (tag == "NoteParenGroup") {
         readNoteParenGroup(ch, e, ctx);
     } else {

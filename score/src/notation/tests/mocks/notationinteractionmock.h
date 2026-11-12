@@ -151,6 +151,7 @@ public:
     MOCK_METHOD(void, deleteSelection, (), (override));
     MOCK_METHOD(void, flipSelection, (), (override));
     MOCK_METHOD(void, flipSelectionHorizontally, (), (override));
+    MOCK_METHOD(void, setClusterForSelection, (int), (override));
     MOCK_METHOD(void, mirrorNotes, (), (override));
     MOCK_METHOD(void, toggleTieForSelection, (), (override));
     MOCK_METHOD(void, addLaissezVibToSelection, (), (override));

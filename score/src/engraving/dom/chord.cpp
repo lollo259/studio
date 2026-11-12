@@ -341,6 +341,7 @@ Chord::Chord(const Chord& c, bool link)
     m_noteType       = c.m_noteType;
     m_crossMeasure   = CrossMeasure::UNKNOWN;
     m_combineVoice     = c.m_combineVoice;
+    m_cluster          = c.m_cluster;
 
     if (c.m_stem) {
         add(Factory::copyStem(*(c.m_stem)));
@@ -1676,6 +1677,7 @@ PropertyValue Chord::getProperty(Pid propertyId) const
     case Pid::STEM_DIRECTION:  return PropertyValue::fromValue<DirectionV>(stemDirection());
     case Pid::PLAY: return isChordPlayable();
     case Pid::COMBINE_VOICE: return PropertyValue::fromValue<AutoOnOff>(combineVoice());
+    case Pid::CHORD_CLUSTER: return static_cast<int>(cluster());
     case Pid::VISIBLE: return true; // Chord cannot be set invisible, only its elements can
     default:
         return ChordRest::getProperty(propertyId);
@@ -1694,6 +1696,7 @@ PropertyValue Chord::propertyDefault(Pid propertyId) const
     case Pid::STEM_DIRECTION:  return PropertyValue::fromValue<DirectionV>(DirectionV::AUTO);
     case Pid::PLAY: return true;
     case Pid::COMBINE_VOICE: return AutoOnOff::AUTO;
+    case Pid::CHORD_CLUSTER: return 0;
     default:
         return ChordRest::propertyDefault(propertyId);
     }
@@ -1729,6 +1732,9 @@ bool Chord::setProperty(Pid propertyId, const PropertyValue& v)
         break;
     case Pid::COMBINE_VOICE:
         setCombineVoice(v.value<AutoOnOff>());
+        break;
+    case Pid::CHORD_CLUSTER:
+        setCluster(static_cast<ClusterType>(v.toInt()));
         break;
     default:
         return ChordRest::setProperty(propertyId, v);

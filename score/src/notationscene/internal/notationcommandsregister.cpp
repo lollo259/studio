@@ -690,6 +690,34 @@ static const std::vector<CommandInfo> s_commandInfos = {
 
     makeCommandInfo<FlipCommand>(),
     CommandInfo{
+        CLUSTER_WHITE_COMMAND,
+        TranslatableString("action", "Cluster: white keys"),
+        TranslatableString("action", "Turn the selected chords into clusters of white keys (outlined rectangle)"),
+        InputSchema(),
+        Decoration()
+    },
+    CommandInfo{
+        CLUSTER_BLACK_COMMAND,
+        TranslatableString("action", "Cluster: black keys"),
+        TranslatableString("action", "Turn the selected chords into clusters of black keys (filled rectangle)"),
+        InputSchema(),
+        Decoration()
+    },
+    CommandInfo{
+        CLUSTER_ALL_COMMAND,
+        TranslatableString("action", "Cluster: all keys"),
+        TranslatableString("action", "Turn the selected chords into clusters of all keys (half outlined, half filled)"),
+        InputSchema(),
+        Decoration()
+    },
+    CommandInfo{
+        CLUSTER_NONE_COMMAND,
+        TranslatableString("action", "Cluster: off"),
+        TranslatableString("action", "Turn the selected clusters back into normal chords"),
+        InputSchema(),
+        Decoration()
+    },
+    CommandInfo{
         FLIP_HORIZONTALLY_COMMAND,
         TranslatableString("action", "Flip horizontally"),
         TranslatableString("action", "Flip horizontally"),

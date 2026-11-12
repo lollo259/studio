@@ -284,6 +284,12 @@ public:
     void setSpaceRw(double rw) { m_spaceRw = rw; }
 
     AutoOnOff combineVoice() const { return m_combineVoice; }
+
+    //! Studio: a cluster plays every key between its lowest and highest note
+    enum class ClusterType : int { NONE = 0, WHITE = 1, BLACK = 2, ALL = 3 };
+    ClusterType cluster() const { return m_cluster; }
+    void setCluster(ClusterType v) { m_cluster = v; }
+    bool isCluster() const { return m_cluster != ClusterType::NONE && notes().size() > 0; }
     void setCombineVoice(AutoOnOff v) { m_combineVoice = v; }
     bool shouldCombineVoice() const;
     static bool combineVoice(const Chord* chord1, const Chord* chord2);
@@ -438,6 +444,7 @@ private:
     bool m_allowKerningBelow = true;
 
     AutoOnOff m_combineVoice = AutoOnOff::AUTO;
+    ClusterType m_cluster = ClusterType::NONE;
 
     std::vector<Articulation*> m_articulations;
 };

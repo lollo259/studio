@@ -1189,6 +1189,7 @@ void TWrite::write(const Chord* item, XmlWriter& xml, WriteContext& ctx)
     }
 
     writeProperty(item, xml, Pid::COMBINE_VOICE);
+    writeProperty(item, xml, Pid::CHORD_CLUSTER);
 
     for (EngravingItem* e : item->el()) {
         if (e->isChordLine() && toChordLine(e)->note()) { // this is now written by Note

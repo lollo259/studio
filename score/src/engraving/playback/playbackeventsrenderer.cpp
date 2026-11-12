@@ -22,6 +22,9 @@
 
 #include "playbackeventsrenderer.h"
 
+#include <limits>
+#include <set>
+
 #include "log.h"
 
 #include "dom/chord.h"
@@ -337,6 +340,46 @@ void PlaybackEventsRenderer::renderNoteEvents(const Chord* chord, const int tick
 
     PlaybackEventList newEvents;
     ChordArticulationsRenderer::render(chord, ArticulationType::Last, ctx, newEvents);
+
+    // Studio: a cluster sounds every key between its lowest and highest note
+    // (white keys only, black keys only, or all of them)
+    if (chord->isCluster() && !newEvents.empty()) {
+        const mpe::NoteEvent* lowest = nullptr;
+        pitch_level_t lo = std::numeric_limits<pitch_level_t>::max();
+        pitch_level_t hi = std::numeric_limits<pitch_level_t>::min();
+        std::set<pitch_level_t> present;
+        for (const mpe::PlaybackEvent& ev : newEvents) {
+            if (const mpe::NoteEvent* ne = std::get_if<mpe::NoteEvent>(&ev)) {
+                const pitch_level_t p = ne->pitchCtx().nominalPitchLevel;
+                present.insert(p);
+                if (p < lo) {
+                    lo = p;
+                    lowest = ne;
+                }
+                hi = std::max(hi, p);
+            }
+        }
+        if (lowest) {
+            static const bool isWhite[12] = { true, false, true, false, true, true, false, true, false, true, false, true };
+            const Chord::ClusterType type = chord->cluster();
+            const mpe::NoteEvent model = *lowest;
+            for (pitch_level_t p = lo; p <= hi; p += PITCH_LEVEL_STEP) {
+                if (present.count(p)) {
+                    continue;
+                }
+                const int pitchClass = static_cast<int>((p / PITCH_LEVEL_STEP) % 12);
+                if ((type == Chord::ClusterType::WHITE && !isWhite[pitchClass])
+                    || (type == Chord::ClusterType::BLACK && isWhite[pitchClass])) {
+                    continue;
+                }
+                mpe::ArrangementContext arr = model.arrangementCtx();
+                mpe::PitchContext pitch = model.pitchCtx();
+                pitch.nominalPitchLevel = p;
+                mpe::ExpressionContext expr = model.expressionCtx();
+                newEvents.emplace_back(mpe::NoteEvent(std::move(arr), std::move(pitch), std::move(expr)));
+            }
+        }
+    }
 
     if (!newEvents.empty()) {
         PlaybackEventList& list = result[ctx.nominalTimestamp];

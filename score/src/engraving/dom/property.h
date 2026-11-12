@@ -527,6 +527,8 @@ enum class Pid : short {
 
     SHARED_PART_ENABLED,
 
+    CHORD_CLUSTER, // Studio: 0 none, 1 white keys, 2 black keys, 3 all keys
+
     END
 };
 

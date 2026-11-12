@@ -5359,6 +5359,37 @@ void NotationInteraction::flipSelectionHorizontally()
     });
 }
 
+void NotationInteraction::setClusterForSelection(int type)
+{
+    if (selection()->isNone()) {
+        return;
+    }
+    // every chord touched by the selection (notes, chords, ranges)
+    std::set<mu::engraving::Chord*> chords;
+    for (EngravingItem* e : selection()->elements()) {
+        if (e->isNote()) {
+            chords.insert(toNote(e)->chord());
+        } else if (e->isChord()) {
+            chords.insert(toChord(e));
+        } else if (e->isStem()) {
+            chords.insert(toStem(e)->chord());
+        } else if (e->isHook()) {
+            chords.insert(toHook(e)->chord());
+        }
+    }
+    if (chords.empty()) {
+        return;
+    }
+    startEdit(TranslatableString("undoableAction", "Cluster"));
+    for (mu::engraving::Chord* c : chords) {
+        if (c && c->getProperty(Pid::CHORD_CLUSTER).toInt() != type) {
+            c->undoChangeProperty(Pid::CHORD_CLUSTER, PropertyValue(type));
+        }
+    }
+    apply();
+    notifyAboutNotationChanged();
+}
+
 void NotationInteraction::mirrorNotes()
 {
     if (selection()->isNone()) {

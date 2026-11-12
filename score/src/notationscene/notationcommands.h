@@ -502,6 +502,11 @@ inline static const muse::rcommand::Command VOICE_ASSIGNMENT_ALL_IN_STAFF_COMMAN
 
 //inline static const muse::rcommand::Command FLIP_COMMAND("command://notation/flip");
 inline static const muse::rcommand::Command FLIP_HORIZONTALLY_COMMAND("command://notation/flip-horizontally");
+// Studio: clusters
+inline static const muse::rcommand::Command CLUSTER_WHITE_COMMAND("command://notation/cluster-white");
+inline static const muse::rcommand::Command CLUSTER_BLACK_COMMAND("command://notation/cluster-black");
+inline static const muse::rcommand::Command CLUSTER_ALL_COMMAND("command://notation/cluster-all");
+inline static const muse::rcommand::Command CLUSTER_NONE_COMMAND("command://notation/cluster-none");
 
 //inline static const muse::rcommand::Command ADD_NOTE_COMMAND("command://notation/add-note"); // with params
 inline static const muse::rcommand::Command ADD_DRUM_NOTE_COMMAND("command://notation/add-drum-note"); // with params

@@ -313,6 +313,14 @@ MenuItem* AppMenuModel::makeAddMenu()
         makeMenu(TranslatableString("appshell/menu/add", "&Notes"), makeNotesItems(), "menu-notes"),
         makeMenu(TranslatableString("appshell/menu/add", "&Intervals"), makeIntervalsItems(), "menu-intervals"),
         makeMenu(TranslatableString("appshell/menu/add", "T&uplets"), makeTupletsItems(), "menu-tuplets"),
+        // Studio: clusters (rectangle from the lowest to the highest note)
+        makeMenu(TranslatableString("appshell/menu/add", "&Cluster"), {
+            makeMenuItem(CLUSTER_WHITE_COMMAND),
+            makeMenuItem(CLUSTER_BLACK_COMMAND),
+            makeMenuItem(CLUSTER_ALL_COMMAND),
+            makeSeparator(),
+            makeMenuItem(CLUSTER_NONE_COMMAND),
+        }, "menu-cluster"),
         makeSeparator(),
         makeMenu(TranslatableString("appshell/menu/add", "&Measures"), makeMeasuresItems(), "menu-measures"),
         makeMenu(TranslatableString("appshell/menu/add", "&Frames"), makeFramesItems(), "menu-frames"),

@@ -442,6 +442,9 @@ void TDraw::drawItem(const EngravingItem* item, Painter* painter, const PaintOpt
 void TDraw::draw(const Accidental* item, Painter* painter, const PaintOptions& opt)
 {
     TRACE_DRAW_ITEM;
+    if (item->note() && item->note()->chord() && item->note()->chord()->isCluster()) {
+        return; // Studio: clusters have no accidentals
+    }
     IF_ASSERT_FAILED(item->ldata()) {
         return;
     }
@@ -2046,6 +2049,9 @@ void TDraw::draw(const Harmony* item, Painter* painter, const PaintOptions& opt)
 void TDraw::draw(const Hook* item, Painter* painter, const PaintOptions& opt)
 {
     TRACE_DRAW_ITEM;
+    if (item->chord() && item->chord()->isCluster()) {
+        return; // Studio: clusters have no flags
+    }
     // hide if belonging to the second chord of a cross-measure pair
     if (item->chord() && item->chord()->crossMeasure() == CrossMeasure::SECOND) {
         return;
@@ -2338,6 +2344,53 @@ void TDraw::draw(const MMRestRange* item, Painter* painter, const PaintOptions& 
     drawTextBase(item, painter, opt);
 }
 
+// Studio: a cluster is drawn as one rectangle from its highest to its lowest note, for the
+// length of the chord: outline = white keys, filled = black keys, half and half = all keys.
+static void drawStudioCluster(const Note* item, Painter* painter, const mu::engraving::rendering::PaintOptions& opt)
+{
+    const Chord* ch = item->chord();
+    const Note* top = ch->upNote();
+    const Note* bottom = ch->downNote();
+    if (item != top || !bottom) {
+        return; // the whole rectangle is drawn once, from the top note
+    }
+    const double sp = item->spatium();
+    const Segment* seg = ch->segment();
+    double right = item->headWidth() * 2.0;
+    if (seg) {
+        const Segment* next = seg->next(SegmentType::ChordRest);
+        const double endX = next ? next->x() : (seg->measure() ? seg->measure()->width() : seg->x() + right);
+        right = endX - seg->x() - ch->x() - item->x() - sp * 0.4;
+        right = std::max(right, item->headWidth());
+    }
+    const double topY = -sp * 0.5;
+    const double bottomY = (bottom->y() - top->y()) + sp * 0.5;
+    const RectF r(0.0, topY, right, bottomY - topY);
+    const Color c = item->curColor(opt);
+    const double lw = sp * 0.16;
+
+    painter->save();
+    painter->setPen(Pen(c, lw, PenStyle::SolidLine, PenCapStyle::FlatCap));
+    switch (ch->cluster()) {
+    case Chord::ClusterType::BLACK:
+        painter->setBrush(Brush(c));
+        painter->drawRect(r);
+        break;
+    case Chord::ClusterType::ALL: {
+        painter->setBrush(BrushStyle::NoBrush);
+        painter->drawRect(r);
+        painter->setBrush(Brush(c));
+        painter->drawRect(RectF(r.x() + r.width() / 2, r.y(), r.width() / 2, r.height()));
+        break;
+    }
+    default:
+        painter->setBrush(BrushStyle::NoBrush);
+        painter->drawRect(r.adjusted(lw / 2, lw / 2, -lw / 2, -lw / 2));
+        break;
+    }
+    painter->restore();
+}
+
 void TDraw::draw(const Note* item, Painter* painter, const PaintOptions& opt)
 {
     TRACE_DRAW_ITEM;
@@ -2384,6 +2437,10 @@ void TDraw::draw(const Note* item, Painter* painter, const PaintOptions& opt)
     else {
         // skip drawing, if second note of a cross-measure value
         if (item->chord() && item->chord()->crossMeasure() == CrossMeasure::SECOND) {
+            return;
+        }
+        if (item->chord() && item->chord()->isCluster()) {
+            drawStudioCluster(item, painter, opt);
             return;
         }
         // warn if pitch extends usable range of instrument
@@ -2855,6 +2912,9 @@ void TDraw::draw(const Stem* item, Painter* painter, const PaintOptions& opt)
     TRACE_DRAW_ITEM;
     if (!item->chord()) { // may be need assert?
         return;
+    }
+    if (item->chord()->isCluster()) {
+        return; // Studio: clusters have no stems
     }
 
     // hide if second chord of a cross-measure pair

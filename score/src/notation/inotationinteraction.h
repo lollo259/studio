@@ -197,6 +197,8 @@ public:
     virtual void deleteSelection() = 0;
     virtual void flipSelection() = 0;
     virtual void flipSelectionHorizontally() = 0;
+    //! Studio: 0 normal chord, 1 white-key cluster, 2 black-key cluster, 3 all-keys cluster
+    virtual void setClusterForSelection(int type) = 0;
     virtual void mirrorNotes() = 0;
     virtual void toggleTieForSelection() = 0;
     virtual void addLaissezVibToSelection() = 0;
