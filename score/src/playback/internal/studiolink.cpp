@@ -5,6 +5,7 @@
 #include "studiolink.h"
 
 #include <cmath>
+#include <functional>
 
 #include "studiolinkpeer.h"
 
@@ -22,6 +23,28 @@
 #include "notation/inotationundostack.h"
 #include "project/projectcommands.h"
 #include <QUrl>
+#include <QCoreApplication>
+#include <QEvent>
+
+namespace {
+// any click or key press in this Score window makes it the one the transport talks to
+class InputWatch : public QObject
+{
+public:
+    explicit InputWatch(std::function<void()> f)
+        : m_f(std::move(f)) {}
+    bool eventFilter(QObject* o, QEvent* e) override
+    {
+        if (e->type() == QEvent::MouseButtonPress || e->type() == QEvent::KeyPress) {
+            m_f();
+        }
+        return QObject::eventFilter(o, e);
+    }
+
+private:
+    std::function<void()> m_f;
+};
+}
 
 using namespace mu::playback;
 
@@ -52,18 +75,24 @@ void StudioLink::init()
         } else {
             m_posTimer.stop();
         }
-        if (!muted()) {
+        if (playing) {
+            becomeFront(); // playing here: this is the score the user is working on
+        }
+        if (!muted() && (m_front || !m_otherFront)) {
             sendState(playing ? "play" : "stop");
         }
     });
     state()->playbackPositionChanged().onReceive(this, [this](muse::audio::secs_t) {
         // the cursor moved by hand while stopped: let Tape follow
-        if (!state()->isPlaying() && !muted()) {
+        if (!state()->isPlaying() && !muted() && (m_front || !m_otherFront)) {
             m_seekDebounce.start();
         }
     });
 
     m_peer->start();
+
+    m_inputWatch = std::make_unique<InputWatch>([this]() { becomeFront(); });
+    qApp->installEventFilter(m_inputWatch.get());
 
     projectSession()->masterNotationChanged().onNotify(this, [this]() {
         m_tapeFolder.clear(); // another score: Tape's tracks belong to the old one
@@ -131,6 +160,9 @@ void StudioLink::refreshTape()
     for (const auto& ex : master->excerpts()) {
         consider(ex);
     }
+    for (const auto& ex : master->potentialExcerpts()) { // instruments added since: they get their own track
+        consider(ex);
+    }
 
     QStringList files;
     if (!notations.empty()) {
@@ -153,6 +185,16 @@ void StudioLink::refreshTape()
     if (!files.isEmpty()) {
         m_peer->send(QJsonObject { { "cmd", "reload" }, { "files", QJsonArray::fromStringList(files) } });
     }
+}
+
+void StudioLink::becomeFront()
+{
+    if (m_front) {
+        return;
+    }
+    m_front = true;
+    m_otherFront = false;
+    m_peer->send(QJsonObject { { "cmd", "front" }, { "pid", qint64(QCoreApplication::applicationPid()) } });
 }
 
 bool StudioLink::muted() const
@@ -179,6 +221,18 @@ void StudioLink::onMessage(const QJsonObject& msg)
 {
     const QString cmd = msg.value("cmd").toString();
     const double t = std::max(0.0, msg.value("t").toDouble());
+
+    if (cmd == "front") {
+        if (qint64(msg.value("pid").toDouble()) != qint64(QCoreApplication::applicationPid())) {
+            m_front = false;
+            m_otherFront = true; // another Score window is the one in use
+        }
+        return;
+    }
+    // transport and Tape refreshes go to the Score window in use only
+    if (m_otherFront && !m_front) {
+        return;
+    }
     m_applied.start();
 
     if (cmd == "play") {
@@ -216,7 +270,14 @@ void StudioLink::onMessage(const QJsonObject& msg)
     } else if (cmd == "page" || cmd == "show") {
         // turning to Tape: bring its tracks up to date with the edits made since
         if (msg.value("page").toString() == "tape") {
-            QTimer::singleShot(50, m_peer.get(), [this]() { refreshTape(); });
+            QTimer::singleShot(50, m_peer.get(), [this]() {
+                if (m_tapeFolder.isEmpty()) {
+                    // this score isn't in Tape yet: put all its instruments there now
+                    commandDispatcher()->dispatch(project::PROJECT_SEND_TO_TAPE_AUTO_COMMAND);
+                } else {
+                    refreshTape();
+                }
+            });
         }
         m_applied.invalidate();
         return;

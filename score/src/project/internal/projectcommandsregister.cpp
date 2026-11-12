@@ -139,6 +139,13 @@ static const std::vector<CommandInfo> s_commandInfos = {
         Decoration(IconCode::Code::AUDIO)
     },
     CommandInfo{
+        PROJECT_SEND_TO_TAPE_AUTO_COMMAND,
+        TranslatableString("project", "Send to Tape (automatic)"),
+        TranslatableString("project", "Put the score's instruments in Tape when you turn to the Tape page"),
+        InputSchema(),
+        Decoration()
+    },
+    CommandInfo{
         PROJECT_CONVERT_TO_SCORE_COMMAND,
         TranslatableString("project", "Convert &file…"),
         TranslatableString("project", "Convert a file to a score"),

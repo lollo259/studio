@@ -53,6 +53,11 @@ private:
     bool m_rendering = false;
 
     std::unique_ptr<studiolink::Peer> m_peer;
+    // several Score windows can be open (one per file): only the one used last answers play/stop/seek
+    bool m_front = false;
+    bool m_otherFront = false;
+    std::unique_ptr<QObject> m_inputWatch;
+    void becomeFront();
     QElapsedTimer m_applied;   // when we last applied a message (to not echo it back)
     QTimer m_seekDebounce;
     QTimer m_posTimer;

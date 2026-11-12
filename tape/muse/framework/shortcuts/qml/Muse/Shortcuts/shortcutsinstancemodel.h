@@ -40,6 +40,9 @@ class ShortcutsInstanceModel : public QObject, public Contextable, public async:
 
     Q_PROPERTY(QVariantMap shortcuts READ shortcuts NOTIFY shortcutsChanged)
     Q_PROPERTY(bool active READ active NOTIFY activeChanged)
+    // Studio: inside the Studio window the app is not the active top-level window, so shortcuts
+    // must work application-wide
+    Q_PROPERTY(bool studioEmbedded READ studioEmbedded CONSTANT)
 
 #ifdef Q_OS_MAC
     QML_ANONYMOUS
@@ -56,6 +59,7 @@ public:
 
     QVariantMap shortcuts() const;
     bool active() const;
+    bool studioEmbedded() const { return qEnvironmentVariableIsSet("STUDIO_EMBEDDED"); }
 
     Q_INVOKABLE void init();
     Q_INVOKABLE void activate(const QString& seq);

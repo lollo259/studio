@@ -333,9 +333,25 @@ public:
             delete m_container;
             m_container = nullptr;
             m_hwnd = 0;
-            m_status = m_name + " closed";
+            m_proc->deleteLater();
+            m_proc = nullptr;
             emit changed();
-            update();
+            if (m_quitting) {
+                return;
+            }
+            // it stopped on its own (crash or closed by hand): bring it back, a few times at most
+            if (!m_restarts.isValid() || m_restarts.elapsed() > 60000) {
+                m_restarts.start();
+                m_restartCount = 0;
+            }
+            if (++m_restartCount <= 3) {
+                m_status = m_name + " stopped - starting it again…";
+                update();
+                QTimer::singleShot(800, this, &AppSlot::launch);
+            } else {
+                m_status = m_name + " keeps stopping - click here to start it";
+                update();
+            }
         });
         m_proc->start(m_exe, args);
         m_started.start();
@@ -346,6 +362,7 @@ public:
 
     void closeApp()
     {
+        m_quitting = true;
 #ifdef Q_OS_WIN
         if (m_hwnd) {
             PostMessageW(reinterpret_cast<HWND>(m_hwnd), WM_CLOSE, 0, 0);
@@ -357,6 +374,15 @@ signals:
     void changed();
 
 protected:
+    void mousePressEvent(QMouseEvent*) override
+    {
+        if (!m_container && !m_proc && !m_quitting) {
+            m_restartCount = 0;
+            m_restarts.start();
+            launch();
+        }
+    }
+
     void paintEvent(QPaintEvent*) override
     {
         if (m_container) {
@@ -437,6 +463,9 @@ private:
     WId m_candidate = 0;
     QElapsedTimer m_started;
     QElapsedTimer m_candidateSince;
+    QElapsedTimer m_restarts;
+    int m_restartCount = 0;
+    bool m_quitting = false;
     QTimer m_find;
 };
 

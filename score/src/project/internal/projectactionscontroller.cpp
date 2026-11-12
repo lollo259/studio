@@ -88,7 +88,8 @@ void ProjectActionsController::init()
 
     d->onRequest(this, PROJECT_EXPORT_COMMAND, [this]() { return exportScore(); });
     d->onRequest(this, PROJECT_EXPORT_STAGE_COMMAND, [this]() { return exportForStage(); });
-    d->onRequest(this, PROJECT_SEND_TO_TAPE_COMMAND, [this]() { return sendToTape(); });
+    d->onRequest(this, PROJECT_SEND_TO_TAPE_COMMAND, [this]() { return sendToTape(false); });
+    d->onRequest(this, PROJECT_SEND_TO_TAPE_AUTO_COMMAND, [this]() { return sendToTape(true); });
     d->onRequest(this, PROJECT_CONVERT_TO_SCORE_COMMAND, [this]() { return convertFileToScore(); });
 
     d->onRequest(this, PROJECT_PRINT_COMMAND, [this]() { return printScore(); });
@@ -490,16 +491,18 @@ QString ProjectActionsController::findTape()
     return picked.toQString();
 }
 
-muse::Ret ProjectActionsController::sendToTape()
+muse::Ret ProjectActionsController::sendToTape(bool silent)
 {
+    const bool embedded = qEnvironmentVariableIsSet("STUDIO_EMBEDDED");
     INotationProjectPtr project = currentNotationProject();
     IMasterNotationPtr master = currentMasterNotation();
     if (!project || !master) {
         return make_ret(Ret::Code::InternalError);
     }
 
-    const QString tape = findTape();
-    if (tape.isEmpty()) {
+    // inside Studio, Tape is already running next to Score: no need to look for it
+    const QString tape = embedded ? QString() : findTape();
+    if (!embedded && tape.isEmpty()) {
         return make_ret(Ret::Code::Cancel);
     }
 
@@ -541,6 +544,9 @@ muse::Ret ProjectActionsController::sendToTape()
         tracks.append(fi.fileName());
     }
     if (files.isEmpty()) {
+        if (silent) {
+            return make_ret(Ret::Code::Cancel); // nothing that sounds yet: nothing to put in Tape
+        }
         interactive()->error(muse::trc("project", "Nothing to send to Tape"),
                              muse::trc("project", "The score made no sound. Check that the instruments aren't muted."));
         return make_ret(Ret::Code::InternalError);
@@ -567,8 +573,13 @@ muse::Ret ProjectActionsController::sendToTape()
         if (sock.waitForConnected(200)) {
             QJsonObject sent { { "cmd", "sent" }, { "folder", folder }, { "title", title }, { "from", "score-project" } };
             sock.write(QJsonDocument(sent).toJson(QJsonDocument::Compact) + "\n");
-            if (qEnvironmentVariableIsSet("STUDIO_EMBEDDED")) {
-                sock.write("{\"cmd\":\"show\",\"page\":\"tape\",\"from\":\"score-project\"}\n");
+            if (embedded) {
+                // the Tape inside Studio takes the files as new tracks
+                QJsonObject reload { { "cmd", "reload" }, { "files", QJsonArray::fromStringList(files) }, { "from", "score-project" } };
+                sock.write(QJsonDocument(reload).toJson(QJsonDocument::Compact) + "\n");
+                if (!silent) {
+                    sock.write("{\"cmd\":\"show\",\"page\":\"tape\",\"from\":\"score-project\"}\n");
+                }
             }
             sock.flush();
             sock.waitForBytesWritten(300);
@@ -576,6 +587,9 @@ muse::Ret ProjectActionsController::sendToTape()
         }
     }
 
+    if (embedded) {
+        return make_ok();
+    }
     if (!QProcess::startDetached(tape, files, QFileInfo(tape).absolutePath())) {
         QSettings("LaurenceWho", "Studio").remove("tapePath");
         interactive()->error(muse::trc("project", "Tape didn't start"),

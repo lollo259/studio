@@ -119,7 +119,7 @@ private:
 
     muse::Ret exportScore();
     muse::Ret exportForStage();
-    muse::Ret sendToTape();
+    muse::Ret sendToTape(bool silent);
     QString findTape();
     muse::Ret printScore();
 

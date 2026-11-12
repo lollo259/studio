@@ -92,9 +92,20 @@ void StudioLink::reloadTracks(const QStringList& files)
 {
     auto project = globalContext()->currentProject();
     auto te = globalContext()->currentTrackeditProject();
+    static int tries = 0;
     if (!project || !te) {
+        // no project open yet: start one, then put the score's tracks in it
+        if (tries++ > 20) {
+            tries = 0;
+            return;
+        }
+        if (tries == 1) {
+            dispatcher()->dispatch("file-new");
+        }
+        QTimer::singleShot(300, m_peer.get(), [this, files]() { reloadTracks(files); });
         return;
     }
+    tries = 0;
     QStringList newOnes;
     for (const QString& f : files) {
         const QString name = QFileInfo(f).completeBaseName();
