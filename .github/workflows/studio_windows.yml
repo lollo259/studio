@@ -235,6 +235,13 @@ jobs:
         name: ${{ needs.studio.outputs.studio_name }}
         path: Studio
 
+    - name: Check Sketch loads in Blender
+      shell: pwsh
+      run: |
+        $py = "import bpy, bl_app_template_utils; bl_app_template_utils.activate(template_id='sketch'); ops=[o for o in dir(bpy.ops.sketch)]; print('SKETCH OK', bpy.app.version_string, len(ops), 'tools')"
+        & "Studio\Sketch\blender.exe" --background --factory-startup --python-expr $py 2>&1 | Tee-Object -Variable out
+        if (-not ($out -match "SKETCH OK")) { throw "Sketch did not load" }
+
     - name: Inno Setup
       shell: pwsh
       run: |
