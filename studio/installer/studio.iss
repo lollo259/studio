@@ -24,7 +24,8 @@ UninstallDisplayIcon={app}\Studio.exe
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 WizardStyle=modern
-Compression=lzma2/normal ; Blender makes it big: compress harder to stay under 4 GB
+; Blender makes it big: compress harder to stay under 4 GB
+Compression=lzma2/normal
 LZMANumBlockThreads=4
 SolidCompression=no
 ; one single Setup.exe (Inno Setup 6.5.2+ allows up to ~4 GB; compressed it is ~3.2 GB with Mail)
