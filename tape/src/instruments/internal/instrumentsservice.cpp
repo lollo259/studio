@@ -153,16 +153,20 @@ void InstrumentsService::onMidi(const Event& e)
             if (b[2] > 0) {
                 m_synth->noteOn(b[1], b[2]);
                 m_lastNote = b[1];
+                m_held[b[1] & 0x7F] = true;
             } else {
                 m_synth->noteOff(b[1]);
+                m_held[b[1] & 0x7F] = false;
             }
             break;
         case 0x80:
             m_synth->noteOff(b[1]);
+            m_held[b[1] & 0x7F] = false;
             break;
         case 0xB0:
             if (b[1] == 123 || b[1] == 120) {
                 m_synth->allNotesOff();
+                m_held.fill(false);
             } else {
                 m_synth->controlChange(b[1], b[2]);
             }

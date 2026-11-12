@@ -82,6 +82,8 @@ target_sources(instruments PRIVATE
     internal/instrumentsactions.cpp
     internal/instrumenttracks.cpp
     internal/instrumenttracks.h
+    internal/samplerkit.cpp
+    internal/samplerkit.h
     internal/studiolink.cpp
     internal/studiolink.h
     internal/studiolinkpeer.cpp

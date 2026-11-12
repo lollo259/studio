@@ -44,6 +44,7 @@ void InstrumentsModule::resolveImports()
     auto ir = globalIoc()->resolve<muse::interactive::IInteractiveUriRegister>(mname);
     if (ir) {
         ir->registerQmlUri(muse::Uri("audacity://instruments"), "Audacity.Instruments", "InstrumentsDialog");
+        ir->registerQmlUri(muse::Uri("audacity://sampler"), "Audacity.Instruments", "SamplerDialog");
     }
 }
 

@@ -6,6 +6,7 @@
  */
 #pragma once
 
+#include <array>
 #include <string>
 #include <vector>
 
@@ -42,6 +43,8 @@ public:
     void selectKeyboard(const std::string& id);
 
     int lastNote() const { return m_lastNote; }
+    //! Whether a key of the MIDI keyboard is down right now (the Sampler lights its pads with it)
+    bool isNoteHeld(int note) const { return note >= 0 && note < 128 && m_held[size_t(note)]; }
     muse::async::Notification changed() const { return m_changed; }
 
 private:
@@ -51,6 +54,7 @@ private:
     std::shared_ptr<ILiveSynth> m_synth;
     std::vector<SoundEntry> m_sounds;
     int m_lastNote = -1;
+    std::array<bool, 128> m_held {};
     bool m_sustain = false;
     muse::async::Notification m_changed;
 };
