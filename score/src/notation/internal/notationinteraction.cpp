@@ -5461,56 +5461,87 @@ void NotationInteraction::addSlurFromStroke(const std::vector<PointF>& strokeIn)
         return;
     }
     slur->undoChangeProperty(Pid::SLUR_DIRECTION, PropertyValue::fromValue<DirectionV>(bulge > 0 ? DirectionV::DOWN : DirectionV::UP));
-    score()->renderer()->layoutItem(slur);
+    // lay the new slur out (it has no segments before), then shape it like the stroke
+    score()->doLayoutRange(a->tick(), b->tick() + b->actualTicks());
 
-    // shape: fit the slur's two bezier handles to the stroke (single-system slurs)
-    if (slur->spannerSegments().size() == 1) {
-        mu::engraving::SlurSegment* seg = slur->frontSegment();
+    // fit one slur segment's two bezier handles to a part of the stroke (its ends stay where layout put them)
+    auto fitSegment = [](mu::engraving::SlurSegment* seg, const std::vector<PointF>& part) {
+        if (!seg || part.size() < 3) {
+            return;
+        }
         const PointF origin = seg->canvasPos();
         const PointF p0 = seg->ups(mu::engraving::Grip::START).pos() + origin;
         const PointF p3 = seg->ups(mu::engraving::Grip::END).pos() + origin;
+        const PointF a0 = part.front();
+        const PointF a1 = part.back();
 
         // move the stroke so its ends sit on the slur's ends (rotate + scale, as complex numbers)
-        const double dx = s1.x() - s0.x(), dy = s1.y() - s0.y();
+        const double dx = a1.x() - a0.x(), dy = a1.y() - a0.y();
         const double tx = p3.x() - p0.x(), ty = p3.y() - p0.y();
         const double den = dx * dx + dy * dy;
-        if (den > 1e-6) {
-            const double kr = (tx * dx + ty * dy) / den; // (t / d) real
-            const double ki = (ty * dx - tx * dy) / den; // (t / d) imaginary
-            std::vector<PointF> pts;
-            std::vector<double> ts;
-            double len = 0;
-            for (size_t i = 0; i < stroke.size(); ++i) {
-                const double zx = stroke[i].x() - s0.x(), zy = stroke[i].y() - s0.y();
-                pts.push_back(PointF(p0.x() + zx * kr - zy * ki, p0.y() + zx * ki + zy * kr));
-                if (i > 0) {
-                    const PointF d = pts[i] - pts[i - 1];
-                    len += std::sqrt(d.x() * d.x() + d.y() * d.y());
-                }
-                ts.push_back(len);
+        if (den < 1e-6) {
+            return;
+        }
+        const double kr = (tx * dx + ty * dy) / den;
+        const double ki = (ty * dx - tx * dy) / den;
+        std::vector<PointF> pts;
+        std::vector<double> ts;
+        double len = 0;
+        for (size_t i = 0; i < part.size(); ++i) {
+            const double zx = part[i].x() - a0.x(), zy = part[i].y() - a0.y();
+            pts.push_back(PointF(p0.x() + zx * kr - zy * ki, p0.y() + zx * ki + zy * kr));
+            if (i > 0) {
+                const PointF d = pts[i] - pts[i - 1];
+                len += std::sqrt(d.x() * d.x() + d.y() * d.y());
             }
-            // least squares for the two middle control points, ends fixed
-            double s11 = 0, s12 = 0, s22 = 0;
-            PointF r1, r2;
-            for (size_t i = 0; i < pts.size() && len > 0; ++i) {
-                const double t = ts[i] / len, u = 1 - t;
-                const double b0 = u * u * u, b1 = 3 * t * u * u, b2 = 3 * t * t * u, b3 = t * t * t;
-                const PointF r = pts[i] - p0 * b0 - p3 * b3;
-                s11 += b1 * b1;
-                s12 += b1 * b2;
-                s22 += b2 * b2;
-                r1 += r * b1;
-                r2 += r * b2;
+            ts.push_back(len);
+        }
+        if (len <= 0) {
+            return;
+        }
+        // least squares for the two middle control points, ends fixed
+        double s11 = 0, s12 = 0, s22 = 0;
+        PointF r1, r2;
+        for (size_t i = 0; i < pts.size(); ++i) {
+            const double t = ts[i] / len, u = 1 - t;
+            const double b0 = u * u * u, b1 = 3 * t * u * u, b2 = 3 * t * t * u, b3 = t * t * t;
+            const PointF r = pts[i] - p0 * b0 - p3 * b3;
+            s11 += b1 * b1;
+            s12 += b1 * b2;
+            s22 += b2 * b2;
+            r1 += r * b1;
+            r2 += r * b2;
+        }
+        const double det = s11 * s22 - s12 * s12;
+        if (std::abs(det) < 1e-9) {
+            return;
+        }
+        const PointF q1 = (r1 * s22 - r2 * s12) / det;
+        const PointF q2 = (r2 * s11 - r1 * s12) / det;
+        const PointF c1 = seg->ups(mu::engraving::Grip::BEZIER1).p + origin;
+        const PointF c2 = seg->ups(mu::engraving::Grip::BEZIER2).p + origin;
+        static_cast<mu::engraving::EngravingObject*>(seg)->undoChangeProperty(Pid::BEZIER_OFFSET2, PropertyValue(q1 - c1));
+        static_cast<mu::engraving::EngravingObject*>(seg)->undoChangeProperty(Pid::BEZIER_OFFSET3, PropertyValue(q2 - c2));
+    };
+
+    const auto& segs = slur->spannerSegments();
+    if (segs.size() == 1) {
+        fitSegment(toSlurSegment(segs.front()), stroke);
+    } else if (segs.size() > 1) {
+        // across a line break: the stroke jumps back left where it goes to the next system -
+        // the part before the jump shapes the first segment, the part after it the last one
+        size_t cut = 0;
+        double drop = 0;
+        for (size_t i = 1; i < stroke.size(); ++i) {
+            const double d = stroke[i - 1].x() - stroke[i].x();
+            if (d > drop) {
+                drop = d;
+                cut = i;
             }
-            const double det = s11 * s22 - s12 * s12;
-            if (std::abs(det) > 1e-9) {
-                const PointF q1 = (r1 * s22 - r2 * s12) / det;
-                const PointF q2 = (r2 * s11 - r1 * s12) / det;
-                const PointF c1 = seg->ups(mu::engraving::Grip::BEZIER1).p + origin;
-                const PointF c2 = seg->ups(mu::engraving::Grip::BEZIER2).p + origin;
-                static_cast<mu::engraving::EngravingObject*>(seg)->undoChangeProperty(Pid::BEZIER_OFFSET2, PropertyValue(q1 - c1));
-                static_cast<mu::engraving::EngravingObject*>(seg)->undoChangeProperty(Pid::BEZIER_OFFSET3, PropertyValue(q2 - c2));
-            }
+        }
+        if (cut > 2 && cut + 2 < stroke.size()) {
+            fitSegment(toSlurSegment(segs.front()), std::vector<PointF>(stroke.begin(), stroke.begin() + cut));
+            fitSegment(toSlurSegment(segs.back()), std::vector<PointF>(stroke.begin() + cut, stroke.end()));
         }
     }
     apply();
