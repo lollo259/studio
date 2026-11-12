@@ -26,6 +26,7 @@ import QtQuick
 
 import Muse.Ui
 import Muse.UiComponents
+import MuseScore.Playback
 
 MixerPanelSection {
     id: root
@@ -57,6 +58,20 @@ MixerPanelSection {
                 value: content.channelItem.balance
                 stepSize: 1
                 isBalanceKnob: true
+
+                // Studio: OP-1 colours - blue, green, white, orange - picked by the channel's name
+                capColor: {
+                    if (content.channelItem.type === MixerChannelItem.Master) {
+                        return "#F4F4F5"
+                    }
+                    const colours = ["#3E7BD6", "#49B26A", "#F4F4F5", "#FF6A13"]
+                    let h = 0
+                    const t = content.channelItem.title
+                    for (let i = 0; i < t.length; ++i) {
+                        h = (h * 31 + t.charCodeAt(i)) % 9973
+                    }
+                    return colours[h % colours.length]
+                }
                 enabled: !content.channelItem.hasBalanceAutomation
                 opacity: enabled ? 1.0 : ui.theme.itemOpacityDisabled
 

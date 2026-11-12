@@ -38,6 +38,10 @@ Dial {
 
     property bool accentControl: true
 
+    // Studio: the encoder's cap colour (OP-1 style: each channel its own colour)
+    property color capColor: "#F4F4F5"
+    onCapColorChanged: backgroundCanvas.requestPaint()
+
     property alias mouseArea: mouseArea
 
     implicitWidth: root.radius * 2
@@ -156,7 +160,7 @@ Dial {
             ctx.stroke()
 
             // Studio: a flat TE-style cap: solid light disc, thin outline
-            ctx.fillStyle = "#F4F4F5"
+            ctx.fillStyle = root.capColor
             ctx.beginPath()
             ctx.arc(width/2, height/2, root.radius - prv.outerArcLineWidth - 1.5, 0, Math.PI * 2, false)
             ctx.fill()
@@ -174,7 +178,7 @@ Dial {
         width: prv.handlerWidth
         radius: prv.handlerWidth / 2
 
-        color: ui.theme.fontPrimaryColor
+        color: root.capColor.hslLightness > 0.7 ? ui.theme.fontPrimaryColor : "#FFFFFF"
         antialiasing: true
 
         transformOrigin: Item.Bottom
