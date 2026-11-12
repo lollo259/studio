@@ -1,7 +1,9 @@
 name: 'Studio: Windows'
 
-# One folder with everything: Score, Tape, the sounds (already unpacked and mapped)
-# and Score.exe / Tape.exe at the top. Runs after a successful Score or Tape build.
+# One folder with everything: Score, Tape, Mail (Thunderbird), the sounds (already
+# unpacked and mapped) and Score.exe / Tape.exe at the top. Runs after a successful
+# Score or Tape build. Run by hand on another branch (Actions > Run workflow), it takes
+# that branch's Score build if there is one, otherwise main's, and main's Tape build.
 
 on:
   workflow_dispatch:
@@ -14,7 +16,7 @@ on:
     paths: ['studio/**', '.github/workflows/studio_windows.yml']
 
 concurrency:
-  group: studio-windows
+  group: studio-windows-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -32,7 +34,21 @@ jobs:
         sudo apt-get update -qq
         sudo apt-get install -y -qq p7zip-full gcc-mingw-w64-x86-64 binutils-mingw-w64-x86-64
 
+    - name: Latest Score build (this branch)
+      id: score_branch
+      if: ${{ github.ref_name != 'main' }}
+      continue-on-error: true
+      uses: dawidd6/action-download-artifact@v28
+      with:
+        workflow: score_windows.yml
+        workflow_conclusion: success
+        branch: ${{ github.ref_name }}
+        name: 'Score_.*'
+        name_is_regexp: true
+        path: dl/score
+
     - name: Latest Score build
+      if: ${{ github.ref_name == 'main' || steps.score_branch.outcome != 'success' }}
       uses: dawidd6/action-download-artifact@v28
       with:
         workflow: score_windows.yml
@@ -85,6 +101,37 @@ jobs:
         fi
         ls -la "$GITHUB_WORKSPACE/Studio"
 
+    - name: Mail (Thunderbird)
+      shell: bash
+      run: |
+        set -e
+        # the official Thunderbird for Windows (latest ESR, en-US), checked against Mozilla's checksums
+        curl -fsSL https://product-details.mozilla.org/1.0/thunderbird_versions.json -o /tmp/tb_versions.json
+        cat /tmp/tb_versions.json
+        ver=$(python3 -I -c 'import json,sys; d=json.load(open(sys.argv[1])); print(d.get("THUNDERBIRD_ESR") or d["LATEST_THUNDERBIRD_VERSION"])' /tmp/tb_versions.json)
+        echo "Thunderbird $ver"
+        base="https://archive.mozilla.org/pub/thunderbird/releases/$ver"
+        file="win64/en-US/Thunderbird Setup $ver.exe"
+        mkdir -p dl/mail x/mail
+        curl -fsSL "$base/SHA256SUMS" -o dl/mail/SHA256SUMS
+        curl -fsSL "$base/${file// /%20}" -o dl/mail/setup.exe
+        want=$(grep -F "  $file" dl/mail/SHA256SUMS | head -1 | cut -d' ' -f1)
+        have=$(sha256sum dl/mail/setup.exe | cut -d' ' -f1)
+        echo "want $want"; echo "have $have"
+        test -n "$want" && test "$want" = "$have"
+        # the installer is a 7-Zip archive: core/ is the whole app
+        7z x -y -ox/mail dl/mail/setup.exe > /dev/null
+        test -f x/mail/core/thunderbird.exe
+        mv x/mail/core Studio/Mail
+        echo "$ver" > Studio/Mail/studio-thunderbird-version.txt
+        # Studio's profile files (copied into the Mail profile on every start) and policies
+        mkdir -p Studio/Mail/studio-profile/chrome/fonts Studio/Mail/distribution
+        cp -r studio/mail/profile/. Studio/Mail/studio-profile/
+        cp score/fonts/jost/Jost-Regular.ttf score/fonts/jost/Jost-Bold.ttf score/fonts/jost/OFL.txt Studio/Mail/studio-profile/chrome/fonts/
+        cp studio/mail/distribution/policies.json Studio/Mail/distribution/
+        find Studio/Mail/studio-profile Studio/Mail/distribution -type f
+        du -sh Studio/Mail
+
     - name: Sounds
       shell: bash
       run: |
@@ -112,9 +159,10 @@ jobs:
         printf '%s\r\n' \
           'Laurence Who Studio' \
           '' \
-          'Studio.exe - Score and Tape in one window, linked' \
+          'Studio.exe - Score, Tape and Mail in one window, linked' \
           'Score.exe  - write music (Score)' \
           'Tape.exe   - record and play (Tape)' \
+          'Mail       - Thunderbird, inside Studio (add your accounts in its account setup)' \
           'Sounds     - the instruments Tape plays, ready to use' \
           '' \
           'Keep everything together in this folder: Score and Tape find each other and the sounds here.' \

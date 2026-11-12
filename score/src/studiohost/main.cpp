@@ -1,36 +1,45 @@
 /*
- * Studio (Laurence Who Studio): one window that holds Score and Tape.
+ * Studio (Laurence Who Studio): one window that holds Score, Tape and Mail.
  *
- * Starts both apps and takes their windows inside its own: Score above, Tape below,
- * or one of them full size. The top of the window is the Studio machine: a display
+ * Starts the apps and takes their windows inside its own: Score above, Tape below,
+ * or one of them full size. Mail is Thunderbird, with its own profile under
+ * %APPDATA%/LaurenceWho/Studio/MailProfile and Studio's look (user.js + userChrome.css).
+ * The top of the window is the Studio machine: a display
  * (time, link), the transport (back, play/stop), and keys to choose the page.
  * The transport talks over the Studio live link, so both apps play together.
  *
  * SPDX-License-Identifier: GPL-3.0-only
  */
 #include <algorithm>
+#include <string>
 
 #include <QApplication>
 #include <QCloseEvent>
 #include <QDir>
 #include <QElapsedTimer>
 #include <QFontDatabase>
+#include <QFile>
 #include <QFileInfo>
+#include <QDirIterator>
 #include <QJsonObject>
 #include <QLinearGradient>
+#include <QMap>
 #include <QMouseEvent>
 #include <QPainter>
 #include <QPainterPath>
 #include <QProcess>
 #include <QProcessEnvironment>
 #include <QSplitter>
+#include <QStandardPaths>
 #include <QTimer>
 #include <QVBoxLayout>
 #include <QWindow>
+#include <QSet>
 #include <QShortcut>
 
 #ifdef Q_OS_WIN
 #include <windows.h>
+#include <wchar.h>
 #endif
 
 #include "studiolinkpeer.h"
@@ -43,6 +52,9 @@ const QColor ORANGE("#FF5A1F");
 const QColor BLUE("#3C7BFF");
 const QColor GREEN("#2CD47C");
 const QColor OLED("#0B0B0C");
+
+// the pages, in key order (Ctrl+Tab goes round them)
+const QStringList PAGES { "score", "tape", "mail" };
 
 QString fmtTime(double s)
 {
@@ -66,7 +78,7 @@ class TopBar : public QWidget
 {
     Q_OBJECT
 public:
-    enum Key { None, Back, Play, Link, PageScore, PageSplit, PageTape, Min, Max, Close };
+    enum Key { None, Back, Play, Link, PageScore, PageSplit, PageTape, PageMail, Min, Max, Close };
 
     explicit TopBar(QWidget* parent)
         : QWidget(parent)
@@ -78,13 +90,20 @@ public:
     double time = 0;
     bool playing = false;
     bool linked = false;
-    bool scoreUp = false;
-    bool tapeUp = false;
+    QSet<QString> up;  // pages whose app window is inside
+    QSet<QString> out; // pages popped out into their own window
     QString page = "score";
     QString note;
 
-    bool scoreOut = false; // popped out into its own window
-    bool tapeOut = false;
+    static QString pageOf(Key k)
+    {
+        switch (k) {
+        case PageScore: return "score";
+        case PageTape: return "tape";
+        case PageMail: return "mail";
+        default: return {};
+        }
+    }
 
 signals:
     void pressed(TopBar::Key key);
@@ -99,9 +118,10 @@ protected:
         case Back: return QRectF(560, y, s, s);
         case Play: return QRectF(626, y, s, s);
         case Link: return QRectF(692, y, s, s);
-        case PageScore: return QRectF(width() - 3 * 66 - 18, y, s, s);
-        case PageSplit: return QRectF(width() - 2 * 66 - 18, y, s, s);
-        case PageTape: return QRectF(width() - 66 - 18, y, s, s);
+        case PageScore: return QRectF(width() - 4 * 66 - 18, y, s, s);
+        case PageSplit: return QRectF(width() - 3 * 66 - 18, y, s, s);
+        case PageTape: return QRectF(width() - 2 * 66 - 18, y, s, s);
+        case PageMail: return QRectF(width() - 66 - 18, y, s, s);
         case Min: return QRectF(width() - 3 * 34 - 10, 2, 30, 22);
         case Max: return QRectF(width() - 2 * 34 - 10, 2, 30, 22);
         case Close: return QRectF(width() - 34 - 10, 2, 30, 22);
@@ -111,7 +131,7 @@ protected:
 
     Key keyAt(const QPointF& p) const
     {
-        for (Key k : { Back, Play, Link, PageScore, PageSplit, PageTape, Min, Max, Close }) {
+        for (Key k : { Back, Play, Link, PageScore, PageSplit, PageTape, PageMail, Min, Max, Close }) {
             if (keyRect(k).contains(p)) {
                 return k;
             }
@@ -198,10 +218,12 @@ protected:
         p.setFont(mono);
         p.setPen(linked ? BLUE : QColor("#55555A"));
         p.drawText(QPointF(d.left() + 210, d.top() + 44), linked ? "linked" : "waiting");
-        p.setPen(scoreUp ? GREEN : QColor("#55555A"));
+        p.setPen(up.contains("score") ? GREEN : QColor("#55555A"));
         p.drawText(QPointF(d.left() + 330, d.top() + 44), "score");
-        p.setPen(tapeUp ? GREEN : QColor("#55555A"));
+        p.setPen(up.contains("tape") ? GREEN : QColor("#55555A"));
         p.drawText(QPointF(d.left() + 400, d.top() + 44), "tape");
+        p.setPen(up.contains("mail") ? GREEN : QColor("#55555A"));
+        p.drawText(QPointF(d.left() + 456, d.top() + 44), "mail");
         if (!note.isEmpty()) {
             mono.setPixelSize(9);
             p.setFont(mono);
@@ -215,9 +237,12 @@ protected:
         drawKey(p, Link, "link", "", false, linked, BLUE);
 
         // pages
-        drawKey(p, PageScore, scoreOut ? "score ↗" : "score", "", false, scoreOut || page == "score", scoreOut ? BLUE : ORANGE);
+        for (Key k : { PageScore, PageTape, PageMail }) {
+            const QString pg = pageOf(k);
+            const bool o = out.contains(pg);
+            drawKey(p, k, o ? pg + " ↗" : pg, "", false, o || page == pg, o ? BLUE : ORANGE);
+        }
         drawKey(p, PageSplit, "both", "", false, page == "split", ORANGE);
-        drawKey(p, PageTape, tapeOut ? "tape ↗" : "tape", "", false, tapeOut || page == "tape", tapeOut ? BLUE : ORANGE);
 
         // window keys
         QFont wf("Jost");
@@ -261,7 +286,7 @@ protected:
         const Key k = keyAt(e->position());
         if (k == None) {
             emit pressed(Max);
-        } else if (k == PageScore || k == PageTape) {
+        } else if (!pageOf(k).isEmpty()) {
             m_down = None;
             emit detach(k, e->globalPosition().toPoint()); // double-click a page key: it pops out
         }
@@ -270,7 +295,7 @@ protected:
     void mouseMoveEvent(QMouseEvent* e) override
     {
         // drag a page key out of the bar: it pops out where you drop it
-        if ((m_down == PageScore || m_down == PageTape) && (e->buttons() & Qt::LeftButton)
+        if (!pageOf(m_down).isEmpty() && (e->buttons() & Qt::LeftButton)
             && !rect().adjusted(0, 0, 0, 30).contains(e->position().toPoint())) {
             const Key d = m_down;
             m_down = None;
@@ -309,17 +334,54 @@ public:
         setMinimumHeight(120);
         m_find.setInterval(250);
         connect(&m_find, &QTimer::timeout, this, &AppSlot::lookForWindow);
+        m_alive.setInterval(1000);
+        connect(&m_alive, &QTimer::timeout, this, [this]() {
+#ifdef Q_OS_WIN
+            if (m_hwnd && !IsWindow(reinterpret_cast<HWND>(m_hwnd))) {
+                dropWindow(); // its window went away (e.g. closed from inside, or owned by another process)
+            }
+#endif
+        });
+    }
+
+    ~AppSlot() override
+    {
+        // never kill a running app on the way out: let it finish closing by itself
+        if (m_proc && m_proc->state() != QProcess::NotRunning) {
+            m_proc->disconnect(this);
+            m_proc->setParent(nullptr);
+        }
     }
 
     bool isUp() const { return m_container != nullptr; }
     QString status() const { return m_status; }
 
-    QStringList args; // files to open (double-clicked in Explorer)
+    // still running (its process, or the window it handed over to)
+    bool isRunning() const
+    {
+        if (m_proc && m_proc->state() != QProcess::NotRunning) {
+            return true;
+        }
+#ifdef Q_OS_WIN
+        if (m_hwnd && IsWindow(reinterpret_cast<HWND>(m_hwnd))) {
+            return true;
+        }
+#endif
+        return m_find.isActive();
+    }
+
+    QStringList args; // files to open (double-clicked in Explorer), or command-line options
+
+    // Apps that may open their window from another process (Thunderbird): after a few
+    // seconds without a window of our own process, take a top-level window of this class
+    // whose process runs our exe.
+    QString windowClass;
 
     void launch()
     {
         if (!QFileInfo::exists(m_exe)) {
             m_status = m_name + " not found";
+            emit changed();
             update();
             return;
         }
@@ -329,12 +391,16 @@ public:
         m_proc->setProcessEnvironment(env);
         m_proc->setWorkingDirectory(QFileInfo(m_exe).absolutePath());
         connect(m_proc, &QProcess::finished, this, [this]() {
-            delete m_container;
-            m_container = nullptr;
-            m_hwnd = 0;
-            m_status = m_name + " closed";
-            emit changed();
-            update();
+#ifdef Q_OS_WIN
+            if (m_hwnd && IsWindow(reinterpret_cast<HWND>(m_hwnd))) {
+                return; // the window belongs to another process of the app: it lives on
+            }
+#endif
+            if (!m_hwnd && !windowClass.isEmpty() && m_started.elapsed() < 30000) {
+                return; // the app handed over to another process: keep looking for its window
+            }
+            m_find.stop();
+            dropWindow();
         });
         m_proc->start(m_exe, args);
         m_started.start();
@@ -343,12 +409,16 @@ public:
         update();
     }
 
-    void closeApp()
+    // ask the app to close (it may ask about unsaved work); once per window unless asked again
+    void closeApp(bool again = false)
     {
 #ifdef Q_OS_WIN
-        if (m_hwnd) {
+        if (m_hwnd && (again || m_closeSent != m_hwnd)) {
+            m_closeSent = m_hwnd;
             PostMessageW(reinterpret_cast<HWND>(m_hwnd), WM_CLOSE, 0, 0);
         }
+#else
+        Q_UNUSED(again);
 #endif
     }
 
@@ -371,44 +441,100 @@ protected:
     }
 
 private:
+    void dropWindow()
+    {
+        m_alive.stop();
+        delete m_container;
+        m_container = nullptr;
+        m_hwnd = 0;
+        m_candidate = 0;
+        m_status = m_name + " closed";
+        emit changed();
+        update();
+    }
+
     void lookForWindow()
     {
 #ifdef Q_OS_WIN
-        if (!m_proc || m_proc->state() != QProcess::Running) {
+        const bool running = m_proc && m_proc->state() == QProcess::Running;
+        if (!running && windowClass.isEmpty()) {
+            return;
+        }
+        if (!running && m_started.elapsed() > 30000) {
+            m_find.stop();
+            dropWindow();
             return;
         }
         struct Find {
             DWORD pid;
+            const wchar_t* cls;  // non-null: match by window class + process image instead of pid
+            const wchar_t* exe;
             HWND best;
             long area;
-        } f { DWORD(m_proc->processId()), nullptr, 0 };
-        EnumWindows([](HWND h, LPARAM lp) -> BOOL {
-            auto* f = reinterpret_cast<Find*>(lp);
-            DWORD pid = 0;
-            GetWindowThreadProcessId(h, &pid);
-            if (pid != f->pid || !IsWindowVisible(h) || GetWindow(h, GW_OWNER)) {
+        };
+        auto search = [](Find& f) {
+            EnumWindows([](HWND h, LPARAM lp) -> BOOL {
+                auto* f = reinterpret_cast<Find*>(lp);
+                if (!IsWindowVisible(h) || GetWindow(h, GW_OWNER)) {
+                    return TRUE;
+                }
+                if (GetWindowLongW(h, GWL_EXSTYLE) & WS_EX_TOOLWINDOW) {
+                    return TRUE;
+                }
+                DWORD pid = 0;
+                GetWindowThreadProcessId(h, &pid);
+                if (f->cls) {
+                    wchar_t cls[256] = {};
+                    GetClassNameW(h, cls, 256);
+                    if (_wcsicmp(cls, f->cls) != 0) {
+                        return TRUE;
+                    }
+                    HANDLE ph = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, pid);
+                    if (!ph) {
+                        return TRUE;
+                    }
+                    wchar_t img[MAX_PATH * 2] = {};
+                    DWORD n = MAX_PATH * 2;
+                    const BOOL ok = QueryFullProcessImageNameW(ph, 0, img, &n);
+                    CloseHandle(ph);
+                    if (!ok || _wcsicmp(img, f->exe) != 0) {
+                        return TRUE; // another copy of the app (not the one in Studio)
+                    }
+                } else if (pid != f->pid) {
+                    return TRUE;
+                }
+                RECT r;
+                GetWindowRect(h, &r);
+                const long area = long(r.right - r.left) * long(r.bottom - r.top);
+                if (area > f->area && (r.right - r.left) >= 800) {
+                    f->area = area;
+                    f->best = h;
+                }
                 return TRUE;
-            }
-            if (GetWindowLongW(h, GWL_EXSTYLE) & WS_EX_TOOLWINDOW) {
-                return TRUE;
-            }
-            RECT r;
-            GetWindowRect(h, &r);
-            const long area = long(r.right - r.left) * long(r.bottom - r.top);
-            if (area > f->area && (r.right - r.left) >= 800) {
-                f->area = area;
-                f->best = h;
-            }
-            return TRUE;
-        }, reinterpret_cast<LPARAM>(&f));
+            }, reinterpret_cast<LPARAM>(&f));
+        };
+
+        HWND best = nullptr;
+        if (running) {
+            Find f { DWORD(m_proc->processId()), nullptr, nullptr, nullptr, 0 };
+            search(f);
+            best = f.best;
+        }
+        if (!best && !windowClass.isEmpty() && m_started.elapsed() > 4000) {
+            const std::wstring cls = windowClass.toStdWString();
+            const std::wstring exe = QDir::toNativeSeparators(QFileInfo(m_exe).absoluteFilePath()).toStdWString();
+            Find f { 0, cls.c_str(), exe.c_str(), nullptr, 0 };
+            search(f);
+            best = f.best;
+        }
 
         // the main window is the big one that stays (splash screens are smaller and go away)
-        if (!f.best) {
+        if (!best) {
             m_candidate = 0;
             return;
         }
-        if (WId(f.best) != m_candidate) {
-            m_candidate = WId(f.best);
+        if (WId(best) != m_candidate) {
+            m_candidate = WId(best);
             m_candidateSince.start();
             return;
         }
@@ -423,6 +549,7 @@ private:
         m_container->setFocusPolicy(Qt::StrongFocus);
         layout()->addWidget(m_container);
         m_status.clear();
+        m_alive.start();
         emit changed();
 #endif
     }
@@ -434,9 +561,11 @@ private:
     QWidget* m_container = nullptr;
     WId m_hwnd = 0;
     WId m_candidate = 0;
+    WId m_closeSent = 0;
     QElapsedTimer m_started;
     QElapsedTimer m_candidateSince;
     QTimer m_find;
+    QTimer m_alive;
 };
 
 // ------------------------------------------------------------------ frameless window, resizable from its edges
@@ -618,15 +747,17 @@ public:
         : m_link("studio")
     {
         setWindowTitle("Studio");
-        setMinimumSize(900, 600);
+        setMinimumSize(1040, 600);
 
-        // Studio/Score/bin/StudioHost.exe -> Studio/Score/bin/<score>.exe and Studio/Tape/bin/Audacity4.exe
+        // Studio/Score/bin/StudioHost.exe -> Studio/Score/bin/<score>.exe, Studio/Tape/bin/Audacity4.exe
+        // and Studio/Mail/thunderbird.exe
         const QDir bin(QCoreApplication::applicationDirPath());
         QString scoreExe;
         for (const QString& n : bin.entryList({ "LaurenceWhoScore*.exe", "MuseScore*.exe" }, QDir::Files)) {
             scoreExe = bin.filePath(n);
         }
         const QString tapeExe = QDir::cleanPath(bin.filePath("../../Tape/bin/Audacity4.exe"));
+        const QString mailExe = QDir::cleanPath(bin.filePath("../../Mail/thunderbird.exe"));
 
         auto* l = new QVBoxLayout(this);
         l->setContentsMargins(6, 0, 6, 6);
@@ -636,20 +767,26 @@ public:
         m_split = new QSplitter(Qt::Vertical, this);
         m_split->setHandleWidth(8);
         m_split->setStyleSheet("QSplitter::handle { background: #C9CACD; } QSplitter::handle:hover { background: #FF5A1F; }");
-        m_score = new AppSlot("Score", scoreExe, m_split);
-        m_tape = new AppSlot("Tape", tapeExe, m_split);
-        m_split->addWidget(m_score);
-        m_split->addWidget(m_tape);
+        m_slots["score"] = new AppSlot("Score", scoreExe, m_split);
+        m_slots["tape"] = new AppSlot("Tape", tapeExe, m_split);
+        m_slots["mail"] = new AppSlot("Mail", mailExe, m_split);
+        for (const QString& pg : PAGES) {
+            m_split->addWidget(m_slots[pg]);
+            connect(m_slots[pg], &AppSlot::changed, this, &StudioWindow::refresh);
+        }
         m_split->setStretchFactor(0, 3);
         m_split->setStretchFactor(1, 2);
+        m_split->setStretchFactor(2, 3);
         l->addWidget(m_split, 1);
+
+        // Thunderbird: its own profile, Studio's look, and it may open its window from another process
+        m_slots["mail"]->windowClass = "MozillaWindowClass";
+        m_slots["mail"]->args = { "-profile", QDir::toNativeSeparators(prepareMailProfile(QFileInfo(mailExe).absolutePath())), "-no-remote" };
 
         connect(m_top, &TopBar::pressed, this, &StudioWindow::onKey);
         connect(m_top, &TopBar::detach, this, [this](TopBar::Key k, QPoint at) {
-            popOut(k == TopBar::PageScore ? "score" : "tape", at);
+            popOut(TopBar::pageOf(k), at);
         });
-        connect(m_score, &AppSlot::changed, this, &StudioWindow::refresh);
-        connect(m_tape, &AppSlot::changed, this, &StudioWindow::refresh);
 
         connect(&m_link, &studiolink::Peer::received, this, [this](const QJsonObject& m) {
             const QString cmd = m.value("cmd").toString();
@@ -675,7 +812,11 @@ public:
 
         auto* sw = new QShortcut(QKeySequence("Ctrl+Tab"), this);
         sw->setContext(Qt::ApplicationShortcut);
-        connect(sw, &QShortcut::activated, this, [this]() { setPage(m_top->page == "score" ? "tape" : "score"); });
+        connect(sw, &QShortcut::activated, this, [this]() {
+            // score -> tape -> mail -> score (from "both", on to mail)
+            const QString cur = m_top->page == "split" ? "tape" : m_top->page;
+            setPage(PAGES.at((PAGES.indexOf(cur) + 1) % PAGES.size()));
+        });
 
         // files passed to Studio (e.g. a double-clicked score): scores to Score, Tape projects to Tape
         bool tapeFile = false;
@@ -684,26 +825,65 @@ public:
                 continue;
             }
             if (a.endsWith(".aup4", Qt::CaseInsensitive) || a.endsWith(".aup3", Qt::CaseInsensitive)) {
-                m_tape->args << a;
+                m_slots["tape"]->args << a;
                 tapeFile = true;
             } else {
-                m_score->args << a;
+                m_slots["score"]->args << a;
             }
         }
 
+        // closing: wait for the apps to finish closing (they may ask about unsaved work)
+        m_closeWait.setInterval(250);
+        connect(&m_closeWait, &QTimer::timeout, this, [this]() {
+            bool running = false;
+            for (AppSlot* s : std::as_const(m_slots)) {
+                if (s->isRunning()) {
+                    s->closeApp(); // also the ones whose window showed up meanwhile
+                    running = true;
+                }
+            }
+            if (!running) {
+                m_closeWait.stop();
+                m_quit = true;
+                close();
+            } else if (m_closingSince.elapsed() > 60000) {
+                // an app said no (e.g. "cancel" on save): Studio stays
+                m_closeWait.stop();
+                m_closing = false;
+                refresh();
+            }
+        });
+
         setPage(tapeFile ? "tape" : "score");
         resize(1440, 900);
-        QTimer::singleShot(100, m_score, &AppSlot::launch);
-        QTimer::singleShot(400, m_tape, &AppSlot::launch);
+        QTimer::singleShot(100, m_slots["score"], &AppSlot::launch);
+        QTimer::singleShot(400, m_slots["tape"], &AppSlot::launch);
+        QTimer::singleShot(700, m_slots["mail"], &AppSlot::launch);
     }
 
 protected:
     void closeEvent(QCloseEvent* e) override
     {
-        // let each app ask about unsaved work, then go
-        m_score->closeApp();
-        m_tape->closeApp();
-        for (FloatWindow* f : { m_scoreFloat, m_tapeFloat }) {
+        if (!m_quit) {
+            bool running = false;
+            for (AppSlot* s : std::as_const(m_slots)) {
+                if (s->isRunning()) {
+                    s->closeApp(m_closing); // pressing close again asks again
+                    running = true;
+                }
+            }
+            if (running) {
+                // let each app ask about unsaved work and close gracefully, then go
+                m_closing = true;
+                m_closingSince.start();
+                m_closeWait.start();
+                m_top->note = "closing…";
+                m_top->update();
+                e->ignore();
+                return;
+            }
+        }
+        for (FloatWindow* f : std::as_const(m_floats)) {
             if (f) {
                 f->hide();
             }
@@ -712,19 +892,61 @@ protected:
     }
 
 private:
+    // Mail's profile: %APPDATA%/LaurenceWho/Studio/MailProfile. Studio's own files (user.js,
+    // chrome/userChrome.css, chrome/fonts) are copied over it on every start; Thunderbird's
+    // own settings (prefs.js, accounts, mail) are never touched.
+    static QString prepareMailProfile(const QString& mailDir)
+    {
+        const QString profile = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + "/MailProfile";
+        QDir().mkpath(profile);
+        const QString tpl = mailDir + "/studio-profile";
+        QDirIterator it(tpl, QDir::Files, QDirIterator::Subdirectories);
+        while (it.hasNext()) {
+            const QString src = it.next();
+            const QString rel = QDir(tpl).relativeFilePath(src);
+            if (rel.compare("prefs.js", Qt::CaseInsensitive) == 0) {
+                continue;
+            }
+            const QString dst = profile + "/" + rel;
+            QDir().mkpath(QFileInfo(dst).absolutePath());
+            if (QFile::exists(dst)) {
+                QFile::setPermissions(dst, QFile::permissions(dst) | QFileDevice::WriteOwner);
+                QFile::remove(dst);
+            }
+            QFile::copy(src, dst);
+            QFile::setPermissions(dst, QFile::permissions(dst) | QFileDevice::WriteOwner); // copies keep read-only flags
+        }
+        return profile;
+    }
+
     void refresh()
     {
-        m_top->scoreUp = m_score->isUp();
-        m_top->tapeUp = m_tape->isUp();
-        m_top->note = !m_score->status().isEmpty() ? m_score->status() : m_tape->status();
+        m_top->up.clear();
+        m_top->note.clear();
+        for (const QString& pg : PAGES) {
+            if (m_slots[pg]->isUp()) {
+                m_top->up.insert(pg);
+            }
+            if (m_top->note.isEmpty()) {
+                m_top->note = m_slots[pg]->status();
+            }
+        }
+        if (m_closing) {
+            m_top->note = "closing…";
+        }
         m_top->update();
     }
 
-    FloatWindow*& floatOf(const QString& page) { return page == "score" ? m_scoreFloat : m_tapeFloat; }
-    AppSlot* slotOf(const QString& page) const { return page == "score" ? m_score : m_tape; }
+    FloatWindow*& floatOf(const QString& page) { return m_floats[page]; }
+    AppSlot* slotOf(const QString& page) const { return m_slots.value(page); }
+
+    bool docked(const QString& page) const { return !m_floats.value(page); }
 
     void setPage(QString page)
     {
+        if (page != "split" && !PAGES.contains(page)) {
+            return;
+        }
         // a popped-out page lives in its own window: its key brings that window to the front
         if (page != "split" && floatOf(page)) {
             FloatWindow* f = floatOf(page);
@@ -734,44 +956,78 @@ private:
             m_link.send(QJsonObject { { "cmd", "page" }, { "page", page } });
             return;
         }
-        if (page == "split" && (m_scoreFloat || m_tapeFloat)) {
-            return; // both are already on screen
+        if (page == "split" && (!docked("score") || !docked("tape"))) {
+            // one of the two is in its own window: show the other one here, bring that window up
+            for (const QString& pg : { QString("score"), QString("tape") }) {
+                if (!docked(pg)) {
+                    floatOf(pg)->raise();
+                }
+            }
+            if (docked("score")) {
+                setPage("score");
+            } else if (docked("tape")) {
+                setPage("tape");
+            }
+            return;
         }
         if (m_top->page != page) {
             m_link.send(QJsonObject { { "cmd", "page" }, { "page", page } }); // Score refreshes Tape's tracks on the way in
         }
         m_top->page = page;
-        if (!m_scoreFloat) {
-            m_score->setVisible(page != "tape");
-        }
-        if (!m_tapeFloat) {
-            m_tape->setVisible(page != "score");
+        for (const QString& pg : PAGES) {
+            if (docked(pg)) {
+                m_slots[pg]->setVisible(page == pg || (page == "split" && pg != "mail"));
+            }
         }
         m_top->update();
+    }
+
+    void syncOut()
+    {
+        m_top->out.clear();
+        for (const QString& pg : PAGES) {
+            if (!docked(pg)) {
+                m_top->out.insert(pg);
+            }
+        }
     }
 
     // take a page out of Studio into its own window (drag it to another screen)
     void popOut(const QString& page, QPoint at)
     {
-        const QString other = page == "score" ? "tape" : "score";
-        if (floatOf(page) || floatOf(other)) {
-            if (floatOf(page)) {
-                setPage(page);
+        if (!PAGES.contains(page)) {
+            return;
+        }
+        if (floatOf(page)) {
+            setPage(page);
+            return;
+        }
+        QStringList stay;
+        for (const QString& pg : PAGES) {
+            if (pg != page && docked(pg)) {
+                stay << pg;
             }
+        }
+        if (stay.isEmpty()) {
             return; // one page always stays in Studio
         }
         AppSlot* slot = slotOf(page);
-        auto* f = new FloatWindow(page == "score" ? "score" : "tape", slot);
+        auto* f = new FloatWindow(page, slot);
         floatOf(page) = f;
         connect(f, &FloatWindow::dock, this, [this, page]() { dockBack(page); });
         const QSize sz(std::max(900, width() * 3 / 4), std::max(600, height() * 3 / 4));
         f->resize(sz);
         f->move(at - QPoint(sz.width() / 2, 15));
         f->show();
-        m_top->scoreOut = m_scoreFloat;
-        m_top->tapeOut = m_tapeFloat;
+        syncOut();
+        // stay on the page that was showing if it's still here, otherwise the first one left
+        const QString was = m_top->page;
         m_top->page = "";
-        setPage(other);
+        if (was == "split" && docked("score") && docked("tape")) {
+            setPage("split");
+        } else {
+            setPage(stay.contains(was) ? was : stay.first());
+        }
     }
 
     void dockBack(const QString& page)
@@ -781,11 +1037,20 @@ private:
             return;
         }
         AppSlot* slot = slotOf(page);
-        m_split->insertWidget(page == "score" ? 0 : 1, slot);
         f->deleteLater();
         f = nullptr;
-        m_top->scoreOut = m_scoreFloat;
-        m_top->tapeOut = m_tapeFloat;
+        // back into its place among the pages that are in Studio
+        int index = 0;
+        for (const QString& pg : PAGES) {
+            if (pg == page) {
+                break;
+            }
+            if (docked(pg)) {
+                ++index;
+            }
+        }
+        m_split->insertWidget(index, slot);
+        syncOut();
         m_top->page = "";
         setPage(page);
         raise();
@@ -806,11 +1071,11 @@ private:
         case TopBar::Link:
             m_link.send(QJsonObject { { "cmd", "hello" } }); // ask both apps where they are
             break;
-        case TopBar::PageScore: setPage("score");
+        case TopBar::PageScore:
+        case TopBar::PageTape:
+        case TopBar::PageMail: setPage(TopBar::pageOf(k));
             break;
         case TopBar::PageSplit: setPage("split");
-            break;
-        case TopBar::PageTape: setPage("tape");
             break;
         case TopBar::Min: showMinimized();
             break;
@@ -826,10 +1091,12 @@ private:
     studiolink::Peer m_link;
     TopBar* m_top = nullptr;
     QSplitter* m_split = nullptr;
-    AppSlot* m_score = nullptr;
-    AppSlot* m_tape = nullptr;
-    FloatWindow* m_scoreFloat = nullptr;
-    FloatWindow* m_tapeFloat = nullptr;
+    QMap<QString, AppSlot*> m_slots;
+    QMap<QString, FloatWindow*> m_floats;
+    QTimer m_closeWait;
+    QElapsedTimer m_closingSince;
+    bool m_closing = false;
+    bool m_quit = false;
 };
 
 int main(int argc, char** argv)

@@ -1,0 +1,288 @@
+/*
+ * Studio: Mail (Thunderbird) in Studio's look: aluminium bars, flat controls, Jost,
+ * orange for what's selected and unread.
+ * Studio copies this file into its Mail profile on every start: edit it in the repo
+ * (studio/mail/profile/chrome/userChrome.css), not in the profile.
+ */
+
+@namespace html url("http://www.w3.org/1999/xhtml");
+
+@font-face { font-family: "Jost"; src: url("fonts/Jost-Regular.ttf"); font-weight: 400; }
+@font-face { font-family: "Jost"; src: url("fonts/Jost-Bold.ttf"); font-weight: 700; }
+
+:root {
+  --studio-alu-top: #DADBDE;
+  --studio-alu-bottom: #C9CACD;
+  --studio-alu: linear-gradient(to bottom, #DADBDE, #C9CACD);
+  --studio-ink: #1E1E21;
+  --studio-ink-soft: #4A4A4F;
+  --studio-line: #A9AAAE;
+  --studio-panel: #F4F4F5;
+  --studio-key: #E3E3E5;
+  --studio-orange: #FF5A1F;
+  --studio-blue: #3C7BFF;
+
+  font-family: "Jost", "Segoe UI", system-ui, sans-serif !important;
+
+  /* Thunderbird's own colours, pointed at Studio's */
+  --toolbar-bgcolor: var(--studio-alu-top) !important;
+  --toolbar-color: var(--studio-ink) !important;
+  --toolbar-field-background-color: #FFFFFF !important;
+  --toolbar-field-color: var(--studio-ink) !important;
+  --toolbar-field-border-color: var(--studio-line) !important;
+  --toolbar-field-focus-border-color: var(--studio-orange) !important;
+  --lwt-accent-color: var(--studio-alu-top) !important;
+  --lwt-text-color: var(--studio-ink) !important;
+  --tabs-toolbar-background-color: var(--studio-alu-top) !important;
+  --tab-selected-bgcolor: var(--studio-panel) !important;
+  --tab-selected-textcolor: var(--studio-ink) !important;
+  --tabline-color: var(--studio-orange) !important;
+  --sidebar-background-color: var(--studio-panel) !important;
+  --sidebar-text-color: var(--studio-ink) !important;
+  --sidebar-highlight-background-color: var(--studio-orange) !important;
+  --sidebar-highlight-text-color: #FFFFFF !important;
+  --layout-background-0: #FFFFFF !important;
+  --layout-background-1: var(--studio-panel) !important;
+  --layout-background-2: var(--studio-key) !important;
+  --layout-color-1: var(--studio-ink) !important;
+  --layout-border-0: var(--studio-line) !important;
+  --splitter-color: var(--studio-alu-bottom) !important;
+  --selected-item-color: var(--studio-orange) !important;
+  --selected-item-text-color: #FFFFFF !important;
+  --focus-outline-color: var(--studio-orange) !important;
+  --color-accent-primary: var(--studio-orange) !important;
+  --color-accent-primary-hover: #E84E15 !important;
+  --color-accent-primary-active: #D04410 !important;
+  --button-primary-bgcolor: var(--studio-orange) !important;
+  --button-primary-hover-bgcolor: #E84E15 !important;
+  --button-primary-active-bgcolor: #D04410 !important;
+  --button-primary-color: #FFFFFF !important;
+  --toolbarbutton-hover-background: var(--studio-key) !important;
+  --toolbarbutton-active-background: #D4D5D8 !important;
+  --toolbarbutton-checked-background: var(--studio-key) !important;
+  --spaces-bg-color: var(--studio-alu-bottom) !important;
+  --spaces-button-active-bg-color: var(--studio-orange) !important;
+  --spaces-button-active-text-color: #FFFFFF !important;
+  --unread-count-background: var(--studio-orange) !important;
+  --unread-count-color: #FFFFFF !important;
+}
+
+/* ---------------------------------------------------------------- bars: aluminium */
+#toolbar-menubar,
+#tabs-toolbar,
+#navigation-toolbox,
+#unifiedToolbarContainer,
+unified-toolbar,
+#unifiedToolbar,
+#mail-toolbox,
+#compose-toolbox,
+#mail-bar3,
+#composeToolbar2,
+#status-bar,
+toolbar:not(#spacesToolbar),
+.toolbar {
+  background: var(--studio-alu) !important;
+  color: var(--studio-ink) !important;
+  border-color: var(--studio-line) !important;
+  box-shadow: none !important;
+}
+
+#status-bar {
+  border-top: 1px solid var(--studio-line) !important;
+}
+
+/* Studio has the window keys (minimise, maximise, close) */
+.titlebar-buttonbox-container,
+.titlebar-buttonbox {
+  display: none !important;
+}
+
+/* the spaces bar on the left: the lower aluminium */
+#spacesToolbar {
+  background: var(--studio-alu-bottom) !important;
+  border-inline-end: 1px solid var(--studio-line) !important;
+}
+
+/* ---------------------------------------------------------------- tabs: flat, orange line on the current one */
+.tabmail-tab {
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  font-family: "Jost", "Segoe UI", sans-serif !important;
+}
+
+.tabmail-tab .tab-background {
+  background: transparent !important;
+  border: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+
+.tabmail-tab[selected] .tab-background {
+  background: var(--studio-panel) !important;
+  border-top: 2px solid var(--studio-orange) !important;
+}
+
+.tabmail-tab:not([selected]):hover .tab-background {
+  background: rgba(255, 255, 255, 0.35) !important;
+}
+
+.tab-line {
+  background-color: var(--studio-orange) !important;
+}
+
+/* ---------------------------------------------------------------- controls: flat keys */
+toolbarbutton,
+.toolbarbutton-1,
+.unified-toolbar-button,
+button:not(.primary),
+.button:not(.primary),
+menulist,
+.spaces-toolbar-button {
+  background-image: none !important;
+  box-shadow: none !important;
+  text-shadow: none !important;
+  border-radius: 4px !important;
+}
+
+button:not(.primary),
+.button:not(.primary),
+menulist {
+  background-color: var(--studio-panel) !important;
+  color: var(--studio-ink) !important;
+  border: 1px solid var(--studio-line) !important;
+}
+
+button:not(.primary):not([disabled]):hover,
+.button:not(.primary):not([disabled]):hover,
+menulist:not([disabled]):hover {
+  background-color: #FAFAFB !important;
+}
+
+toolbarbutton:not([disabled]):hover,
+.toolbarbutton-1:not([disabled]):hover,
+.unified-toolbar-button:not([disabled]):hover {
+  background-color: var(--studio-key) !important;
+}
+
+toolbarbutton[checked],
+toolbarbutton[open],
+.unified-toolbar-button[aria-pressed="true"] {
+  background-color: var(--studio-key) !important;
+  color: var(--studio-orange) !important;
+}
+
+button.primary,
+.button.primary,
+#button-newMsg,
+#composeButton,
+.write-message {
+  background: var(--studio-orange) !important;
+  color: #FFFFFF !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+button.primary:not([disabled]):hover,
+.button.primary:not([disabled]):hover {
+  background: #E84E15 !important;
+}
+
+/* the current space */
+.spaces-toolbar-button[current],
+.spaces-toolbar-button.current {
+  background-color: var(--studio-orange) !important;
+  color: #FFFFFF !important;
+}
+
+/* search fields: white, one line */
+global-search-bar,
+search-bar,
+.search-bar,
+#unifiedToolbarContent .search-bar,
+html|input[type="search"] {
+  border-radius: 4px !important;
+  box-shadow: none !important;
+}
+
+/* ---------------------------------------------------------------- lists: orange for selected and unread */
+#folderTree li.selected > .container,
+#folderTree li.selected:focus-within > .container,
+#threadTree tbody [is="thread-row"].selected,
+#threadTree tbody [is="thread-card"].selected,
+#threadTree tr.selected,
+.tree-view-scrollable-container tr.selected,
+treechildren::-moz-tree-row(selected) {
+  background-color: var(--studio-orange) !important;
+  color: #FFFFFF !important;
+}
+
+treechildren::-moz-tree-cell-text(selected) {
+  color: #FFFFFF !important;
+}
+
+/* unread messages: bold, the subject in orange */
+#threadTree tr.unread:not(.selected) .subject-line,
+#threadTree tr.unread:not(.selected) .thread-card-subject-container .subject,
+#threadTree tr.unread:not(.selected) td.subjectcol-column {
+  color: var(--studio-orange) !important;
+  font-weight: 700 !important;
+}
+
+/* unread counts in the folder list: orange tags */
+#folderTree .unread-count,
+.folder-count-badge.unread-count {
+  background-color: var(--studio-orange) !important;
+  color: #FFFFFF !important;
+  border-radius: 3px !important;
+  box-shadow: none !important;
+}
+
+#folderTree li.unread > .container .name {
+  font-weight: 700 !important;
+}
+
+/* folder pane and panes: light panel, thin lines */
+#folderPane,
+#folderPaneHeaderBar,
+#threadPaneHeaderBar,
+#threadPane .thread-pane-header,
+#accountCentralBox,
+#messageHeader {
+  background-color: var(--studio-panel) !important;
+  border-color: var(--studio-line) !important;
+  box-shadow: none !important;
+}
+
+#folderPaneHeaderBar,
+#threadPaneHeaderBar,
+.sidebar-panel-header {
+  background: var(--studio-alu) !important;
+}
+
+splitter,
+hr[is="pane-splitter"] {
+  border-color: var(--studio-line) !important;
+  background-color: var(--studio-alu-bottom) !important;
+}
+
+/* menus: flat, orange hover */
+menupopup,
+panel {
+  --panel-border-radius: 4px !important;
+  --panel-shadow: none !important;
+}
+
+menuitem[_moz-menuactive],
+menu[_moz-menuactive] {
+  background-color: var(--studio-orange) !important;
+  color: #FFFFFF !important;
+}
+
+/* links and focus */
+:focus-visible {
+  outline-color: var(--studio-orange) !important;
+}
+
+.text-link {
+  color: var(--studio-blue) !important;
+}

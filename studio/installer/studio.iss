@@ -27,7 +27,7 @@ WizardStyle=modern
 Compression=lzma2/fast
 LZMANumBlockThreads=4
 SolidCompression=no
-; the sounds make it ~4.7 GB: split into data files of up to 2 GB next to the setup
+; the sounds (and Mail) make it ~4.9 GB: split into data files of up to 2 GB next to the setup
 DiskSpanning=yes
 DiskSliceSize=2000000000
 ChangesAssociations=yes
@@ -37,7 +37,13 @@ PrivilegesRequiredOverridesAllowed=dialog
 Name: "desktopicon"; Description: "Put Studio on the desktop"; GroupDescription: "Shortcuts:"
 Name: "assoc"; Description: "Open scores (.mscz) and Tape projects (.aup4) with Studio"; GroupDescription: "Files:"
 
+[InstallDelete]
+; Mail is a whole Thunderbird: replace it, so files of an older version don't linger
+; (accounts and mail live in the profile under %APPDATA%\LaurenceWho\Studio\MailProfile)
+Type: filesandordirs; Name: "{app}\Mail"
+
 [Files]
+; everything: Score, Tape, Mail (Thunderbird + Studio's profile files), Sounds, launchers
 Source: "{#SrcDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
