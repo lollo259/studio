@@ -384,7 +384,7 @@ bool Read500::pasteStaff(XmlReader& e, Segment* dst, staff_idx_t dstStaff, Fract
         }
         String version = e.attribute("version", u"NONE");
         if (!MScore::testMode) {
-            if (version != Constants::MSC_VERSION_STR) {
+            if ((version.toDouble() < 4.0 || version.toDouble() > 5.0) /* Studio: accept music copied from MuseScore 4.x and 5 */) {
                 LOGD("pasteStaff: bad version");
                 break;
             }
@@ -901,7 +901,7 @@ void Read500::pasteSymbols(XmlReader& e, ChordRest* dst)
             break;
         }
         String version = e.attribute("version", u"NONE");
-        if (version != Constants::MSC_VERSION_STR) {
+        if ((version.toDouble() < 4.0 || version.toDouble() > 5.0) /* Studio: accept music copied from MuseScore 4.x and 5 */) {
             break;
         }
 
