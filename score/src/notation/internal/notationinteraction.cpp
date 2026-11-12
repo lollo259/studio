@@ -678,8 +678,46 @@ void NotationInteraction::setSelectionVisible(bool visible)
     }
 }
 
+// Studio: a cluster is one block from its lowest to its highest note - grabbing it anywhere takes
+// the nearer edge (its top or bottom note), so dragging up or down stretches the block from there
+static EngravingItem* studioClusterEdgeAt(const mu::engraving::Score* score, const PointF& pos)
+{
+    staff_idx_t staffIdx = muse::nidx;
+    mu::engraving::Segment* seg = nullptr;
+    Measure* m = score->pos2measure(pos, &staffIdx, nullptr, &seg, nullptr);
+    if (!m) {
+        return nullptr;
+    }
+    for (mu::engraving::Segment* s = m->first(mu::engraving::SegmentType::ChordRest); s;
+         s = s->next(mu::engraving::SegmentType::ChordRest)) {
+        for (EngravingItem* e : s->elist()) {
+            if (!e || !e->isChord() || !toChord(e)->isCluster()) {
+                continue;
+            }
+            mu::engraving::Chord* ch = toChord(e);
+            mu::engraving::Note* top = ch->upNote();
+            mu::engraving::Note* bottom = ch->downNote();
+            if (!top || !bottom) {
+                continue;
+            }
+            const double sp = top->spatium();
+            const PointF tp = top->canvasPos();
+            const PointF bp = bottom->canvasPos();
+            const RectF block(tp.x() - sp * 0.3, tp.y() - sp * 0.8, top->headWidth() + sp * 0.6, bp.y() - tp.y() + sp * 1.6);
+            if (block.contains(pos)) {
+                return pos.y() < (tp.y() + bp.y()) / 2 ? static_cast<EngravingItem*>(top) : static_cast<EngravingItem*>(bottom);
+            }
+        }
+    }
+    return nullptr;
+}
+
 EngravingItem* NotationInteraction::hitElement(const PointF& pos, float width) const
 {
+    if (EngravingItem* edge = studioClusterEdgeAt(score(), pos)) {
+        m_selection->onElementHit(edge);
+        return edge;
+    }
     std::vector<mu::engraving::EngravingItem*> elements = hitElements(pos, width);
     if (elements.empty()) {
         return nullptr;
