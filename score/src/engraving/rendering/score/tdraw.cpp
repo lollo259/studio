@@ -2192,6 +2192,9 @@ void TDraw::draw(const LedgerLine* item, Painter* painter, const PaintOptions& o
 {
     TRACE_DRAW_ITEM;
 
+    if (item->chord()->isCluster()) {
+        return; // Studio: clusters have no ledger lines
+    }
     if (item->chord()->crossMeasure() == CrossMeasure::SECOND) {
         return;
     }
