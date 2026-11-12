@@ -196,6 +196,20 @@ void StudioLink::refreshTape()
     }
 }
 
+void StudioLink::setSilent(bool silent)
+{
+    if (!audioPlayback()) {
+        return;
+    }
+    audioPlayback()->masterParams().onResolve(this, [this, silent](const muse::audio::TrackParams& p) {
+        muse::audio::ControlParams c = p.control;
+        if (c.muted != silent) {
+            c.muted = silent;
+            audioPlayback()->setMasterControlParams(c);
+        }
+    });
+}
+
 void StudioLink::becomeFront()
 {
     if (m_front) {
@@ -278,8 +292,11 @@ void StudioLink::onMessage(const QJsonObject& msg)
         m_applied.invalidate();
         return;
     } else if (cmd == "page" || cmd == "show") {
+        // the Tape page (or both side by side) plays Tape's tracks: Score only moves its cursor
+        const QString page = msg.value("page").toString();
+        setSilent(page == "tape" || page == "split");
         // turning to Tape: bring its tracks up to date with the edits made since
-        if (msg.value("page").toString() == "tape") {
+        if (page == "tape") {
             QTimer::singleShot(50, m_peer.get(), [this]() {
                 if (m_tapeFolder.isEmpty()) {
                     // this score isn't in Tape yet: put all its instruments there now

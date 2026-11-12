@@ -44,6 +44,7 @@ private:
     double position() const;
 
     std::unique_ptr<studiolink::Peer> m_peer;
+    QString m_page; // Studio page in view ("score", "tape", "split"); empty outside Studio
     QElapsedTimer m_applied;
     QTimer m_seekDebounce;
     double m_lastSentPos = -1;

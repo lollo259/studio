@@ -15,6 +15,7 @@
 #include "modularity/ioc.h"
 #include "rcommand/icommanddispatcher.h"
 #include "../iplaybackcontroller.h"
+#include "audio/main/iplayback.h"
 #include "project/iexportprojectscenario.h"
 #include "project/iprojectsession.h"
 
@@ -27,6 +28,7 @@ class StudioLink : public muse::Contextable, public muse::async::Asyncable
 {
     muse::ContextInject<IPlaybackController> controller = { this };
     muse::ContextInject<IPlaybackState> state = { this };
+    muse::ContextInject<muse::audio::IPlayback> audioPlayback = { this };
     muse::ContextInject<muse::rcommand::ICommandDispatcher> commandDispatcher = { this };
     muse::ContextInject<project::IProjectSession> projectSession = { this };
     muse::ContextInject<project::IExportProjectScenario> exportProjectScenario = { this };
@@ -54,6 +56,8 @@ private:
 
     std::unique_ptr<studiolink::Peer> m_peer;
     QString m_tapeProject; // Studio: this score's own Tape project
+    // Studio: only the page you see makes sound - on the Tape page Score plays silently (cursor only)
+    void setSilent(bool silent);
     // several Score windows can be open (one per file): only the one used last answers play/stop/seek
     bool m_front = false;
     bool m_otherFront = false;

@@ -141,6 +141,17 @@ void StudioLink::onMessage(const QJsonObject& msg)
     if (msg.value("cmd").toString() == "project") {
         return;
     }
+    // Studio: only the page you see makes sound - on the Score page Tape just follows the cursor
+    if (msg.value("cmd").toString() == "page" || msg.value("cmd").toString() == "show") {
+        m_page = msg.value("page").toString();
+        if (m_page == "score" && isPlaying()) {
+            if (auto pl = playback() ? playback()->player() : nullptr) {
+                pl->pause();
+            }
+            m_wasPlaying = false;
+        }
+        return;
+    }
     if (msg.value("cmd").toString() == "reload") {
         QStringList files;
         for (const auto& v : msg.value("files").toArray()) {
@@ -163,8 +174,10 @@ void StudioLink::onMessage(const QJsonObject& msg)
             player->pause();
         }
         player->seek(muse::secs_t(t));
-        player->play();
-        m_wasPlaying = true;
+        if (m_page != "score") { // on the Score page, Score makes the sound
+            player->play();
+            m_wasPlaying = true;
+        }
     } else if (cmd == "stop") {
         if (isPlaying()) {
             player->pause();
