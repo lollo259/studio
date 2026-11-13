@@ -28,6 +28,8 @@
 #include <QCoreApplication>
 #include <QEvent>
 
+#include "studioclick.h"
+
 namespace {
 // any click or key press in this Score window makes it the one the transport talks to
 class InputWatch : public QObject
@@ -187,6 +189,19 @@ void StudioLink::refreshTape()
             const QString f = m_tapeFolder + "/" + m_tapeTitle + "-" + QString::fromStdString(muse::io::escapeFileName(muse::io::path_t(n->name())).toStdString()) + ".wav";
             if (QFileInfo::exists(f)) {
                 files << QDir::toNativeSeparators(f);
+            }
+        }
+    }
+    // the click follows tempo changes: rewrite it, and send it only when it changed
+    if (master->masterScore()) {
+        const QString click = m_tapeFolder + "/" + m_tapeTitle + "-Click.wav";
+        QFile old(click);
+        const QByteArray before = old.open(QIODevice::ReadOnly) ? old.readAll() : QByteArray();
+        old.close();
+        if (writeClickTrack(master->masterScore(), click)) {
+            QFile now(click);
+            if (now.open(QIODevice::ReadOnly) && now.readAll() != before) {
+                files << QDir::toNativeSeparators(click);
             }
         }
     }

@@ -57,6 +57,7 @@
 #include "types/projecturis.h"
 
 #include "../projectcommands.h"
+#include "playback/internal/studioclick.h"
 #include "appshell/appshellcommands.h"
 
 #include "log.h"
@@ -532,6 +533,11 @@ muse::Ret ProjectActionsController::sendToTape(bool silent)
     const io::path_t base = folder + "/" + title + ".wav";
     if (!exportProjectScenario()->exportScores(notations, base, INotationWriter::UnitType::PER_PART)) {
         return make_ret(Ret::Code::Cancel);
+    }
+
+    // Studio: a click track that follows the score's tempo (mute it in Tape when you don't want it)
+    if (master->masterScore()) {
+        mu::playback::writeClickTrack(master->masterScore(), folder + "/" + title + "-Click.wav");
     }
 
     // the whole score as MIDI too, so the notes travel with the sound
