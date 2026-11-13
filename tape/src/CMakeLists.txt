@@ -71,6 +71,7 @@ add_subdirectory(importexport)
 
 add_subdirectory(uicomponents)
 add_subdirectory(instruments) # Tape: virtual instruments
+add_subdirectory(scenesapp) # Scenes.exe: the live sound switcher, with Tape's sounds
 
 # Stubs
 add_subdirectory(stubs)

@@ -46,6 +46,11 @@ public:
     //! opens the MIDI of the last take in Score (as notation)
     bool openLastTakeInScore(QString* error = nullptr);
     static QString findScore();
+
+    //! Record > Export to Scenes: one scene per instrument track (its sound), saved in
+    //! Documents/Studio/Scenes/<project>.scenes.json, then opened in Scenes.exe
+    bool exportToScenes(QString* error = nullptr);
+    static QString findScenes();
     QString lastMidi() const { return m_lastMidi; }
     //! where the last take started in the project (seconds) and on which track
     double lastTakeStart() const { return m_lastTakeStart; }

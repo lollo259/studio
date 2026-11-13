@@ -18,6 +18,7 @@
 #include "project/iaudacityproject.h"
 
 #include "../instrumentsmodule.h"
+#include "../../scenesapp/scenesformat.h"
 #include "instrumentsservice.h"
 
 using namespace au::instruments;
@@ -206,6 +207,101 @@ bool InstrumentTracks::openLastTakeInScore(QString* error)
         QSettings("LaurenceWho", "Studio").remove("scorePath");
         if (error) {
             *error = "Score didn't start.";
+        }
+        return false;
+    }
+    return true;
+}
+
+QString InstrumentTracks::findScenes()
+{
+    // Scenes.exe is built with Tape and sits next to it in Tape/bin
+    const QDir bin(QCoreApplication::applicationDirPath());
+    for (const QString& name : { QStringLiteral("Scenes.exe"), QStringLiteral("Scenes") }) {
+        const QString p = bin.filePath(name);
+        if (QFileInfo(p).isFile()) {
+            return p;
+        }
+    }
+    return QString();
+}
+
+bool InstrumentTracks::exportToScenes(QString* error)
+{
+    auto s = InstrumentsModule::service();
+    if (!s) {
+        return false;
+    }
+    const std::vector<SoundEntry>& sounds = s->sounds();
+    auto findSound = [&](const QString& name) -> const SoundEntry* {
+        for (const SoundEntry& e : sounds) {
+            if (QString::fromStdString(e.name).compare(name.trimmed(), Qt::CaseInsensitive) == 0) {
+                return &e;
+            }
+        }
+        return nullptr;
+    };
+    const SoundEntry* current = findSound(QString::fromStdString(s->synth()->currentSoundName()));
+
+    scenes::SceneSet set;
+    auto project = globalContext()->currentProject();
+    set.name = project ? project->displayName() : QString();
+    if (set.name.isEmpty()) {
+        set.name = "Tape";
+    }
+
+    // each instrument track = one scene with that track's sound on all keys;
+    // a track named like a sound (Score's tracks are named after their instruments) counts too
+    if (auto te = globalContext()->currentTrackeditProject()) {
+        for (const auto& t : te->trackList()) {
+            const QString title = t.title.toQString();
+            const bool instrument = isInstrumentTitle(title);
+            QString soundName = title;
+            if (instrument) {
+                soundName = title.startsWith(prefix()) ? title.mid(prefix().size()) : title.mid(QStringLiteral("Instrument").size());
+            }
+            const SoundEntry* e = findSound(soundName);
+            if (!e && instrument) {
+                e = current;
+            }
+            if (!e) {
+                continue;
+            }
+            scenes::Scene sc;
+            sc.name = soundName.trimmed().isEmpty() ? QString::fromStdString(e->name) : soundName.trimmed();
+            scenes::Layer l;
+            l.sound = scenes::refFor(*e);
+            sc.layers.push_back(l);
+            set.scenes.push_back(sc);
+        }
+    }
+    if (set.scenes.empty() && current) {
+        scenes::Scene sc;
+        sc.name = QString::fromStdString(current->name);
+        scenes::Layer l;
+        l.sound = scenes::refFor(*current);
+        sc.layers.push_back(l);
+        set.scenes.push_back(sc);
+    }
+    if (set.scenes.empty()) {
+        if (error) {
+            *error = "No instrument tracks to send: add one with Record > New instrument track.";
+        }
+        return false;
+    }
+
+    const QString path = scenes::setPath(set.name);
+    QString saveError;
+    if (!scenes::saveSet(set, path, &saveError)) {
+        if (error) {
+            *error = saveError;
+        }
+        return false;
+    }
+    const QString exe = findScenes();
+    if (exe.isEmpty() || !QProcess::startDetached(exe, { QDir::toNativeSeparators(path) }, QFileInfo(exe).absolutePath())) {
+        if (error) {
+            *error = "Saved " + QDir::toNativeSeparators(path) + ", but Scenes didn't start (Scenes.exe belongs next to Tape).";
         }
         return false;
     }

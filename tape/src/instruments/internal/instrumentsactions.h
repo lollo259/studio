@@ -50,6 +50,7 @@ private:
     void panic();
     void newInstrumentTrack();
     void openInScore();
+    void exportToScenes();
     void recordWithCountIn(int bars);
     void playInScore();
     void takeToScore();

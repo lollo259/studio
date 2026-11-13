@@ -27,6 +27,7 @@ static const ActionCode SAMPLER_CODE("sampler");
 static const ActionCode PANIC_CODE("instruments-panic");
 static const ActionCode NEW_TRACK_CODE("instruments-new-track");
 static const ActionCode OPEN_IN_SCORE_CODE("instruments-open-in-score");
+static const ActionCode EXPORT_SCENES_CODE("instruments-export-scenes");
 static const ActionCode COUNT_IN_1_CODE("record-count-in-1");
 static const ActionCode PLAY_IN_SCORE_CODE("play-in-score");
 static const ActionCode TAKE_TO_SCORE_CODE("take-to-score");
@@ -87,6 +88,7 @@ void InstrumentsActions::init()
     dispatcher()->reg(this, PANIC_CODE, this, &InstrumentsActions::panic);
     dispatcher()->reg(this, NEW_TRACK_CODE, this, &InstrumentsActions::newInstrumentTrack);
     dispatcher()->reg(this, OPEN_IN_SCORE_CODE, this, &InstrumentsActions::openInScore);
+    dispatcher()->reg(this, EXPORT_SCENES_CODE, this, &InstrumentsActions::exportToScenes);
     dispatcher()->reg(this, COUNT_IN_1_CODE, [this]() { recordWithCountIn(1); });
     dispatcher()->reg(this, PLAY_IN_SCORE_CODE, this, &InstrumentsActions::playInScore);
     dispatcher()->reg(this, TAKE_TO_SCORE_CODE, this, &InstrumentsActions::takeToScore);
@@ -111,6 +113,14 @@ void InstrumentsActions::openInScore()
     QString error;
     if (!tracks().openLastTakeInScore(&error) && !error.isEmpty()) {
         interactive()->info("Score", error.toStdString());
+    }
+}
+
+void InstrumentsActions::exportToScenes()
+{
+    QString error;
+    if (!tracks().exportToScenes(&error) && !error.isEmpty()) {
+        interactive()->info("Scenes", error.toStdString());
     }
 }
 

@@ -1,0 +1,7 @@
+<RCC>
+    <qresource prefix="/scenes">
+        <file>fonts/Jost-Regular.ttf</file>
+        <file>fonts/JostStar-Light.ttf</file>
+        <file>scenes.png</file>
+    </qresource>
+</RCC>
