@@ -28,6 +28,7 @@ StudioLink::~StudioLink() = default;
 void StudioLink::init()
 {
     m_peer = std::make_unique<studiolink::Peer>("tape");
+    m_micCue = std::make_unique<MicCue>([this]() { m_peer->send(QJsonObject { { "cmd", "cue" } }); });
     QObject::connect(m_peer.get(), &studiolink::Peer::received, m_peer.get(), [this](const QJsonObject& m) { onMessage(m); });
 
     m_seekDebounce.setSingleShot(true);
@@ -35,7 +36,10 @@ void StudioLink::init()
     QObject::connect(&m_seekDebounce, &QTimer::timeout, m_peer.get(), [this]() { sendState("seek"); });
 
     subscribe();
+    // cues placed on the video go to Score, which draws them in the bars
+    QObject::connect(VideoStore::instance(), &VideoStore::changed, m_peer.get(), [this]() { sendHitPoints(); });
     globalContext()->currentProjectChanged().onNotify(this, [this]() {
+        sendHitPoints();
         subscribe();
         m_savedMutes.clear();
         sendReplaced();
@@ -286,11 +290,41 @@ void StudioLink::onMessage(const QJsonObject& msg)
             cues.push_back({ o.value("t").toDouble(), o.value("v").toDouble() });
         }
         VideoStore::instance()->setCues(cues);
+        std::vector<double> waits;
+        for (const QJsonValue& v : msg.value("waits").toArray()) {
+            waits.push_back(v.toDouble());
+        }
+        VideoStore::instance()->setWaits(waits);
+        return;
+    } else if (cmd == "waiting") {
+        // Score stopped at a wait cue: a note on the mic sends the cue back
+        if (msg.value("on").toBool()) {
+            m_micCue->start();
+        } else {
+            m_micCue->stop();
+        }
         return;
     } else if (cmd == "hello") {
         m_applied.invalidate();
         sendState(isPlaying() ? "play" : "stop");
         sendReplaced();
+        sendHitPoints();
     }
     m_lastSentPos = t;
+}
+
+void StudioLink::sendHitPoints()
+{
+    auto project = globalContext()->currentProject();
+    const QString path = project ? project->path().toQString() : QString();
+    const VideoSettings v = VideoStore::instance()->get(path);
+    QJsonArray pts;
+    for (double h : v.hitPoints) {
+        pts.append(QJsonObject { { "t", h } });
+    }
+    if (pts == m_lastHitPoints) {
+        return;
+    }
+    m_lastHitPoints = pts;
+    m_peer->send(QJsonObject { { "cmd", "hitpoints" }, { "points", pts } });
 }

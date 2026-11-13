@@ -12,7 +12,9 @@
 #include <QString>
 #include <QSaveFile>
 
+#include "engraving/dom/instrument.h"
 #include "engraving/dom/measure.h"
+#include "engraving/dom/part.h"
 #include "engraving/dom/repeatlist.h"
 #include "engraving/dom/score.h"
 #include "engraving/dom/sig.h"
@@ -98,5 +100,22 @@ inline bool writeClickTrack(const mu::engraving::Score* score, const QString& pa
     }
     f.write(b);
     return f.commit();
+}
+}
+
+namespace mu::playback {
+//! Studio: the Tape instrument's own part makes no sound - it isn't rendered into Tape
+inline bool isStudioTapeOnly(const mu::engraving::Score* score)
+{
+    if (!score || score->parts().empty()) {
+        return false;
+    }
+    for (const mu::engraving::Part* p : score->parts()) {
+        const mu::engraving::Instrument* in = p->instrument();
+        if (!in || in->id() != u"tape") {
+            return false;
+        }
+    }
+    return true;
 }
 }

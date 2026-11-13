@@ -65,6 +65,12 @@ void StudioCues::init()
                 collect();
             }
             m_resumedAt = state()->playbackPosition();
+            if (m_waiting || studioCueWaiting()) {
+                studioCueWaiting() = false;
+                if (studioCueWaitingChanged()) {
+                    studioCueWaitingChanged()(false);
+                }
+            }
             m_waiting = false;
             if (mu::notation::studio::followMeOn()) {
                 collectFollow();
@@ -220,6 +226,10 @@ void StudioCues::stopAtCue(double at)
     controller()->pause();
     controller()->rewind(muse::secs_t(at));
     m_waiting = true;
+    studioCueWaiting() = true;
+    if (studioCueWaitingChanged()) {
+        studioCueWaitingChanged()(true);
+    }
 }
 
 void StudioCues::resume()
@@ -376,4 +386,35 @@ bool mu::playback::studioSetTempo(const mu::notation::IMasterNotationPtr& master
     master->notation()->undoStack()->commitChanges();
     master->notation()->notationChanged().send({});
     return true;
+}
+
+QJsonArray mu::playback::studioWaitTimes(const mu::notation::IMasterNotationPtr& master)
+{
+    QJsonArray out;
+    MasterScore* score = master ? master->masterScore() : nullptr;
+    if (!score || !master->playback()) {
+        return out;
+    }
+    std::vector<int> ticks;
+    for (Segment* s = score->firstSegment(SegmentType::ChordRest); s; s = s->next1(SegmentType::ChordRest)) {
+        for (EngravingItem* a : s->annotations()) {
+            if (isCueText(a)) {
+                ticks.push_back(s->tick().ticks());
+                break;
+            }
+        }
+    }
+    std::vector<double> times;
+    for (const RepeatSegment* rs : score->repeatList()) {
+        for (int t : ticks) {
+            if (t >= rs->tick && t < rs->tick + rs->len()) {
+                times.push_back(double(master->playback()->playedTickToSec(t + rs->utick - rs->tick)));
+            }
+        }
+    }
+    std::sort(times.begin(), times.end());
+    for (double t : times) {
+        out.append(t);
+    }
+    return out;
 }

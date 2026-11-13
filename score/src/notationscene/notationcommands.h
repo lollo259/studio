@@ -509,6 +509,8 @@ inline static const muse::rcommand::Command CLUSTER_ALL_COMMAND("command://notat
 inline static const muse::rcommand::Command CLUSTER_NONE_COMMAND("command://notation/cluster-none");
 inline static const muse::rcommand::Command SLUR_PEN_COMMAND("command://notation/slur-pen");
 inline static const muse::rcommand::Command FOLLOW_ME_COMMAND("command://notation/follow-me");
+inline static const muse::rcommand::Command WAIT_CUE_COMMAND("command://notation/wait-cue");
+inline static const muse::rcommand::Command VIDEO_CUES_COMMAND("command://notation/video-cues-toggle");
 
 //inline static const muse::rcommand::Command ADD_NOTE_COMMAND("command://notation/add-note"); // with params
 inline static const muse::rcommand::Command ADD_DRUM_NOTE_COMMAND("command://notation/add-drum-note"); // with params

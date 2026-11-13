@@ -53,6 +53,11 @@
 
 #include "notation/studioslurpen.h"
 #include "notation/studiofollow.h"
+#include "notation/studiovideocues.h"
+#include "engraving/dom/systemtext.h"
+#include "engraving/dom/factory.h"
+#include "engraving/dom/chordrest.h"
+#include "engraving/dom/segment.h"
 #include "../notationcommands.h"
 #include "../notationcommandsenums.h"
 #include "playback/playbackcommands.h"
@@ -259,6 +264,13 @@ void NotationActionController::init()
     registerCommand(CLUSTER_BLACK_COMMAND, [this]() { if (auto i = currentNotationInteraction()) { i->setClusterForSelection(2); } });
     registerCommand(CLUSTER_ALL_COMMAND, [this]() { if (auto i = currentNotationInteraction()) { i->setClusterForSelection(3); } });
     registerCommand(CLUSTER_NONE_COMMAND, [this]() { if (auto i = currentNotationInteraction()) { i->setClusterForSelection(0); } });
+    registerCommand(WAIT_CUE_COMMAND, [this]() { addStudioWaitCue(); });
+    registerCommand(VIDEO_CUES_COMMAND, [this]() {
+        studio::videoCuesShown() = !studio::videoCuesShown();
+        if (auto n = currentNotation()) {
+            n->notationChanged().send({});
+        }
+    });
     registerCommand(FOLLOW_ME_COMMAND, [this]() {
         studio::followMeOn() = !studio::followMeOn();
         interactive()->info(studio::followMeOn() ? "Follow me: on" : "Follow me: off",
@@ -3210,4 +3222,30 @@ muse::Ret NotationActionController::setPianoKeyboardNumberOfKeys(const muse::rco
     int numberOfKeys = params.at("keys").toInt();
     sceneConfiguration()->setPianoKeyboardNumberOfKeys(numberOfKeys);
     return muse::make_ok();
+}
+
+// Studio: a wait cue with no text (an invisible "wait" system text) on the selected note or rest
+void NotationActionController::addStudioWaitCue()
+{
+    mu::engraving::Score* score = currentNotationScore();
+    INotationPtr notation = currentNotation();
+    if (!score || !notation) {
+        return;
+    }
+    mu::engraving::ChordRest* cr = score->selection().firstChordRest();
+    if (!cr) {
+        cr = score->selection().currentCR();
+    }
+    if (!cr || !cr->segment()) {
+        interactive()->info("Wait cue", muse::IInteractive::Text("Select the note or rest where playback should wait."));
+        return;
+    }
+    notation->undoStack()->prepareChanges(muse::TranslatableString("undoableAction", "Add wait cue"));
+    mu::engraving::SystemText* t = mu::engraving::Factory::createSystemText(cr->segment());
+    t->setTrack(0);
+    t->setXmlText(u"wait");
+    t->setVisible(false);
+    score->undoAddElement(t);
+    notation->undoStack()->commitChanges();
+    notation->notationChanged().send({});
 }

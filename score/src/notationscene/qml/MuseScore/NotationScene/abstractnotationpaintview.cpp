@@ -41,6 +41,11 @@
 #include "notation/inotationstyle.h"
 #include "notation/inotationviewstate.h"
 #include "notation/studioslurpen.h"
+#include "notation/studiovideocues.h"
+#include "engraving/dom/measure.h"
+#include "engraving/dom/segment.h"
+#include "engraving/dom/system.h"
+#include "engraving/dom/score.h"
 
 #include "log.h"
 
@@ -779,6 +784,46 @@ void AbstractNotationPaintView::paint(QPainter* qp)
         painter->setPen(pen);
         painter->setBrush(muse::draw::BrushStyle::NoBrush);
         painter->drawPolyline(stroke.data(), stroke.size());
+    }
+
+    // Studio: cues placed on Tape's video, at their exact place in the bars (View → Show → Video cues)
+    if (!isPrinting && studio::videoCuesShown() && !studio::videoHitPoints().empty() && notationPlayback()
+        && notation()->elements() && notation()->elements()->msScore()) {
+        const mu::engraving::Score* score = notation()->elements()->msScore();
+        const double sp = score->style().spatium();
+        muse::draw::Pen pen(muse::draw::Color(200, 40, 160), 1.6 / std::max(0.01, currentScaling()));
+        pen.setDashPattern({ 4.0, 3.0 });
+        muse::draw::Font font;
+        font.setFamily(u"Jost", muse::draw::Font::Type::Text);
+        font.setPointSizeF(0.85 / std::max(0.01, currentScaling()));
+        for (const studio::VideoHitPoint& hp : studio::videoHitPoints()) {
+            const int tick = int(notationPlayback()->secToTick(muse::audio::secs_t(hp.secs)));
+            const mu::engraving::Measure* m = score->tick2measure(mu::engraving::Fraction::fromTicks(tick));
+            if (!m || !m->system()) {
+                continue;
+            }
+            const mu::engraving::Segment* prev = nullptr;
+            const mu::engraving::Segment* next = nullptr;
+            for (const mu::engraving::Segment* s = m->first(mu::engraving::SegmentType::ChordRest); s;
+                 s = s->next(mu::engraving::SegmentType::ChordRest)) {
+                if (s->tick().ticks() <= tick) {
+                    prev = s;
+                } else {
+                    next = s;
+                    break;
+                }
+            }
+            const RectF mr = m->canvasBoundingRect();
+            double x0 = prev ? prev->canvasPos().x() : mr.left();
+            double t0 = prev ? prev->tick().ticks() : m->tick().ticks();
+            double x1 = next ? next->canvasPos().x() : mr.right();
+            double t1 = next ? next->tick().ticks() : m->endTick().ticks();
+            const double x = t1 > t0 ? x0 + (x1 - x0) * (tick - t0) / (t1 - t0) : x0;
+            painter->setPen(pen);
+            painter->drawLine(PointF(x, mr.top() - 2.0 * sp), PointF(x, mr.bottom() + sp));
+            painter->setFont(font);
+            painter->drawText(PointF(x + 0.3 * sp, mr.top() - 2.2 * sp), String(u"V%1").arg(hp.number));
+        }
     }
 
     if (notation()->viewMode() == engraving::LayoutMode::LINE) {

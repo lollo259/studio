@@ -30,6 +30,8 @@
 
 #include "studioclick.h"
 #include "studiocues.h"
+#include "notation/studiovideocues.h"
+#include "notation/inotation.h"
 
 namespace {
 // any click or key press in this Score window makes it the one the transport talks to
@@ -64,6 +66,12 @@ void StudioLink::init()
 {
     m_peer = std::make_unique<studiolink::Peer>("score");
     QObject::connect(m_peer.get(), &studiolink::Peer::received, m_peer.get(), [this](const QJsonObject& m) { onMessage(m); });
+    // a wait cue stopped playback (or playback went on): Tape listens to the mic meanwhile
+    studioCueWaitingChanged() = [this](bool waiting) {
+        if (m_front || !m_otherFront) {
+            m_peer->send(QJsonObject { { "cmd", "waiting" }, { "on", waiting } });
+        }
+    };
 
     m_seekDebounce.setSingleShot(true);
     m_seekDebounce.setInterval(120);
@@ -157,6 +165,9 @@ void StudioLink::refreshTape()
         if (!ex || !ex->notation()) {
             return;
         }
+        if (ex->notation()->elements() && isStudioTapeOnly(ex->notation()->elements()->msScore())) {
+            return; // the Tape instrument: Tape plays it
+        }
         bool touched = all;
         if (!touched) {
             mu::engraving::Score* s = ex->notation()->elements() ? ex->notation()->elements()->msScore() : nullptr;
@@ -210,7 +221,7 @@ void StudioLink::refreshTape()
     m_rendering = false;
 
     m_peer->send(QJsonObject { { "cmd", "tempo" }, { "points", studioTempoPoints(master) } });
-    m_peer->send(QJsonObject { { "cmd", "videocues" }, { "cues", studioVideoCues(master) } });
+    m_peer->send(QJsonObject { { "cmd", "videocues" }, { "cues", studioVideoCues(master) }, { "waits", studioWaitTimes(master) } });
     if (!files.isEmpty()) {
         m_peer->send(QJsonObject { { "cmd", "reload" }, { "files", QJsonArray::fromStringList(files) }, { "tapeProject", m_tapeProject } });
     }
@@ -335,6 +346,26 @@ void StudioLink::onMessage(const QJsonObject& msg)
         watchScore();
         m_applied.invalidate();
         return;
+    } else if (cmd == "cue") {
+        // Tape heard a note on the mic while playback waits at a cue: go on
+        if (studioCueWaiting() && !state()->isPlaying()) {
+            controller()->play(false);
+        }
+        m_applied.invalidate();
+        return;
+    } else if (cmd == "hitpoints") {
+        // Tape: cues placed on the video - drawn in the bars at their exact place
+        auto& pts = mu::notation::studio::videoHitPoints();
+        pts.clear();
+        int n = 0;
+        for (const QJsonValue& v : msg.value("points").toArray()) {
+            pts.push_back({ v.toObject().value("t").toDouble(), ++n });
+        }
+        if (auto master = projectSession()->masterNotation()) {
+            master->notation()->notationChanged().send({});
+        }
+        m_applied.invalidate();
+        return;
     } else if (cmd == "settempo") {
         // Tape: a point on the tempo strip was dragged
         if (studioSetTempo(projectSession()->masterNotation(), msg.value("tick").toInt(), msg.value("bpm").toDouble())) {
@@ -373,7 +404,8 @@ void StudioLink::onMessage(const QJsonObject& msg)
                         m_peer->send(QJsonObject { { "cmd", "project" }, { "tapeProject", m_tapeProject } });
                     }
                     // the score's video cues drive Tape's video window
-                    m_peer->send(QJsonObject { { "cmd", "videocues" }, { "cues", studioVideoCues(projectSession()->masterNotation()) } });
+                    m_peer->send(QJsonObject { { "cmd", "videocues" }, { "cues", studioVideoCues(projectSession()->masterNotation()) },
+                                       { "waits", studioWaitTimes(projectSession()->masterNotation()) } });
                     m_peer->send(QJsonObject { { "cmd", "tempo" }, { "points", studioTempoPoints(projectSession()->masterNotation()) } });
                     refreshTape();
                 }
@@ -389,7 +421,8 @@ void StudioLink::onMessage(const QJsonObject& msg)
     } else if (cmd == "hello") {
         m_applied.invalidate();
         sendState(state()->isPlaying() ? "play" : "stop");
-        m_peer->send(QJsonObject { { "cmd", "videocues" }, { "cues", studioVideoCues(projectSession()->masterNotation()) } });
+        m_peer->send(QJsonObject { { "cmd", "videocues" }, { "cues", studioVideoCues(projectSession()->masterNotation()) },
+                                       { "waits", studioWaitTimes(projectSession()->masterNotation()) } });
         m_peer->send(QJsonObject { { "cmd", "tempo" }, { "points", studioTempoPoints(projectSession()->masterNotation()) } });
     }
     m_lastSentPos = t;

@@ -108,6 +108,7 @@
 #include "dom/partialtie.h"
 #include "dom/palmmute.h"
 #include "dom/part.h"
+#include "dom/instrument.h"
 #include "dom/pedal.h"
 #include "dom/pickscrape.h"
 #include "dom/playcounttext.h"
@@ -718,9 +719,22 @@ static void drawTips(const BarLine* item, const BarLine::LayoutData* data, Paint
     }
 }
 
+// Studio: the Tape instrument - one thick line through the whole piece, no barlines, clef,
+// key or time signature
+static bool isStudioTapeStaff(const EngravingItem* item)
+{
+    const Staff* st = item ? item->staff() : nullptr;
+    const Part* part = st ? st->part() : nullptr;
+    const Instrument* in = part ? part->instrument(item->tick()) : nullptr;
+    return in && in->id() == u"tape";
+}
+
 void TDraw::draw(const BarLine* item, Painter* painter, const PaintOptions& opt)
 {
     TRACE_DRAW_ITEM;
+    if (isStudioTapeStaff(item)) {
+        return;
+    }
 
     const BarLine::LayoutData* data = item->ldata();
     IF_ASSERT_FAILED(data) {
@@ -1225,6 +1239,9 @@ void TDraw::draw(const ChordLine* item, Painter* painter, const PaintOptions& op
 void TDraw::draw(const Clef* item, Painter* painter, const PaintOptions& opt)
 {
     TRACE_DRAW_ITEM;
+    if (isStudioTapeStaff(item)) {
+        return;
+    }
     const Clef::LayoutData* ldata = item->ldata();
     IF_ASSERT_FAILED(ldata) {
         return;
@@ -2121,6 +2138,9 @@ void TDraw::draw(const Jump* item, Painter* painter, const PaintOptions& opt)
 void TDraw::draw(const KeySig* item, Painter* painter, const PaintOptions& opt)
 {
     TRACE_DRAW_ITEM;
+    if (isStudioTapeStaff(item)) {
+        return;
+    }
     const KeySig::LayoutData* ldata = item->ldata();
 
     painter->setPen(item->curColor(opt));
@@ -2833,7 +2853,8 @@ void TDraw::draw(const StaffLines* item, Painter* painter, const PaintOptions& o
 
     setMask(item, painter);
 
-    painter->setPen(Pen(item->curColor(opt), item->lw(), PenStyle::SolidLine, PenCapStyle::FlatCap));
+    const double tapeWidth = isStudioTapeStaff(item) ? item->spatium() * 0.6 : 0.0;
+    painter->setPen(Pen(item->curColor(opt), tapeWidth > 0.0 ? tapeWidth : item->lw(), PenStyle::SolidLine, PenCapStyle::FlatCap));
     painter->drawLines(item->lines());
 
     painter->restore();
@@ -3272,6 +3293,9 @@ void TDraw::draw(const TieSegment* item, Painter* painter, const PaintOptions& o
 void TDraw::draw(const TimeSig* item, Painter* painter, const PaintOptions& opt)
 {
     TRACE_DRAW_ITEM;
+    if (isStudioTapeStaff(item)) {
+        return;
+    }
 
     if (item->staff() && !const_cast<const Staff*>(item->staff())->staffType(item->tick())->genTimesig()) {
         return;

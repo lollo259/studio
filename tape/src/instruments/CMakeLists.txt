@@ -96,6 +96,8 @@ target_sources(instruments PRIVATE
     internal/videostore.cpp
     internal/videostore.h
     internal/tempostore.h
+    internal/miccue.cpp
+    internal/miccue.h
 )
 
 if (WIN32)

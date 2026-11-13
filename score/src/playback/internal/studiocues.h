@@ -7,6 +7,7 @@
  */
 #pragma once
 
+#include <functional>
 #include <vector>
 
 #include <QJsonArray>
@@ -28,6 +29,23 @@ QJsonArray studioVideoCues(const mu::notation::IMasterNotationPtr& master);
 QJsonArray studioTempoPoints(const mu::notation::IMasterNotationPtr& master);
 //! Sets the tempo at that tick (the marking there is changed, or one is added); one undo step
 bool studioSetTempo(const mu::notation::IMasterNotationPtr& master, int tick, double bpm);
+
+//! the wait cues' times (seconds on the score timeline), for Tape's video window
+QJsonArray studioWaitTimes(const mu::notation::IMasterNotationPtr& master);
+
+//! Studio: is playback stopped at a wait cue, and who wants to know (the link tells Tape, which
+//! then listens to the mic)
+inline bool& studioCueWaiting()
+{
+    static bool w = false;
+    return w;
+}
+
+inline std::function<void(bool)>& studioCueWaitingChanged()
+{
+    static std::function<void(bool)> f;
+    return f;
+}
 
 class StudioCues : public muse::Contextable, public muse::async::Asyncable
 {

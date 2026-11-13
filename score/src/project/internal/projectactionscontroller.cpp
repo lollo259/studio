@@ -520,11 +520,19 @@ muse::Ret ProjectActionsController::sendToTape(bool silent)
     // one notation per instrument: the parts already in the score, plus a part for every
     // instrument that has none yet
     INotationPtrList notations;
+    auto silentTape = [](const IExcerptNotationPtr& ex) {
+        return ex && ex->notation() && ex->notation()->elements()
+               && mu::playback::isStudioTapeOnly(ex->notation()->elements()->msScore());
+    };
     for (const IExcerptNotationPtr& excerpt : master->excerpts()) {
-        notations.push_back(excerpt->notation());
+        if (!silentTape(excerpt)) {
+            notations.push_back(excerpt->notation());
+        }
     }
     for (const IExcerptNotationPtr& excerpt : master->potentialExcerpts()) {
-        notations.push_back(excerpt->notation());
+        if (!silentTape(excerpt)) {
+            notations.push_back(excerpt->notation());
+        }
     }
     if (notations.empty()) {
         notations.push_back(master->notation());

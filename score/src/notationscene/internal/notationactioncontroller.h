@@ -129,6 +129,7 @@ public:
     muse::async::Notification currentMasterNotationChanged() const;
 
 private:
+    void addStudioWaitCue();
     INotationPtr currentNotation() const;
     INotationElementsPtr currentNotationElements() const;
     INotationSelectionPtr currentNotationSelection() const;

@@ -718,6 +718,20 @@ static const std::vector<CommandInfo> s_commandInfos = {
         Decoration()
     },
     CommandInfo{
+        WAIT_CUE_COMMAND,
+        TranslatableString("action", "Wait cue"),
+        TranslatableString("action", "Playback stops here until a key, the pedal, a note on the mic or play (shows on Tape's video, no text in the score)"),
+        InputSchema(),
+        Decoration()
+    },
+    CommandInfo{
+        VIDEO_CUES_COMMAND,
+        TranslatableString("action", "Video cues"),
+        TranslatableString("action", "Show/hide the cues placed on Tape's video, at their exact place in the bars"),
+        InputSchema(),
+        Decoration()
+    },
+    CommandInfo{
         FOLLOW_ME_COMMAND,
         TranslatableString("action", "Follow me (MIDI keyboard)"),
         TranslatableString("action", "On/off: playback waits for each of your notes in the selected instrument and keeps up when you play early"),

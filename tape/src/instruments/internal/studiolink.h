@@ -4,6 +4,11 @@
  */
 #pragma once
 
+#include <QJsonArray>
+#include <QJsonObject>
+
+#include "miccue.h"
+
 #include <QElapsedTimer>
 #include <QJsonObject>
 #include <QTimer>
@@ -42,6 +47,9 @@ public:
     void init();
 
 private:
+    void sendHitPoints();
+    QJsonArray m_lastHitPoints;
+    std::unique_ptr<MicCue> m_micCue;
     void subscribe();
     void onMessage(const QJsonObject& msg);
     void reloadTracks(const QStringList& files);

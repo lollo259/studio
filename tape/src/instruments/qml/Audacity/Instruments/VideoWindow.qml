@@ -67,6 +67,16 @@ StyledDialogView {
         onActivated: root.hide()
     }
     Shortcut {
+        sequence: "C"
+        context: Qt.WindowShortcut
+        onActivated: panel.addHitPoint()
+    }
+    Shortcut {
+        sequence: "Shift+C"
+        context: Qt.WindowShortcut
+        onActivated: panel.removeHitPoint()
+    }
+    Shortcut {
         sequence: "F"
         context: Qt.WindowShortcut
         onActivated: root.toggleFullScreen()
@@ -120,10 +130,55 @@ StyledDialogView {
                 color: root.accent
             }
 
+            // Studio: the score's wait cues and the cues placed on the video, along the film
+            Item {
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.bottom: parent.bottom
+                height: 10
+                visible: output.visible
+
+                Rectangle {
+                    anchors.fill: parent
+                    color: "#80000000"
+                }
+                Repeater {
+                    model: panel.markers
+                    delegate: Rectangle {
+                        x: modelData.x * (parent.width - 2)
+                        width: 2
+                        height: parent.height
+                        color: modelData.kind === "wait" ? root.accent : "#c828a0"
+                    }
+                }
+            }
+
+            // Studio: on a cue
+            Rectangle {
+                anchors.top: parent.top
+                anchors.right: parent.right
+                anchors.margins: 14
+                visible: output.visible && panel.cueFlash !== ""
+                width: cueLabel.implicitWidth + 20
+                height: cueLabel.implicitHeight + 8
+                radius: 4
+                color: panel.cueFlash === "CUE" ? root.accent : "#c828a0"
+
+                Text {
+                    id: cueLabel
+                    anchors.centerIn: parent
+                    text: panel.cueFlash
+                    font.family: root.monoFamily
+                    font.pixelSize: 18
+                    font.bold: true
+                    color: "#ffffff"
+                }
+            }
+
             // timecode of the picture: HH:MM:SS:FF
             Rectangle {
                 anchors.bottom: parent.bottom
-                anchors.bottomMargin: 14
+                anchors.bottomMargin: 20
                 anchors.horizontalCenter: parent.horizontalCenter
                 visible: panel.hasVideo && panel.error === ""
                 width: timecodeLabel.implicitWidth + 24
@@ -241,6 +296,12 @@ StyledDialogView {
                     onActivated: function (index, value) {
                         panel.fpsIndex = value;
                     }
+                }
+                FlatButton {
+                    enabled: panel.hasVideo
+                    text: panel.hitPointCount > 0 ? qsTrc("instruments", "Cue here (%1)").arg(panel.hitPointCount) : qsTrc("instruments", "Cue here")
+                    toolTipTitle: qsTrc("instruments", "A cue at this frame: Score shows it in the bars (C; Shift+C removes the nearest)")
+                    onClicked: panel.addHitPoint()
                 }
                 FlatButton {
                     enabled: panel.hasVideo

@@ -9,6 +9,7 @@
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
+#include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QSaveFile>
@@ -75,6 +76,9 @@ VideoSettings VideoStore::get(const QString& projectPath) const
     }
     s.offset = o.value("offset").toDouble(0.0);
     s.fps = validFps(o.value("fps").toDouble(25.0));
+    for (const QJsonValue& v : o.value("hitPoints").toArray()) {
+        s.hitPoints.push_back(v.toDouble());
+    }
     return s;
 }
 
@@ -102,6 +106,11 @@ void VideoStore::set(const QString& projectPath, const VideoSettings& settings)
     o["videoAbsolute"] = QFileInfo(s.file).absoluteFilePath();
     o["offset"] = s.offset;
     o["fps"] = s.fps;
+    QJsonArray hits;
+    for (double h : s.hitPoints) {
+        hits.append(h);
+    }
+    o["hitPoints"] = hits;
 
     QSaveFile f(sidecar);
     if (f.open(QIODevice::WriteOnly)) {
@@ -157,4 +166,13 @@ double au::instruments::VideoStore::pictureAt(double t, double offset) const
         return -1.0;
     }
     return last->v + (t - last->t);
+}
+
+void au::instruments::VideoStore::setWaits(const std::vector<double>& waits)
+{
+    if (waits == m_waits) {
+        return;
+    }
+    m_waits = waits;
+    emit changed();
 }

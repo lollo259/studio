@@ -77,6 +77,10 @@ VideoPanelModel::VideoPanelModel(QObject* parent)
         emit statusChanged();
     });
 
+    connect(this, &VideoPanelModel::settingsChanged, this, &VideoPanelModel::markersChanged);
+    connect(this, &VideoPanelModel::statusChanged, this, &VideoPanelModel::markersChanged);
+    connect(this, &VideoPanelModel::videoChanged, this, &VideoPanelModel::markersChanged);
+    connect(VideoStore::instance(), &VideoStore::changed, this, &VideoPanelModel::markersChanged);
     connect(VideoStore::instance(), &VideoStore::changed, this, [this]() {
         if (!m_storing) {
             reloadFromStore();
@@ -530,4 +534,84 @@ bool VideoPanelModel::parseTimecode(const QString& text, double fps, double* sec
     }
     *secs = negative ? -value : value;
     return true;
+}
+
+// ── Studio: cues on the video ──────────────────────────────────────
+
+void VideoPanelModel::addHitPoint()
+{
+    if (!m_settings.hasVideo()) {
+        return;
+    }
+    const double t = tapePosition();
+    for (double h : m_settings.hitPoints) {
+        if (std::abs(h - t) < 0.01) {
+            return;
+        }
+    }
+    m_settings.hitPoints.push_back(t);
+    std::sort(m_settings.hitPoints.begin(), m_settings.hitPoints.end());
+    store();
+    emit settingsChanged();
+    emit timeChanged();
+}
+
+void VideoPanelModel::removeHitPoint()
+{
+    if (m_settings.hitPoints.empty()) {
+        return;
+    }
+    const double t = tapePosition();
+    auto best = m_settings.hitPoints.begin();
+    for (auto it = m_settings.hitPoints.begin(); it != m_settings.hitPoints.end(); ++it) {
+        if (std::abs(*it - t) < std::abs(*best - t)) {
+            best = it;
+        }
+    }
+    m_settings.hitPoints.erase(best);
+    store();
+    emit settingsChanged();
+    emit timeChanged();
+}
+
+// "CUE" while the playhead sits on one of the score's wait cues, "V3" on the third video cue
+QString VideoPanelModel::cueFlash() const
+{
+    const double t = tapePosition();
+    for (double w : VideoStore::instance()->waits()) {
+        if (t >= w - 0.05 && t < w + 0.6) {
+            return "CUE";
+        }
+    }
+    for (size_t i = 0; i < m_settings.hitPoints.size(); ++i) {
+        const double h = m_settings.hitPoints[i];
+        if (t >= h - 0.05 && t < h + 0.4) {
+            return QString("V%1").arg(i + 1);
+        }
+    }
+    return QString();
+}
+
+// the marks under the picture: [{x: 0..1 along the film, kind: "wait"|"video", label}]
+QVariantList VideoPanelModel::markers() const
+{
+    QVariantList out;
+    const double duration = double(m_player.duration()) / 1000.0;
+    if (duration <= 0.0) {
+        return out;
+    }
+    auto add = [&](double tapeTime, const QString& kind, const QString& label) {
+        const double pic = VideoStore::instance()->pictureAt(tapeTime, m_settings.offset);
+        if (pic < 0.0 || pic > duration) {
+            return;
+        }
+        out.append(QVariantMap { { "x", pic / duration }, { "kind", kind }, { "label", label } });
+    };
+    for (double w : VideoStore::instance()->waits()) {
+        add(w, "wait", QString());
+    }
+    for (size_t i = 0; i < m_settings.hitPoints.size(); ++i) {
+        add(m_settings.hitPoints[i], "video", QString("V%1").arg(i + 1));
+    }
+    return out;
 }

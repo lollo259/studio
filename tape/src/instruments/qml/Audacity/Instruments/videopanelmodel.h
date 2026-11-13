@@ -46,6 +46,9 @@ class VideoPanelModel : public QObject, public muse::async::Asyncable, public mu
     Q_PROPERTY(QString tapeTime READ tapeTime NOTIFY timeChanged)
     Q_PROPERTY(QString pictureState READ pictureState NOTIFY timeChanged)
     Q_PROPERTY(bool playing READ playing NOTIFY timeChanged)
+    Q_PROPERTY(QString cueFlash READ cueFlash NOTIFY timeChanged)
+    Q_PROPERTY(QVariantList markers READ markers NOTIFY markersChanged)
+    Q_PROPERTY(int hitPointCount READ hitPointCount NOTIFY settingsChanged)
 
     muse::ContextInject<au::context::IGlobalContext> globalContext{ this };
     muse::ContextInject<muse::IInteractive> interactive{ this };
@@ -62,6 +65,9 @@ public:
     Q_INVOKABLE void offsetToPlayhead();
     Q_INVOKABLE bool setOffsetText(const QString& text);
     Q_INVOKABLE void togglePlay();
+    //! Studio: a cue at the frame on screen (Score shows it in the bars); remove the nearest one
+    Q_INVOKABLE void addHitPoint();
+    Q_INVOKABLE void removeHitPoint();
     Q_INVOKABLE void restoreWindow(QObject* window);
     Q_INVOKABLE void saveWindow(QObject* window);
 
@@ -85,6 +91,9 @@ public:
     QString timecode() const;
     QString tapeTime() const;
     QString pictureState() const;
+    QString cueFlash() const;
+    QVariantList markers() const;
+    int hitPointCount() const { return int(m_settings.hitPoints.size()); }
     bool playing() const;
 
     //! HH:MM:SS:FF (29.97 is counted non-drop); negative times get a leading minus
@@ -98,6 +107,7 @@ signals:
     void settingsChanged();
     void statusChanged();
     void timeChanged();
+    void markersChanged();
 
 private:
     void subscribe();

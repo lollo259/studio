@@ -299,6 +299,7 @@ MenuItem* AppMenuModel::makeViewMenu()
             makeMenuItem(SHOW_PAGEBORDERS_COMMAND),
             makeMenuItem(SHOW_IRREGULAR_COMMAND),
             makeMenuItem(SHOW_SOUNDFLAGS_COMMAND),
+            makeMenuItem(VIDEO_CUES_COMMAND), // Studio
         }, "menu-show"),
         makeSeparator(),
         makeMenuItem(DOCK_RESTORE_DEFAULT_LAYOUT_COMMAND),
@@ -322,6 +323,7 @@ MenuItem* AppMenuModel::makeAddMenu()
             makeMenuItem(CLUSTER_NONE_COMMAND),
         }, "menu-cluster"),
         makeMenuItem(SLUR_PEN_COMMAND), // Studio: free-hand slurs
+        makeMenuItem(WAIT_CUE_COMMAND), // Studio
         makeSeparator(),
         makeMenu(TranslatableString("appshell/menu/add", "&Measures"), makeMeasuresItems(), "menu-measures"),
         makeMenu(TranslatableString("appshell/menu/add", "&Frames"), makeFramesItems(), "menu-frames"),
