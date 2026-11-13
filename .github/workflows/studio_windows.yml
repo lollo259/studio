@@ -7,6 +7,11 @@ name: 'Studio: Windows'
 
 on:
   workflow_dispatch:
+    inputs:
+      sketch_only:
+        description: 'Only test Sketch in Blender (no Studio folder, no installer)'
+        type: boolean
+        default: false
   workflow_run:
     workflows: ['Score: Windows', 'Tape: Windows']
     types: [completed]
@@ -21,7 +26,7 @@ concurrency:
 
 jobs:
   studio:
-    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
+    if: ${{ !inputs.sketch_only && (github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success') }}
     runs-on: ubuntu-24.04
     outputs:
       studio_name: ${{ steps.name.outputs.studio_name }}
@@ -238,9 +243,11 @@ jobs:
     - name: Check Sketch loads in Blender
       shell: pwsh
       run: |
-        $py = "import bpy, bl_app_template_utils; bl_app_template_utils.activate(template_id='sketch'); ops=[o for o in dir(bpy.ops.sketch)]; print('SKETCH OK', bpy.app.version_string, len(ops), 'tools')"
-        & "Studio\Sketch\blender.exe" --background --factory-startup --python-expr $py 2>&1 | Tee-Object -Variable out
+        # loads the template and runs its geometry and inference tests (sketch/template/tests_geometry.py)
+        & "Studio\Sketch\blender.exe" --background --factory-startup --python-exit-code 1 --python sketch\sketch-tests.py 2>&1 | Tee-Object -Variable out
+        $code = $LASTEXITCODE
         if (-not ($out -match "SKETCH OK")) { throw "Sketch did not load" }
+        if ($code -ne 0 -or -not ($out -match "SKETCH TESTS PASSED")) { throw "Sketch tests failed" }
 
     - name: Inno Setup
       shell: pwsh
@@ -270,3 +277,42 @@ jobs:
         path: studio/installer/output/
         compression-level: 0
         retention-days: 14
+
+  # Run by hand with sketch_only: just Blender + the Sketch template and its tests (a few minutes)
+  sketch_tests:
+    if: ${{ inputs.sketch_only }}
+    runs-on: windows-2022
+    steps:
+    - name: Clone repository
+      uses: actions/checkout@v6
+
+    - name: Blender
+      shell: bash
+      run: |
+        set -e
+        dir=$(curl -fsSL https://download.blender.org/release/ | grep -oE 'Blender[0-9]+\.[0-9]+/' | sort -uV | tail -1)
+        list=$(curl -fsSL "https://download.blender.org/release/$dir")
+        file=$(echo "$list" | grep -oE 'blender-[0-9.]+-windows-x64\.zip' | sort -uV | tail -1)
+        ver=${file#blender-}; ver=${ver%-windows-x64.zip}
+        echo "Blender $ver ($dir$file)"
+        mkdir -p dl/sketch Studio
+        curl -fsSL "https://download.blender.org/release/$dir$file" -o dl/sketch/blender.zip
+        if curl -fsSL "https://download.blender.org/release/${dir}blender-$ver.sha256" -o dl/sketch/sums; then
+          want=$(grep -F "$file" dl/sketch/sums | head -1 | cut -d' ' -f1)
+          have=$(sha256sum dl/sketch/blender.zip | cut -d' ' -f1)
+          echo "want $want"; echo "have $have"
+          test -n "$want" && test "$want" = "$have"
+        fi
+        if command -v unzip > /dev/null; then unzip -q dl/sketch/blender.zip -d dl/sketch/x; else 7z x -y -odl/sketch/x dl/sketch/blender.zip > /dev/null; fi
+        mv dl/sketch/x/blender-*-windows-x64 Studio/Sketch
+        vdir=$(ls Studio/Sketch | grep -E '^[0-9]+\.[0-9]+$' | head -1)
+        mkdir -p "Studio/Sketch/$vdir/scripts/startup/bl_app_templates_system/sketch"
+        cp -r sketch/template/. "Studio/Sketch/$vdir/scripts/startup/bl_app_templates_system/sketch/"
+
+    - name: Check Sketch loads in Blender
+      shell: pwsh
+      run: |
+        & "Studio\Sketch\blender.exe" --background --factory-startup --python-exit-code 1 --python sketch\sketch-tests.py 2>&1 | Tee-Object -Variable out
+        $code = $LASTEXITCODE
+        if (-not ($out -match "SKETCH OK")) { throw "Sketch did not load" }
+        if ($code -ne 0 -or -not ($out -match "SKETCH TESTS PASSED")) { throw "Sketch tests failed" }
