@@ -10,10 +10,12 @@ qt_add_qml_module(instruments_qml
         samplerpanelmodel.h
         videopanelmodel.cpp
         videopanelmodel.h
+        tempostripmodel.h
     QML_FILES
         InstrumentsDialog.qml
         SamplerDialog.qml
         VideoWindow.qml
+        TempoStrip.qml
     IMPORTS
         TARGET muse_ui_qml
         TARGET muse_uicomponents_qml

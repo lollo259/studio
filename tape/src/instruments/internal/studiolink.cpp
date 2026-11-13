@@ -8,6 +8,7 @@
 
 #include "studiolinkpeer.h"
 #include "videostore.h"
+#include "tempostore.h"
 
 #include <QFileInfo>
 #include <QJsonArray>
@@ -275,6 +276,9 @@ void StudioLink::onMessage(const QJsonObject& msg)
         if (!isPlaying()) {
             player->seek(muse::secs_t(t));
         }
+    } else if (cmd == "tempo") {
+        TempoStore::instance()->setPoints(msg.value("points").toArray().toVariantList());
+        return;
     } else if (cmd == "videocues") {
         std::vector<VideoCue> cues;
         for (const QJsonValue& v : msg.value("cues").toArray()) {

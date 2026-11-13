@@ -209,6 +209,8 @@ void StudioLink::refreshTape()
     m_dirtyParts.clear();
     m_rendering = false;
 
+    m_peer->send(QJsonObject { { "cmd", "tempo" }, { "points", studioTempoPoints(master) } });
+    m_peer->send(QJsonObject { { "cmd", "videocues" }, { "cues", studioVideoCues(master) } });
     if (!files.isEmpty()) {
         m_peer->send(QJsonObject { { "cmd", "reload" }, { "files", QJsonArray::fromStringList(files) }, { "tapeProject", m_tapeProject } });
     }
@@ -333,6 +335,15 @@ void StudioLink::onMessage(const QJsonObject& msg)
         watchScore();
         m_applied.invalidate();
         return;
+    } else if (cmd == "settempo") {
+        // Tape: a point on the tempo strip was dragged
+        if (studioSetTempo(projectSession()->masterNotation(), msg.value("tick").toInt(), msg.value("bpm").toDouble())) {
+            m_dirtyParts.insert("*");
+            m_peer->send(QJsonObject { { "cmd", "tempo" }, { "points", studioTempoPoints(projectSession()->masterNotation()) } });
+            refreshTape();
+        }
+        m_applied.invalidate();
+        return;
     } else if (cmd == "notes") {
         // Tape: "Write last take into the score"
         writeTakeIntoScore(msg.value("midi").toString(), msg.value("at").toDouble(), msg.value("part").toString());
@@ -363,6 +374,7 @@ void StudioLink::onMessage(const QJsonObject& msg)
                     }
                     // the score's video cues drive Tape's video window
                     m_peer->send(QJsonObject { { "cmd", "videocues" }, { "cues", studioVideoCues(projectSession()->masterNotation()) } });
+                    m_peer->send(QJsonObject { { "cmd", "tempo" }, { "points", studioTempoPoints(projectSession()->masterNotation()) } });
                     refreshTape();
                 }
             });
@@ -378,6 +390,7 @@ void StudioLink::onMessage(const QJsonObject& msg)
         m_applied.invalidate();
         sendState(state()->isPlaying() ? "play" : "stop");
         m_peer->send(QJsonObject { { "cmd", "videocues" }, { "cues", studioVideoCues(projectSession()->masterNotation()) } });
+        m_peer->send(QJsonObject { { "cmd", "tempo" }, { "points", studioTempoPoints(projectSession()->masterNotation()) } });
     }
     m_lastSentPos = t;
 }

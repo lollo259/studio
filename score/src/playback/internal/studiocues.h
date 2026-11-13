@@ -24,6 +24,11 @@ namespace mu::playback {
 //! [{t: seconds on the score timeline, v: picture time or -1 for no picture}], in playing order
 QJsonArray studioVideoCues(const mu::notation::IMasterNotationPtr& master);
 
+//! The tempo for Tape's tempo strip: [{t: seconds, bpm, tick}], a point where it changes
+QJsonArray studioTempoPoints(const mu::notation::IMasterNotationPtr& master);
+//! Sets the tempo at that tick (the marking there is changed, or one is added); one undo step
+bool studioSetTempo(const mu::notation::IMasterNotationPtr& master, int tick, double bpm);
+
 class StudioCues : public muse::Contextable, public muse::async::Asyncable
 {
     muse::ContextInject<IPlaybackController> controller = { this };

@@ -54,7 +54,8 @@ inline bool writeClickTrack(const mu::engraving::Score* score, const QString& pa
     const RepeatList& repeats = score->repeatList();
     for (const RepeatSegment* rs : repeats) {
         const int offset = rs->utick - rs->tick;
-        for (const Measure* m : rs->measureList()) {
+        for (const Measure* m = score->tick2measure(Fraction::fromTicks(rs->tick)); m && m->tick().ticks() < rs->tick + rs->len();
+             m = m->nextMeasure()) {
             const TimeSigFrac ts = score->sigmap()->timesig(m->tick().ticks()).timesig();
             const int num = std::max(1, ts.numerator());
             const int den = std::max(1, ts.denominator());

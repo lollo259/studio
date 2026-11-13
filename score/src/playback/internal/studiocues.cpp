@@ -15,6 +15,12 @@
 #include "engraving/dom/repeatlist.h"
 #include "engraving/dom/segment.h"
 #include "engraving/dom/textbase.h"
+#include "engraving/dom/tempotext.h"
+#include "engraving/dom/measure.h"
+#include "engraving/dom/factory.h"
+#include "notation/inotationundostack.h"
+#include <QRegularExpression>
+#include <cmath>
 #include "engraving/dom/part.h"
 #include "engraving/dom/staff.h"
 #include "notation/studiofollow.h"
@@ -294,4 +300,80 @@ QJsonArray mu::playback::studioVideoCues(const mu::notation::IMasterNotationPtr&
         out.append(QJsonObject { { "t", t }, { "v", pic } });
     }
     return out;
+}
+
+// Studio: the tempo as Tape draws it: a point wherever the tempo changes, in playing order
+QJsonArray mu::playback::studioTempoPoints(const mu::notation::IMasterNotationPtr& master)
+{
+    QJsonArray out;
+    MasterScore* score = master ? master->masterScore() : nullptr;
+    if (!score || !master->playback()) {
+        return out;
+    }
+    double last = -1.0;
+    for (const RepeatSegment* rs : score->repeatList()) {
+        for (const Measure* m = score->tick2measure(Fraction::fromTicks(rs->tick)); m && m->tick().ticks() < rs->tick + rs->len();
+             m = m->nextMeasure()) {
+            for (const Segment* s = m->first(SegmentType::ChordRest); s; s = s->next(SegmentType::ChordRest)) {
+                const int tick = s->tick().ticks();
+                const double bpm = score->tempo(s->tick()).val * 60.0;
+                if (std::abs(bpm - last) < 0.05) {
+                    continue;
+                }
+                last = bpm;
+                const double t = double(master->playback()->playedTickToSec(tick + rs->utick - rs->tick));
+                out.append(QJsonObject { { "t", t }, { "bpm", bpm }, { "tick", tick } });
+            }
+        }
+    }
+    return out;
+}
+
+// Studio: a tempo point dragged in Tape: change the tempo marking there (or add one)
+bool mu::playback::studioSetTempo(const mu::notation::IMasterNotationPtr& master, int tick, double bpm)
+{
+    MasterScore* score = master ? master->masterScore() : nullptr;
+    if (!score || bpm < 5.0 || bpm > 999.0) {
+        return false;
+    }
+    Measure* measure = score->tick2measure(Fraction::fromTicks(tick));
+    Segment* seg = measure ? measure->findSegment(SegmentType::ChordRest, Fraction::fromTicks(tick)) : nullptr;
+    if (!seg && measure) {
+        seg = measure->first(SegmentType::ChordRest);
+    }
+    if (!seg) {
+        return false;
+    }
+    TempoText* found = nullptr;
+    for (EngravingItem* a : seg->annotations()) {
+        if (a->isTempoText()) {
+            found = toTempoText(a);
+            break;
+        }
+    }
+    const QString number = QString::number(std::lround(bpm));
+    master->notation()->undoStack()->prepareChanges(muse::TranslatableString::untranslatable("Tempo from Tape"));
+    if (found) {
+        const double old = found->tempo().val * 60.0;
+        QString xml = found->xmlText().toQString();
+        static const QRegularExpression re("=\\s*(\\d+(?:[.,]\\d+)?)");
+        const QRegularExpressionMatch mt = re.match(xml);
+        if (mt.hasMatch() && old > 0.0) {
+            const double shown = mt.captured(1).replace(',', '.').toDouble();
+            const QString now = QString::number(std::lround(shown * bpm / old));
+            xml.replace(mt.capturedStart(1), mt.capturedLength(1), now);
+            static_cast<EngravingObject*>(found)->undoChangeProperty(Pid::TEXT, PropertyValue(String::fromQString(xml)));
+        }
+        static_cast<EngravingObject*>(found)->undoChangeProperty(Pid::TEMPO, PropertyValue(BeatsPerSecond(bpm / 60.0)));
+    } else {
+        TempoText* tt = Factory::createTempoText(seg);
+        tt->setTrack(0);
+        tt->setXmlText(String::fromQString("<sym>metNoteQuarterUp</sym> = " + number));
+        tt->setTempo(BeatsPerSecond(bpm / 60.0));
+        tt->setFollowText(true);
+        score->undoAddElement(tt);
+    }
+    master->notation()->undoStack()->commitChanges();
+    master->notation()->notationChanged().send({});
+    return true;
 }
