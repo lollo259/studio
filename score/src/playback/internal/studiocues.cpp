@@ -6,6 +6,10 @@
 
 #include <algorithm>
 
+#include <QJsonArray>
+#include <QJsonObject>
+#include <QStringList>
+
 #include "engraving/dom/masterscore.h"
 #include "engraving/dom/repeatlist.h"
 #include "engraving/dom/segment.h"
@@ -136,4 +140,78 @@ void StudioCues::resume()
 {
     m_waiting = false;
     controller()->play(false);
+}
+
+// "video 1:30", "video 00:01:30:12", "video 90", "video off": from here the picture is at that time
+static bool parseVideoCue(const QString& text, double* picture)
+{
+    QString t = text.trimmed().toLower();
+    if (!t.startsWith("video")) {
+        return false;
+    }
+    t = t.mid(5).trimmed();
+    if (t.startsWith(':')) {
+        t = t.mid(1).trimmed();
+    }
+    if (t.isEmpty()) {
+        return false;
+    }
+    if (t == "off" || t == "black" || t == "stop") {
+        *picture = -1.0;
+        return true;
+    }
+    const QStringList p = t.section(' ', 0, 0).split(':');
+    bool ok = true;
+    bool ok2 = true;
+    bool ok3 = true;
+    bool ok4 = true;
+    double secs = 0.0;
+    if (p.size() == 1) {
+        secs = p[0].toDouble(&ok);
+    } else if (p.size() == 2) {
+        secs = p[0].toInt(&ok) * 60.0 + p[1].toDouble(&ok2);
+    } else if (p.size() == 3) {
+        secs = p[0].toInt(&ok) * 3600.0 + p[1].toInt(&ok2) * 60.0 + p[2].toDouble(&ok3);
+    } else if (p.size() == 4) {
+        secs = p[0].toInt(&ok) * 3600.0 + p[1].toInt(&ok2) * 60.0 + p[2].toInt(&ok3) + p[3].toInt(&ok4) / 25.0;
+    } else {
+        ok = false;
+    }
+    if (!(ok && ok2 && ok3 && ok4) || secs < 0) {
+        return false;
+    }
+    *picture = secs;
+    return true;
+}
+
+QJsonArray mu::playback::studioVideoCues(const mu::notation::IMasterNotationPtr& master)
+{
+    QJsonArray out;
+    MasterScore* score = master ? master->masterScore() : nullptr;
+    if (!score || !master->playback()) {
+        return out;
+    }
+    std::vector<std::pair<int, double> > cues;
+    for (Segment* s = score->firstSegment(SegmentType::ChordRest); s; s = s->next1(SegmentType::ChordRest)) {
+        for (EngravingItem* a : s->annotations()) {
+            double pic = 0.0;
+            if ((a->isStaffText() || a->isSystemText()) && parseVideoCue(toTextBase(a)->plainText().toQString(), &pic)) {
+                cues.push_back({ s->tick().ticks(), pic });
+                break;
+            }
+        }
+    }
+    std::vector<std::pair<double, double> > timed;
+    for (const RepeatSegment* rs : score->repeatList()) {
+        for (const auto& [t, pic] : cues) {
+            if (t >= rs->tick && t < rs->tick + rs->len()) {
+                timed.push_back({ double(master->playback()->playedTickToSec(t + rs->utick - rs->tick)), pic });
+            }
+        }
+    }
+    std::sort(timed.begin(), timed.end());
+    for (const auto& [t, pic] : timed) {
+        out.append(QJsonObject { { "t", t }, { "v", pic } });
+    }
+    return out;
 }

@@ -7,6 +7,7 @@
 #include <cmath>
 
 #include "studiolinkpeer.h"
+#include "videostore.h"
 
 #include <QFileInfo>
 #include <QJsonArray>
@@ -274,6 +275,14 @@ void StudioLink::onMessage(const QJsonObject& msg)
         if (!isPlaying()) {
             player->seek(muse::secs_t(t));
         }
+    } else if (cmd == "videocues") {
+        std::vector<VideoCue> cues;
+        for (const QJsonValue& v : msg.value("cues").toArray()) {
+            const QJsonObject o = v.toObject();
+            cues.push_back({ o.value("t").toDouble(), o.value("v").toDouble() });
+        }
+        VideoStore::instance()->setCues(cues);
+        return;
     } else if (cmd == "hello") {
         m_applied.invalidate();
         sendState(isPlaying() ? "play" : "stop");

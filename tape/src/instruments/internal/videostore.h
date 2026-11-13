@@ -10,6 +10,8 @@
 #include <QObject>
 #include <QString>
 
+#include <vector>
+
 namespace au::instruments {
 struct VideoSettings
 {
@@ -18,6 +20,14 @@ struct VideoSettings
     double fps = 25.0;     // frame rate of the timecode display: 24, 25, 29.97 or 30
 
     bool hasVideo() const { return !file.isEmpty(); }
+};
+
+//! Studio: video cues from the score ("video 1:30" texts): at score time t the picture is at v
+//! (v < 0: no picture); the picture runs on from there
+struct VideoCue
+{
+    double t = 0.0;
+    double v = 0.0;
 };
 
 class VideoStore : public QObject
@@ -36,6 +46,11 @@ public:
     void clearUnsaved();
 
     static QString sidecarPath(const QString& projectPath);
+
+    void setCues(const std::vector<VideoCue>& cues);
+    const std::vector<VideoCue>& cues() const { return m_cues; }
+    //! where the picture is at Tape time t: with cues, the cue map; without, t - offset
+    double pictureAt(double t, double offset) const;
     static bool isProjectFile(const QString& projectPath);
 
 signals:
@@ -45,5 +60,6 @@ private:
     VideoStore() = default;
 
     VideoSettings m_unsaved;
+    std::vector<VideoCue> m_cues;
 };
 }

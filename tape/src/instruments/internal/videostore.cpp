@@ -126,3 +126,35 @@ void VideoStore::clearUnsaved()
 {
     m_unsaved = VideoSettings();
 }
+
+void au::instruments::VideoStore::setCues(const std::vector<VideoCue>& cues)
+{
+    bool same = cues.size() == m_cues.size();
+    for (size_t i = 0; same && i < cues.size(); ++i) {
+        same = cues[i].t == m_cues[i].t && cues[i].v == m_cues[i].v;
+    }
+    if (same) {
+        return;
+    }
+    m_cues = cues;
+    emit changed();
+}
+
+double au::instruments::VideoStore::pictureAt(double t, double offset) const
+{
+    const VideoCue* last = nullptr;
+    for (const VideoCue& c : m_cues) {
+        if (c.t <= t + 1e-6) {
+            last = &c;
+        } else {
+            break;
+        }
+    }
+    if (!last) {
+        return t - offset;
+    }
+    if (last->v < 0.0) {
+        return -1.0;
+    }
+    return last->v + (t - last->t);
+}

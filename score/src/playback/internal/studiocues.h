@@ -9,6 +9,7 @@
 
 #include <vector>
 
+#include <QJsonArray>
 #include <QTimer>
 
 #include "async/asyncable.h"
@@ -16,8 +17,13 @@
 #include "midi/imidiinport.h"
 #include "../iplaybackcontroller.h"
 #include "project/iprojectsession.h"
+#include "notation/imasternotation.h"
 
 namespace mu::playback {
+//! Video cues: staff/system texts "video <time>" ("video 1:30", "video 00:01:30:12", "video off");
+//! [{t: seconds on the score timeline, v: picture time or -1 for no picture}], in playing order
+QJsonArray studioVideoCues(const mu::notation::IMasterNotationPtr& master);
+
 class StudioCues : public muse::Contextable, public muse::async::Asyncable
 {
     muse::ContextInject<IPlaybackController> controller = { this };

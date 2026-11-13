@@ -29,6 +29,7 @@
 #include <QEvent>
 
 #include "studioclick.h"
+#include "studiocues.h"
 
 namespace {
 // any click or key press in this Score window makes it the one the transport talks to
@@ -360,6 +361,8 @@ void StudioLink::onMessage(const QJsonObject& msg)
                     if (!m_tapeProject.isEmpty()) { // Tape shows this score's project
                         m_peer->send(QJsonObject { { "cmd", "project" }, { "tapeProject", m_tapeProject } });
                     }
+                    // the score's video cues drive Tape's video window
+                    m_peer->send(QJsonObject { { "cmd", "videocues" }, { "cues", studioVideoCues(projectSession()->masterNotation()) } });
                     refreshTape();
                 }
             });
@@ -374,6 +377,7 @@ void StudioLink::onMessage(const QJsonObject& msg)
     } else if (cmd == "hello") {
         m_applied.invalidate();
         sendState(state()->isPlaying() ? "play" : "stop");
+        m_peer->send(QJsonObject { { "cmd", "videocues" }, { "cues", studioVideoCues(projectSession()->masterNotation()) } });
     }
     m_lastSentPos = t;
 }
