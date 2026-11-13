@@ -33,6 +33,7 @@
 #include "dom/repeatlist.h"
 #include "dom/segment.h"
 #include "dom/tie.h"
+#include "dom/stafftext.h"
 #include "dom/tremolotwochord.h"
 
 #include "editing/transaction/undoablecommand.h"
@@ -160,7 +161,7 @@ void PlaybackModel::reload()
     trackIdSet.reserve(m_playbackDataMap.size());
 
     for (auto& pair : m_playbackDataMap) {
-        pair.second.mainStream.send(pair.second.originEvents, pair.second.dynamics);
+        studioSend(pair.first, pair.second);
         trackIdSet.insert(pair.first);
     }
 
@@ -981,7 +982,7 @@ void PlaybackModel::sendEvents(const InstrumentTrackId& trackId)
     }
 
     PlaybackData& data = it->second;
-    data.mainStream.send(data.originEvents, data.dynamics);
+    studioSend(trackId, data);
 }
 
 void PlaybackModel::removeTrackEvents(const InstrumentTrackId& trackId, const muse::mpe::timestamp_t timestampFrom,
@@ -1229,4 +1230,163 @@ void PlaybackModel::applyTieTickBoundaries(const Tie* tie, TickBoundaries& tickB
 
     tickBoundaries.tickFrom = std::min(tickBoundaries.tickFrom, firstTiedNote->tick().ticks());
     tickBoundaries.tickTo = std::max(tickBoundaries.tickTo, lastTiedNote->tick().ticks());
+}
+
+// ---------------------------------------------------------------------------------------------
+// Studio: per-instrument tempo. A staff text "tempo ×1.5" (or "tempo x1.5", "tempo 3:2",
+// "tempo 90" = that many beats a minute, "tempo off" / "a tempo" = back with the score) makes this
+// instrument play at its own speed from there, while everyone else keeps the score's tempo.
+// The events stay on the score's timeline for editing; only what is sent to the player is moved.
+// ---------------------------------------------------------------------------------------------
+
+namespace {
+struct StudioWarpPoint {
+    timestamp_t at = 0;   // score time
+    double ratio = 1.0;   // instrument speed / score speed
+};
+
+bool parseStudioTempo(const String& text, double scoreBpm, double* ratio)
+{
+    QString t = text.toQString().trimmed().toLower();
+    if (t == "a tempo" || t == "tempo off" || t == "tempo 1:1") {
+        *ratio = 1.0;
+        return true;
+    }
+    if (!t.startsWith("tempo ")) {
+        return false;
+    }
+    t = t.mid(6).trimmed();
+    t.replace(QChar(0x00D7), 'x');
+    t.replace('*', 'x');
+    bool ok = false;
+    double r = 0.0;
+    if (t.startsWith('x')) {
+        r = t.mid(1).trimmed().toDouble(&ok);
+    } else if (t.contains(':')) {
+        const QStringList p = t.split(':');
+        bool a = false;
+        bool b = false;
+        const double n = p.value(0).toDouble(&a);
+        const double d = p.value(1).toDouble(&b);
+        ok = a && b && d > 0.0;
+        r = ok ? n / d : 0.0;
+    } else {
+        const double bpm = t.section(' ', 0, 0).toDouble(&ok);
+        r = ok && scoreBpm > 0.0 ? bpm / scoreBpm : 0.0;
+    }
+    if (!ok || r < 0.05 || r > 20.0) {
+        return false;
+    }
+    *ratio = r;
+    return true;
+}
+}
+
+bool PlaybackModel::studioWarp(const InstrumentTrackId& trackId, const PlaybackData& data, PlaybackEventsMap& events,
+                               DynamicAutomationLayers& dynamics) const
+{
+    const Part* part = m_score ? m_score->partById(trackId.partId) : nullptr;
+    std::vector<StudioWarpPoint> points;
+    if (part) {
+        std::vector<std::pair<int, double> > marks; // tick, ratio
+        for (const Segment* s = m_score->firstSegment(SegmentType::ChordRest); s; s = s->next1(SegmentType::ChordRest)) {
+            for (const EngravingItem* a : s->annotations()) {
+                if (!a->isStaffText() || a->part() != part) {
+                    continue;
+                }
+                double r = 1.0;
+                if (parseStudioTempo(toStaffText(a)->plainText(), m_score->tempo(s->tick()).val * 60.0, &r)) {
+                    marks.push_back({ s->tick().ticks(), r });
+                }
+            }
+        }
+        if (!marks.empty()) {
+            for (const RepeatSegment* rs : m_score->repeatList()) {
+                for (const auto& [tick, r] : marks) {
+                    if (tick >= rs->tick && tick < rs->tick + rs->len()) {
+                        points.push_back({ timestampFromTicks(m_score, tick + rs->utick - rs->tick), r });
+                    }
+                }
+            }
+            std::sort(points.begin(), points.end(), [](const StudioWarpPoint& a, const StudioWarpPoint& b) { return a.at < b.at; });
+        }
+    }
+    if (points.empty()) {
+        return false;
+    }
+
+    // score time -> the instrument's time: each stretch runs at its own ratio
+    std::vector<timestamp_t> mapped(points.size());
+    for (size_t i = 0; i < points.size(); ++i) {
+        if (i == 0) {
+            mapped[i] = points[i].at;
+        } else {
+            mapped[i] = mapped[i - 1] + static_cast<timestamp_t>((points[i].at - points[i - 1].at) / points[i - 1].ratio);
+        }
+    }
+    auto warp = [&](timestamp_t t, double* scale) -> timestamp_t {
+        size_t i = points.size();
+        while (i > 0 && points[i - 1].at > t) {
+            --i;
+        }
+        if (i == 0) {
+            *scale = 1.0;
+            return t;
+        }
+        const StudioWarpPoint& p = points[i - 1];
+        *scale = 1.0 / p.ratio;
+        return mapped[i - 1] + static_cast<timestamp_t>((t - p.at) / p.ratio);
+    };
+
+    for (const auto& [t, list] : data.originEvents) {
+        double scale = 1.0;
+        const timestamp_t nt = warp(t, &scale);
+        PlaybackEventList& out = events[nt];
+        for (const PlaybackEvent& e : list) {
+            if (std::holds_alternative<muse::mpe::NoteEvent>(e)) {
+                muse::mpe::NoteEvent n = std::get<muse::mpe::NoteEvent>(e);
+                double s = 1.0;
+                n.studioMove(warp(n.arrangementCtx().nominalTimestamp, &s), s);
+                out.emplace_back(n);
+            } else {
+                out.push_back(e);
+            }
+        }
+    }
+    for (const auto& [layer, curve] : data.dynamics) {
+        DynamicAutomationMap& outCurve = dynamics[layer];
+        for (const auto& [t, point] : curve) {
+            double scale = 1.0;
+            outCurve[warp(t, &scale)] = point;
+        }
+    }
+    return true;
+}
+
+void PlaybackModel::studioSend(const InstrumentTrackId& trackId, PlaybackData& data)
+{
+    PlaybackEventsMap events;
+    DynamicAutomationLayers dynamics;
+    if (studioWarp(trackId, data, events, dynamics)) {
+        m_studioViews.erase(trackId);
+        data.mainStream.send(events, dynamics);
+    } else {
+        data.mainStream.send(data.originEvents, data.dynamics);
+    }
+}
+
+// what the player loads first: the instrument's own timeline when it has a tempo of its own
+const PlaybackData& PlaybackModel::studioPlaybackData(const InstrumentTrackId& trackId)
+{
+    PlaybackData& data = resolveTrackPlaybackData(trackId);
+    PlaybackEventsMap events;
+    DynamicAutomationLayers dynamics;
+    if (!studioWarp(trackId, data, events, dynamics)) {
+        return data;
+    }
+    PlaybackData& view = m_studioViews[trackId];
+    view = data;
+    view.originEvents = events;
+    view.dynamics = dynamics;
+    return view;
 }

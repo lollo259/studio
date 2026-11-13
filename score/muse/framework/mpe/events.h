@@ -139,6 +139,24 @@ struct NoteEvent
         return m_arrangementCtx;
     }
 
+    //! Studio: per-instrument tempo - the note moves to the instrument's own timeline
+    //! (newNominal) and lasts durationScale times as long
+    void studioMove(timestamp_t newNominal, double durationScale)
+    {
+        const timestamp_t shift = newNominal - m_arrangementCtx.nominalTimestamp;
+        m_arrangementCtx.nominalTimestamp = newNominal;
+        m_arrangementCtx.actualTimestamp += shift;
+        if (m_arrangementCtx.nominalDuration != INFINITE_DURATION) {
+            m_arrangementCtx.nominalDuration = static_cast<duration_t>(m_arrangementCtx.nominalDuration * durationScale);
+        }
+        if (m_arrangementCtx.actualDuration != INFINITE_DURATION) {
+            m_arrangementCtx.actualDuration = static_cast<duration_t>(m_arrangementCtx.actualDuration * durationScale);
+        }
+        if (durationScale > 0.0) {
+            m_arrangementCtx.bps /= durationScale;
+        }
+    }
+
     const PitchContext& pitchCtx() const
     {
         return m_pitchCtx;

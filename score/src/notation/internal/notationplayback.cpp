@@ -184,7 +184,7 @@ std::optional<std::string> NotationPlayback::trackName(const engraving::Instrume
 
 const muse::mpe::PlaybackData& NotationPlayback::trackPlaybackData(const engraving::InstrumentTrackId& trackId) const
 {
-    return m_playbackModel.resolveTrackPlaybackData(trackId);
+    return m_playbackModel.studioPlaybackData(trackId);
 }
 
 void NotationPlayback::triggerEventsForItems(const std::vector<const EngravingItem*>& items, muse::mpe::duration_t duration,

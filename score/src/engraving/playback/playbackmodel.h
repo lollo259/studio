@@ -83,6 +83,8 @@ public:
     bool hasSoundFlags(const InstrumentTrackId& trackId) const;
 
     muse::mpe::PlaybackData& resolveTrackPlaybackData(const InstrumentTrackId& trackId);
+    //! Studio: the track as the player gets it (an instrument with a tempo of its own is moved onto its own timeline)
+    const muse::mpe::PlaybackData& studioPlaybackData(const InstrumentTrackId& trackId);
     muse::mpe::PlaybackData& resolveTrackPlaybackData(const ID& partId, const String& instrumentId);
 
     void triggerEventsForItems(const std::vector<const EngravingItem*>& items, muse::mpe::duration_t duration, bool flushSound);
@@ -94,6 +96,10 @@ public:
     muse::async::Channel<InstrumentTrackId> trackRemoved() const;
 
 private:
+    void studioSend(const InstrumentTrackId& trackId, muse::mpe::PlaybackData& data);
+    bool studioWarp(const InstrumentTrackId& trackId, const muse::mpe::PlaybackData& data, muse::mpe::PlaybackEventsMap& events,
+                    muse::mpe::DynamicAutomationLayers& dynamics) const;
+    std::map<InstrumentTrackId, muse::mpe::PlaybackData> m_studioViews;
     static const InstrumentTrackId METRONOME_TRACK_ID;
     static const InstrumentTrackId CHORD_SYMBOLS_TRACK_ID;
 
