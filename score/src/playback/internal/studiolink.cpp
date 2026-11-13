@@ -16,6 +16,8 @@
 
 #include "engraving/dom/masterscore.h"
 #include "engraving/dom/part.h"
+#include "notation/inotationsolomutestate.h"
+#include "engraving/dom/instrument.h"
 #include "engraving/dom/staff.h"
 #include "notation/iexcerptnotation.h"
 #include "notation/imasternotation.h"
@@ -210,6 +212,39 @@ void StudioLink::setSilent(bool silent)
     });
 }
 
+void StudioLink::applyReplaced(const QJsonArray& parts)
+{
+    auto master = projectSession()->masterNotation();
+    if (!master || !master->notation() || !master->notation()->soloMuteState()) {
+        return;
+    }
+    QSet<QString> wanted;
+    for (const auto& v : parts) {
+        wanted.insert(v.toString());
+    }
+    auto smState = master->notation()->soloMuteState();
+    mu::engraving::MasterScore* score = master->masterScore();
+    for (const mu::engraving::Part* part : score ? score->parts() : std::vector<mu::engraving::Part*> {}) {
+        const QString name = QString::fromStdString(muse::io::escapeFileName(muse::io::path_t(part->partName())).toStdString());
+        const bool replaced = wanted.contains(name);
+        const bool wasOurs = m_replacedParts.contains(name);
+        if (!replaced && !wasOurs) {
+            continue; // never touch what the user muted by hand
+        }
+        for (const auto& [instrId, instr] : part->instruments()) {
+            Q_UNUSED(instrId);
+            mu::engraving::InstrumentTrackId id { part->id(), instr->id() };
+            auto st = smState->trackSoloMuteStateExists(id) ? smState->trackSoloMuteState(id)
+                      : notation::INotationSoloMuteState::SoloMuteState();
+            if (st.mute != replaced) {
+                st.mute = replaced;
+                smState->setTrackSoloMuteState(id, st);
+            }
+        }
+    }
+    m_replacedParts = wanted;
+}
+
 void StudioLink::becomeFront()
 {
     if (m_front) {
@@ -309,6 +344,11 @@ void StudioLink::onMessage(const QJsonObject& msg)
                 }
             });
         }
+        m_applied.invalidate();
+        return;
+    } else if (cmd == "replace") {
+        // Studio: these instruments have a recording in Tape - Score mutes them, Tape plays the recordings
+        applyReplaced(msg.value("parts").toArray());
         m_applied.invalidate();
         return;
     } else if (cmd == "hello") {

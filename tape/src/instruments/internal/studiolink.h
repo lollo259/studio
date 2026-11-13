@@ -15,6 +15,10 @@
 #include "context/iglobalcontext.h"
 #include "playback/iplayback.h"
 #include "trackedit/itrackeditinteraction.h"
+#include "playback/itrackplaybackcontrol.h"
+
+#include <QMap>
+#include <QStringList>
 
 namespace studiolink {
 class Peer;
@@ -27,8 +31,11 @@ class StudioLink : public muse::Contextable, public muse::async::Asyncable
     muse::ContextInject<au::playback::IPlayback> playback{ this };
     muse::ContextInject<au::trackedit::ITrackeditInteraction> trackeditInteraction{ this };
     muse::ContextInject<muse::actions::IActionsDispatcher> dispatcher{ this };
+    muse::ContextInject<au::playback::ITrackPlaybackControl> trackPlayback{ this };
 
 public:
+    // Studio: a track called "<instrument> · recording" plays that instrument in place of Score's sound
+    static QString recordingSuffix() { return QStringLiteral(" · recording"); }
     StudioLink(const muse::modularity::ContextPtr& ctx);
     ~StudioLink();
 
@@ -43,7 +50,12 @@ private:
     bool isPlaying() const;
     double position() const;
 
+    QStringList replacedParts() const;
+    void sendReplaced();
+    void applyMutes();
+
     std::unique_ptr<studiolink::Peer> m_peer;
+    QMap<long, bool> m_savedMutes; // tracks muted only while the Score page plays (their own state before)
     QString m_page; // Studio page in view ("score", "tape", "split"); empty outside Studio
     QElapsedTimer m_applied;
     QTimer m_seekDebounce;

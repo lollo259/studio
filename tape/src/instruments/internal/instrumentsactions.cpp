@@ -4,6 +4,8 @@
  */
 #include "instrumentsactions.h"
 
+#include <QFileInfo>
+
 #include "framework/global/types/translatablestring.h"
 #include "context/uicontext.h"
 #include "context/shortcutcontext.h"
@@ -22,6 +24,7 @@ static const ActionCode PANIC_CODE("instruments-panic");
 static const ActionCode NEW_TRACK_CODE("instruments-new-track");
 static const ActionCode OPEN_IN_SCORE_CODE("instruments-open-in-score");
 static const ActionCode COUNT_IN_1_CODE("record-count-in-1");
+static const ActionCode PLAY_IN_SCORE_CODE("play-in-score");
 static const ActionCode COUNT_IN_2_CODE("record-count-in-2");
 
 static const UiActionList s_actions = {
@@ -50,6 +53,11 @@ static const UiActionList s_actions = {
              au::context::CTX_ANY,
              TranslatableString("action", "Open last take in &Score"),
              TranslatableString("action_description", "Open the notes of the last instrument take in Score")),
+    UiAction(PLAY_IN_SCORE_CODE,
+             au::context::UiCtxAny,
+             au::context::CTX_ANY,
+             TranslatableString("action", "Play in Score as…"),
+             TranslatableString("action_description", "This track (your recording) plays an instrument of the score in place of Score's sound")),
     UiAction(COUNT_IN_1_CODE,
              au::context::UiCtxAny,
              au::context::CTX_ANY,
@@ -70,6 +78,7 @@ void InstrumentsActions::init()
     dispatcher()->reg(this, NEW_TRACK_CODE, this, &InstrumentsActions::newInstrumentTrack);
     dispatcher()->reg(this, OPEN_IN_SCORE_CODE, this, &InstrumentsActions::openInScore);
     dispatcher()->reg(this, COUNT_IN_1_CODE, [this]() { recordWithCountIn(1); });
+    dispatcher()->reg(this, PLAY_IN_SCORE_CODE, this, &InstrumentsActions::playInScore);
     dispatcher()->reg(this, COUNT_IN_2_CODE, [this]() { recordWithCountIn(2); });
 }
 
@@ -102,6 +111,63 @@ void InstrumentsActions::openPanel()
 void InstrumentsActions::openSampler()
 {
     interactive()->open("audacity://sampler");
+}
+
+// Studio: the selected track (a recording) plays one of the score's instruments: it is renamed
+// "<instrument> · recording"; the Studio link then mutes that instrument in Score and Score's own
+// rendering of it in Tape. Choosing it again on such a track gives the instrument back to Score.
+void InstrumentsActions::playInScore()
+{
+    auto te = globalContext()->currentTrackeditProject();
+    auto project = globalContext()->currentProject();
+    if (!te || !project) {
+        return;
+    }
+    const auto sel = selectionController()->selectedTracks();
+    if (sel.size() != 1) {
+        interactive()->info("Play in Score", muse::IInteractive::Text("Select the track with your recording first."));
+        return;
+    }
+    const auto id = sel.front();
+    QString current;
+    for (const auto& t : te->trackList()) {
+        if (t.id == id) {
+            current = t.title.toQString();
+        }
+    }
+    const QString suffix = QStringLiteral(" · recording");
+    if (current.endsWith(suffix)) {
+        // give the instrument back to Score
+        const QString part = current.left(current.size() - suffix.size()).trimmed();
+        trackeditInteraction()->changeTrackTitle(id, muse::String::fromQString(part + " take"));
+        return;
+    }
+    // the score's instruments = Score's tracks in this project: "<score title>-<instrument>"
+    const QString base = QFileInfo(project->path().toQString()).completeBaseName() + "-";
+    QStringList parts;
+    for (const auto& t : te->trackList()) {
+        const QString title = t.title.toQString();
+        if (title.startsWith(base) && t.id != id) {
+            parts << title.mid(base.size());
+        }
+    }
+    if (parts.isEmpty()) {
+        interactive()->info("Play in Score", muse::IInteractive::Text("This project has no instruments from a score."));
+        return;
+    }
+    muse::IInteractive::ButtonDatas buttons;
+    for (int i = 0; i < parts.size() && i < 12; ++i) {
+        buttons.push_back(muse::IInteractive::ButtonData(int(muse::IInteractive::Button::CustomButton) + 1 + i,
+                                                         parts.at(i).toStdString()));
+    }
+    buttons.push_back(interactive()->buttonData(muse::IInteractive::Button::Cancel));
+    interactive()->question("Play in Score", muse::IInteractive::Text("Which instrument does this recording play?"), buttons)
+    .onResolve(this, [this, id, parts](const muse::IInteractive::Result& res) {
+        const int i = res.button() - int(muse::IInteractive::Button::CustomButton) - 1;
+        if (i >= 0 && i < parts.size()) {
+            trackeditInteraction()->changeTrackTitle(id, muse::String::fromQString(parts.at(i) + " · recording"));
+        }
+    });
 }
 
 // Studio: count-in clicks (sample-accurate, from the instruments' audio stream), then recording

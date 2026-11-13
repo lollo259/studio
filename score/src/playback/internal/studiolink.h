@@ -5,6 +5,7 @@
 #pragma once
 
 #include <QElapsedTimer>
+#include <QJsonArray>
 #include <QJsonObject>
 #include <QSet>
 #include <QString>
@@ -58,6 +59,9 @@ private:
     QString m_tapeProject; // Studio: this score's own Tape project
     // Studio: only the page you see makes sound - on the Tape page Score plays silently (cursor only)
     void setSilent(bool silent);
+    // Studio: instruments whose sound comes from a recording in Tape (muted here)
+    void applyReplaced(const QJsonArray& parts);
+    QSet<QString> m_replacedParts;
     // several Score windows can be open (one per file): only the one used last answers play/stop/seek
     bool m_front = false;
     bool m_otherFront = false;

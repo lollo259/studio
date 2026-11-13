@@ -382,6 +382,7 @@ MenuItem* AppMenuModel::makeRecordMenu()
         makeMenuItem("action://record/lead-in-recording"),
         makeMenuItem("record-count-in-1"),
         makeMenuItem("record-count-in-2"),
+        makeMenuItem("play-in-score"),
         makeSeparator(),
         makeMenuItem("instruments"),
         makeMenuItem("sampler"),
