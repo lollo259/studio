@@ -332,6 +332,11 @@ void StudioLink::onMessage(const QJsonObject& msg)
         watchScore();
         m_applied.invalidate();
         return;
+    } else if (cmd == "notes") {
+        // Tape: "Write last take into the score"
+        writeTakeIntoScore(msg.value("midi").toString(), msg.value("at").toDouble(), msg.value("part").toString());
+        m_applied.invalidate();
+        return;
     } else if (cmd == "take") {
         // a take finished in Tape: open its notes as a score
         const QString midi = msg.value("midi").toString();

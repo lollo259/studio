@@ -52,6 +52,7 @@ private:
     void openInScore();
     void recordWithCountIn(int bars);
     void playInScore();
+    void takeToScore();
     std::unique_ptr<QTimer> m_countInPoll;
     InstrumentTracks& tracks();
 

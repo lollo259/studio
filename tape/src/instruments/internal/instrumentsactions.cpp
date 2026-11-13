@@ -5,6 +5,10 @@
 #include "instrumentsactions.h"
 
 #include <QFileInfo>
+#include <QDir>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QLocalSocket>
 
 #include "framework/global/types/translatablestring.h"
 #include "context/uicontext.h"
@@ -25,6 +29,7 @@ static const ActionCode NEW_TRACK_CODE("instruments-new-track");
 static const ActionCode OPEN_IN_SCORE_CODE("instruments-open-in-score");
 static const ActionCode COUNT_IN_1_CODE("record-count-in-1");
 static const ActionCode PLAY_IN_SCORE_CODE("play-in-score");
+static const ActionCode TAKE_TO_SCORE_CODE("take-to-score");
 static const ActionCode COUNT_IN_2_CODE("record-count-in-2");
 
 static const UiActionList s_actions = {
@@ -53,6 +58,11 @@ static const UiActionList s_actions = {
              au::context::CTX_ANY,
              TranslatableString("action", "Open last take in &Score"),
              TranslatableString("action_description", "Open the notes of the last instrument take in Score")),
+    UiAction(TAKE_TO_SCORE_CODE,
+             au::context::UiCtxAny,
+             au::context::CTX_ANY,
+             TranslatableString("action", "Write last take into the score…"),
+             TranslatableString("action_description", "The notes you just played go into an instrument of the score, quantized, from where you played them")),
     UiAction(PLAY_IN_SCORE_CODE,
              au::context::UiCtxAny,
              au::context::CTX_ANY,
@@ -79,6 +89,7 @@ void InstrumentsActions::init()
     dispatcher()->reg(this, OPEN_IN_SCORE_CODE, this, &InstrumentsActions::openInScore);
     dispatcher()->reg(this, COUNT_IN_1_CODE, [this]() { recordWithCountIn(1); });
     dispatcher()->reg(this, PLAY_IN_SCORE_CODE, this, &InstrumentsActions::playInScore);
+    dispatcher()->reg(this, TAKE_TO_SCORE_CODE, this, &InstrumentsActions::takeToScore);
     dispatcher()->reg(this, COUNT_IN_2_CODE, [this]() { recordWithCountIn(2); });
 }
 
@@ -147,7 +158,7 @@ void InstrumentsActions::playInScore()
     QStringList parts;
     for (const auto& t : te->trackList()) {
         const QString title = t.title.toQString();
-        if (title.startsWith(base) && t.id != id) {
+        if (title.startsWith(base) && t.id != id && !title.endsWith("-Click")) {
             parts << title.mid(base.size());
         }
     }
@@ -166,6 +177,70 @@ void InstrumentsActions::playInScore()
         const int i = res.button() - int(muse::IInteractive::Button::CustomButton) - 1;
         if (i >= 0 && i < parts.size()) {
             trackeditInteraction()->changeTrackTitle(id, muse::String::fromQString(parts.at(i) + " · recording"));
+        }
+    });
+}
+
+// Studio: the notes of the last take go into the score (Score quantizes them and pastes them into
+// the instrument, from the bar where the take started)
+void InstrumentsActions::takeToScore()
+{
+    const QString midi = tracks().lastMidi();
+    if (midi.isEmpty() || !QFileInfo::exists(midi)) {
+        interactive()->info("Score", muse::IInteractive::Text("Record a take on an instrument track first."));
+        return;
+    }
+    auto te = globalContext()->currentTrackeditProject();
+    auto project = globalContext()->currentProject();
+    if (!te || !project) {
+        return;
+    }
+    const QString base = QFileInfo(project->path().toQString()).completeBaseName() + "-";
+    QStringList parts;
+    QString guess;
+    for (const auto& t : te->trackList()) {
+        const QString title = t.title.toQString();
+        if (title.startsWith(base) && !title.endsWith("-Click")) {
+            parts << title.mid(base.size());
+        }
+        if (t.id == tracks().lastTakeTrack() && title.endsWith(" · recording")) {
+            guess = title.left(title.size() - int(QString(" · recording").size())).trimmed();
+        }
+    }
+    auto send = [this, midi](const QString& part) {
+        QLocalSocket sock;
+        sock.connectToServer("laurencewho-studio-link");
+        if (!sock.waitForConnected(300)) {
+            interactive()->info("Score", muse::IInteractive::Text("Score isn't open."));
+            return;
+        }
+        QJsonObject msg { { "cmd", "notes" }, { "midi", QDir::toNativeSeparators(midi) }, { "at", tracks().lastTakeStart() },
+                          { "part", part }, { "from", "tape-take" } };
+        sock.write(QJsonDocument(msg).toJson(QJsonDocument::Compact) + "\n");
+        sock.write("{\"cmd\":\"show\",\"page\":\"score\",\"from\":\"tape-take\"}\n");
+        sock.flush();
+        sock.waitForBytesWritten(300);
+        sock.disconnectFromServer();
+    };
+    if (!guess.isEmpty() || parts.size() == 1) {
+        send(guess.isEmpty() ? parts.front() : guess);
+        return;
+    }
+    if (parts.isEmpty()) {
+        interactive()->info("Score", muse::IInteractive::Text("This project has no instruments from a score."));
+        return;
+    }
+    muse::IInteractive::ButtonDatas buttons;
+    for (int i = 0; i < parts.size() && i < 12; ++i) {
+        buttons.push_back(muse::IInteractive::ButtonData(int(muse::IInteractive::Button::CustomButton) + 1 + i,
+                                                         parts.at(i).toStdString()));
+    }
+    buttons.push_back(interactive()->buttonData(muse::IInteractive::Button::Cancel));
+    interactive()->question("Write into the score", muse::IInteractive::Text("Which instrument did you play?"), buttons)
+    .onResolve(this, [parts, send](const muse::IInteractive::Result& res) {
+        const int i = res.button() - int(muse::IInteractive::Button::CustomButton) - 1;
+        if (i >= 0 && i < parts.size()) {
+            send(parts.at(i));
         }
     });
 }

@@ -388,6 +388,7 @@ MenuItem* AppMenuModel::makeRecordMenu()
         makeMenuItem("sampler"),
         makeMenuItem("instruments-new-track"),
         makeMenuItem("instruments-open-in-score"),
+        makeMenuItem("take-to-score"),
         makeMenuItem("instruments-panic"),
         makeSeparator(),
         makeMenuItem("video-window"),
