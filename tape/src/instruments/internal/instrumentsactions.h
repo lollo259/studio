@@ -46,6 +46,7 @@ private:
     void panic();
     void newInstrumentTrack();
     void openInScore();
+    void exportToScenes();
     void recordWithCountIn(int bars);
     std::unique_ptr<QTimer> m_countInPoll;
     InstrumentTracks& tracks();

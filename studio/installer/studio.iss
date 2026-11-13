@@ -52,6 +52,9 @@ Name: "{autoprograms}\Studio\Score"; Filename: "{app}\Score.exe"
 Name: "{autoprograms}\Studio\Tape"; Filename: "{app}\Tape.exe"
 Name: "{autoprograms}\Studio\Mail"; Filename: "{app}\Mail.exe"
 Name: "{autoprograms}\Studio\Sketch"; Filename: "{app}\Sketch.exe"
+#if FileExists(SrcDir + "\Scenes.exe")
+Name: "{autoprograms}\Studio\Scenes"; Filename: "{app}\Scenes.exe"
+#endif
 Name: "{autodesktop}\Studio"; Filename: "{app}\Studio.exe"; Tasks: desktopicon
 
 [Registry]

@@ -3,7 +3,7 @@ name: 'Studio: Windows'
 # One folder with everything: Score, Tape, Mail (Thunderbird), the sounds (already
 # unpacked and mapped) and Score.exe / Tape.exe at the top. Runs after a successful
 # Score or Tape build. Run by hand on another branch (Actions > Run workflow), it takes
-# that branch's Score build if there is one, otherwise main's, and main's Tape build.
+# that branch's Score and Tape builds if there are any, otherwise main's.
 
 on:
   workflow_dispatch:
@@ -58,7 +58,21 @@ jobs:
         name_is_regexp: true
         path: dl/score
 
+    - name: Latest Tape build (this branch)
+      id: tape_branch
+      if: ${{ github.ref_name != 'main' }}
+      continue-on-error: true
+      uses: dawidd6/action-download-artifact@v28
+      with:
+        workflow: tape_windows.yml
+        workflow_conclusion: success
+        branch: ${{ github.ref_name }}
+        name: 'Tape_.*'
+        name_is_regexp: true
+        path: dl/tape
+
     - name: Latest Tape build
+      if: ${{ github.ref_name == 'main' || steps.tape_branch.outcome != 'success' }}
       uses: dawidd6/action-download-artifact@v28
       with:
         workflow: tape_windows.yml
@@ -84,7 +98,7 @@ jobs:
         echo "SCORE_EXE=$(basename "$(find Studio/Score/bin -maxdepth 1 -iname 'LaurenceWhoScore*.exe' | head -1)")" >> $GITHUB_ENV
         ls Studio Studio/Score/bin | head -40
 
-    - name: Score.exe and Tape.exe
+    - name: Score.exe, Tape.exe and Scenes.exe
       shell: bash
       run: |
         set -e
@@ -97,6 +111,12 @@ jobs:
         x86_64-w64-mingw32-windres studio.rc -O coff -o studio.res
         x86_64-w64-mingw32-gcc -municode -mwindows -O2 -static "-DTARGET=L\"Score\\\\bin\\\\${SCORE_EXE}\"" launcher.c score.res -o "$GITHUB_WORKSPACE/Studio/Score.exe"
         x86_64-w64-mingw32-gcc -municode -mwindows -O2 -static '-DTARGET=L"Tape\\bin\\Audacity4.exe"' launcher.c tape.res -o "$GITHUB_WORKSPACE/Studio/Tape.exe"
+        # Scenes.exe: the live sound switcher, built with Tape (Tape/bin/Scenes.exe)
+        if [ -f "$GITHUB_WORKSPACE/Studio/Tape/bin/Scenes.exe" ]; then
+          echo "1 ICON \"$GITHUB_WORKSPACE/studio/icons/scenes.ico\"" > scenes.rc
+          x86_64-w64-mingw32-windres scenes.rc -O coff -o scenes.res
+          x86_64-w64-mingw32-gcc -municode -mwindows -O2 -static '-DTARGET=L"Tape\\bin\\Scenes.exe"' launcher.c scenes.res -o "$GITHUB_WORKSPACE/Studio/Scenes.exe"
+        fi
         # Studio.exe: the one window with Score and Tape inside (built with Score)
         if [ -f "$GITHUB_WORKSPACE/Studio/Score/bin/Studio.exe" ]; then
           x86_64-w64-mingw32-gcc -municode -mwindows -O2 -static '-DTARGET=L"Score\\bin\\Studio.exe"' launcher.c studio.res -o "$GITHUB_WORKSPACE/Studio/Studio.exe"
@@ -201,6 +221,7 @@ jobs:
           'Studio.exe - Score, Tape and Mail in one window, linked' \
           'Score.exe  - write music (Score)' \
           'Tape.exe   - record and play (Tape)' \
+          'Scenes.exe - play live: switch sounds scene by scene (click, pedal, MIDI)' \
           'Mail       - Thunderbird, inside Studio (add your accounts in its account setup)' \
           'Sounds     - the instruments Tape plays, ready to use' \
           '' \
