@@ -4,6 +4,8 @@
  */
 #include "livelink.h"
 
+#include <algorithm>
+
 #include <QCoreApplication>
 #include <QCryptographicHash>
 #include <QDir>

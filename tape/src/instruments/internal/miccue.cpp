@@ -4,6 +4,7 @@
  */
 #include "miccue.h"
 
+#include <algorithm>
 #include <cmath>
 
 #include <portaudio.h>
