@@ -60,5 +60,10 @@ public:
     virtual TakeResult stopTake() = 0;
     virtual bool isTaking() const = 0;
     virtual double takeSeconds() const = 0;
+
+    // Studio: count-in clicks before recording, sample-accurate in the audio stream (not recorded)
+    virtual void startCountIn(double bpm, int beatsPerBar, int bars) = 0;
+    virtual void cancelCountIn() = 0;
+    virtual bool isCountingIn() const = 0;
 };
 }

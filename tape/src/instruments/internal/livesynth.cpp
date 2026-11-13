@@ -441,6 +441,9 @@ void LiveSynth::render(float* out, unsigned long frames)
             std::fill_n(m_right.data(), n, 0.0f);
         }
         float* o = out + done * 2;
+        const int64_t clickTotal = m_clickTotal.load(std::memory_order_acquire);
+        const int64_t interval = m_clickInterval.load(std::memory_order_relaxed);
+        const int perBar = std::max(1, m_clickBeatsPerBar.load(std::memory_order_relaxed));
         for (unsigned long i = 0; i < n; ++i) {
             const float l = m_left[i] * vol;
             const float r = m_right[i] * vol;
@@ -450,10 +453,52 @@ void LiveSynth::render(float* out, unsigned long frames)
                 m_takeAudio.push(l);
                 m_takeAudio.push(r);
             }
+            // Studio count-in: a short sine click per beat, higher on the first beat of the bar
+            if (clickTotal > 0 && interval > 0) {
+                if (m_clickFrame < clickTotal) {
+                    const int64_t pos = m_clickFrame % interval;
+                    const int64_t beat = m_clickFrame / interval;
+                    const double t = double(pos) / m_sampleRate;
+                    if (t < 0.045) {
+                        const double f = (beat % perBar == 0) ? 1760.0 : 1175.0;
+                        const float c = float(0.55 * std::exp(-t / 0.009) * std::sin(2.0 * M_PI * f * t));
+                        o[2 * i] += c;
+                        o[2 * i + 1] += c;
+                    }
+                    ++m_clickFrame;
+                } else {
+                    m_clickTotal.store(0, std::memory_order_release); // done: recording can start
+                }
+            }
         }
         done += n;
     }
     m_framesRendered.fetch_add(frames, std::memory_order_relaxed);
+}
+
+void LiveSynth::startCountIn(double bpm, int beatsPerBar, int bars)
+{
+    if (bpm <= 0) {
+        bpm = 120.0;
+    }
+    beatsPerBar = std::max(1, beatsPerBar);
+    bars = std::max(1, bars);
+    const int64_t interval = int64_t(std::llround(60.0 / bpm * m_sampleRate));
+    m_clickTotal.store(0, std::memory_order_release);
+    m_clickFrame = 0; // the audio thread only touches it while m_clickTotal > 0
+    m_clickInterval.store(interval);
+    m_clickBeatsPerBar.store(beatsPerBar);
+    m_clickTotal.store(interval * beatsPerBar * bars, std::memory_order_release);
+}
+
+void LiveSynth::cancelCountIn()
+{
+    m_clickTotal.store(0, std::memory_order_release);
+}
+
+bool LiveSynth::isCountingIn() const
+{
+    return m_clickTotal.load(std::memory_order_acquire) > 0;
 }
 
 void LiveSynth::recordMidi(uint8_t status, uint8_t a, uint8_t b)

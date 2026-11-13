@@ -57,7 +57,16 @@ public:
     //! Called by the audio stream. Public only for the C callback.
     void render(float* out, unsigned long frames);
 
+    void startCountIn(double bpm, int beatsPerBar, int bars) override;
+    void cancelCountIn() override;
+    bool isCountingIn() const override;
+
 private:
+    // count-in click (audio thread reads, UI thread writes the start)
+    std::atomic<int64_t> m_clickTotal { 0 };     // frames of count-in left to play from m_clickFrame (0 = none)
+    std::atomic<int64_t> m_clickInterval { 0 };  // frames per beat
+    std::atomic<int> m_clickBeatsPerBar { 4 };
+    int64_t m_clickFrame = 0;
     struct Event {
         uint8_t type = 0; // 1 on, 2 off, 3 cc, 4 bend, 5 all off
         uint8_t a = 0;

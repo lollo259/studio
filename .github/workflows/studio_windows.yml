@@ -116,15 +116,15 @@ jobs:
       run: |
         set -e
         # the official Thunderbird for Windows (latest ESR, en-US), checked against Mozilla's checksums
-        curl -fsSL https://product-details.mozilla.org/1.0/thunderbird_versions.json -o /tmp/tb_versions.json
+        curl -fsSL --retry 5 --retry-delay 15 --retry-all-errors https://product-details.mozilla.org/1.0/thunderbird_versions.json -o /tmp/tb_versions.json
         cat /tmp/tb_versions.json
         ver=$(python3 -I -c 'import json,sys; d=json.load(open(sys.argv[1])); print(d.get("THUNDERBIRD_ESR") or d["LATEST_THUNDERBIRD_VERSION"])' /tmp/tb_versions.json)
         echo "Thunderbird $ver"
         base="https://archive.mozilla.org/pub/thunderbird/releases/$ver"
         file="win64/en-US/Thunderbird Setup $ver.exe"
         mkdir -p dl/mail x/mail
-        curl -fsSL "$base/SHA256SUMS" -o dl/mail/SHA256SUMS
-        curl -fsSL "$base/${file// /%20}" -o dl/mail/setup.exe
+        curl -fsSL --retry 5 --retry-delay 15 --retry-all-errors "$base/SHA256SUMS" -o dl/mail/SHA256SUMS
+        curl -fsSL --retry 5 --retry-delay 15 --retry-all-errors "$base/${file// /%20}" -o dl/mail/setup.exe
         want=$(grep -F "  $file" dl/mail/SHA256SUMS | head -1 | cut -d' ' -f1)
         have=$(sha256sum dl/mail/setup.exe | cut -d' ' -f1)
         echo "want $want"; echo "have $have"
@@ -147,14 +147,14 @@ jobs:
       run: |
         set -e
         # the official portable Blender for Windows (newest release), checked against blender.org's checksums
-        dir=$(curl -fsSL https://download.blender.org/release/ | grep -oE 'Blender[0-9]+\.[0-9]+/' | sort -uV | tail -1)
-        list=$(curl -fsSL "https://download.blender.org/release/$dir")
+        dir=$(curl -fsSL --retry 5 --retry-delay 15 --retry-all-errors https://download.blender.org/release/ | grep -oE 'Blender[0-9]+\.[0-9]+/' | sort -uV | tail -1)
+        list=$(curl -fsSL --retry 5 --retry-delay 15 --retry-all-errors "https://download.blender.org/release/$dir")
         file=$(echo "$list" | grep -oE 'blender-[0-9.]+-windows-x64\.zip' | sort -uV | tail -1)
         ver=${file#blender-}; ver=${ver%-windows-x64.zip}
         echo "Blender $ver ($dir$file)"
         mkdir -p dl/sketch
-        curl -fsSL "https://download.blender.org/release/$dir$file" -o dl/sketch/blender.zip
-        if curl -fsSL "https://download.blender.org/release/${dir}blender-$ver.sha256" -o dl/sketch/sums; then
+        curl -fsSL --retry 5 --retry-delay 15 --retry-all-errors "https://download.blender.org/release/$dir$file" -o dl/sketch/blender.zip
+        if curl -fsSL --retry 5 --retry-delay 15 --retry-all-errors "https://download.blender.org/release/${dir}blender-$ver.sha256" -o dl/sketch/sums; then
           want=$(grep -F "$file" dl/sketch/sums | head -1 | cut -d' ' -f1)
           have=$(sha256sum dl/sketch/blender.zip | cut -d' ' -f1)
           echo "want $want"; echo "have $have"
