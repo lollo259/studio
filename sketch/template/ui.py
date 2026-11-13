@@ -295,6 +295,33 @@ class SKETCH_PT_lighting(SketchPanel, bpy.types.Panel):
         row.operator("sketch.lighting_mood", text="Dark").mood = "BLACKOUT"
 
 
+class SKETCH_PT_acoustics(SketchPanel, bpy.types.Panel):
+    bl_label = "Acoustics: hear the room"
+    bl_options = {"DEFAULT_CLOSED"}
+
+    def draw(self, context):
+        from . import acoustics
+        acoustics.draw_panel(self.layout, context)
+
+
+class SKETCH_PT_dmx(SketchPanel, bpy.types.Panel):
+    bl_label = "Lighting control (DMX)"
+    bl_options = {"DEFAULT_CLOSED"}
+
+    def draw(self, context):
+        from . import lights
+        lights.draw_panel(self.layout, context)
+
+
+class SKETCH_PT_rider(SketchPanel, bpy.types.Panel):
+    bl_label = "Technical rider"
+    bl_options = {"DEFAULT_CLOSED"}
+
+    def draw(self, context):
+        from . import rider
+        rider.draw_panel(self.layout, context)
+
+
 class SKETCH_PT_physics(SketchPanel, bpy.types.Panel):
     bl_label = "Liquids, smoke & fire"
     bl_options = {"DEFAULT_CLOSED"}
@@ -391,4 +418,4 @@ def uninstall():
 
 classes = (SKETCH_MT_file, SKETCH_MT_import, SKETCH_MT_export, SKETCH_MT_edit, SKETCH_MT_view, SKETCH_MT_render,
            SKETCH_OT_view, SKETCH_PT_entity, SKETCH_PT_layers, SKETCH_PT_materials, SKETCH_PT_library,
-           SKETCH_PT_lighting, SKETCH_PT_physics, SKETCH_PT_fabric, SKETCH_MT_add)
+           SKETCH_PT_lighting, SKETCH_PT_acoustics, SKETCH_PT_dmx, SKETCH_PT_rider, SKETCH_PT_physics, SKETCH_PT_fabric, SKETCH_MT_add)

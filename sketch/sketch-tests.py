@@ -33,8 +33,11 @@ def main():
         return 1
     ops = [o for o in dir(bpy.ops.sketch)]
     print("SKETCH OK", bpy.app.version_string, len(ops), "tools", mod)
+    stage = importlib.import_module(mod + ".tests_stage")
+    bad = stage.run()
     tests = importlib.import_module(mod + ".tests_geometry")
-    return 1 if tests.run() else 0
+    bad += tests.run()
+    return 1 if bad else 0
 
 
 code = main()

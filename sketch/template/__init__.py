@@ -10,7 +10,8 @@ import os
 import bpy
 from bpy.app.handlers import persistent
 
-from . import fabric, geometry, layers, modelling, objects, physics, scenography, tools, ui, venue
+from . import (acoustics, fabric, geometry, layers, lights, modelling, objects, physics, rider, scenography,
+               tools, ui, venue)
 
 HERE = os.path.dirname(__file__)
 
@@ -198,7 +199,7 @@ def start_select_on_load(_):
 
 # ------------------------------------------------------------------ register
 
-_modules = (venue, scenography, objects, modelling, tools, layers, physics, fabric, ui)
+_modules = (venue, scenography, objects, modelling, tools, layers, physics, fabric, acoustics, lights, rider, ui)
 
 
 def register():
@@ -208,6 +209,8 @@ def register():
     bpy.types.Scene.sketch_paint_color = bpy.props.FloatVectorProperty(
         name="Paint colour", subtype="COLOR", size=3, min=0.0, max=1.0, default=(0.85, 0.84, 0.81))
     layers.register_props()
+    for mod in (acoustics, lights, rider):
+        mod.register_props()
     tools.register_keymaps()
     ui.install()
     bpy.types.VIEW3D_MT_add.prepend(ui.add_menu)
@@ -228,6 +231,8 @@ def unregister():
     tools.unregister_keymaps()
     ui.uninstall()
     layers.unregister_props()
+    for mod in (acoustics, lights, rider):
+        mod.unregister_props()
     del bpy.types.Scene.sketch_paint_color
     for mod in reversed(_modules):
         for cls in reversed(mod.classes):
