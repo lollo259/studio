@@ -21,6 +21,8 @@ static const ActionCode SAMPLER_CODE("sampler");
 static const ActionCode PANIC_CODE("instruments-panic");
 static const ActionCode NEW_TRACK_CODE("instruments-new-track");
 static const ActionCode OPEN_IN_SCORE_CODE("instruments-open-in-score");
+static const ActionCode COUNT_IN_1_CODE("record-count-in-1");
+static const ActionCode COUNT_IN_2_CODE("record-count-in-2");
 
 static const UiActionList s_actions = {
     UiAction(OPEN_CODE,
@@ -48,6 +50,16 @@ static const UiActionList s_actions = {
              au::context::CTX_ANY,
              TranslatableString("action", "Open last take in &Score"),
              TranslatableString("action_description", "Open the notes of the last instrument take in Score")),
+    UiAction(COUNT_IN_1_CODE,
+             au::context::UiCtxAny,
+             au::context::CTX_ANY,
+             TranslatableString("action", "Record with count-in (1 bar)"),
+             TranslatableString("action_description", "Click one bar at the project's tempo and metre, then record on the current track")),
+    UiAction(COUNT_IN_2_CODE,
+             au::context::UiCtxAny,
+             au::context::CTX_ANY,
+             TranslatableString("action", "Record with count-in (2 bars)"),
+             TranslatableString("action_description", "Click two bars at the project's tempo and metre, then record on the current track")),
 };
 
 void InstrumentsActions::init()
@@ -57,6 +69,8 @@ void InstrumentsActions::init()
     dispatcher()->reg(this, PANIC_CODE, this, &InstrumentsActions::panic);
     dispatcher()->reg(this, NEW_TRACK_CODE, this, &InstrumentsActions::newInstrumentTrack);
     dispatcher()->reg(this, OPEN_IN_SCORE_CODE, this, &InstrumentsActions::openInScore);
+    dispatcher()->reg(this, COUNT_IN_1_CODE, [this]() { recordWithCountIn(1); });
+    dispatcher()->reg(this, COUNT_IN_2_CODE, [this]() { recordWithCountIn(2); });
 }
 
 InstrumentTracks& InstrumentsActions::tracks()
@@ -88,6 +102,46 @@ void InstrumentsActions::openPanel()
 void InstrumentsActions::openSampler()
 {
     interactive()->open("audacity://sampler");
+}
+
+// Studio: count-in clicks (sample-accurate, from the instruments' audio stream), then recording
+// starts on the downbeat on the current track
+void InstrumentsActions::recordWithCountIn(int bars)
+{
+    auto s = InstrumentsModule::service();
+    if (!s) {
+        return;
+    }
+    auto synth = s->synth();
+    if (!synth->isRunning() && !synth->start()) {
+        dispatcher()->dispatch("record-on-current-track"); // no audio for the click: just record
+        return;
+    }
+    double bpm = 120.0;
+    int beats = 4;
+    if (auto te = globalContext()->currentTrackeditProject()) {
+        const auto ts = te->timeSignature();
+        if (ts.tempo > 0) {
+            bpm = ts.tempo;
+        }
+        if (ts.upper > 0) {
+            beats = ts.upper;
+        }
+    }
+    synth->startCountIn(bpm, beats, bars);
+    if (!m_countInPoll) {
+        m_countInPoll = std::make_unique<QTimer>();
+        m_countInPoll->setInterval(1);
+        m_countInPoll->setTimerType(Qt::PreciseTimer);
+        QObject::connect(m_countInPoll.get(), &QTimer::timeout, [this]() {
+            auto s2 = InstrumentsModule::service();
+            if (!s2 || !s2->synth()->isCountingIn()) {
+                m_countInPoll->stop();
+                dispatcher()->dispatch("record-on-current-track");
+            }
+        });
+    }
+    m_countInPoll->start();
 }
 
 void InstrumentsActions::panic()

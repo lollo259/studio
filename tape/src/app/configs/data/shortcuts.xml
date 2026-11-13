@@ -830,6 +830,10 @@
         <seq>P</seq>
     </SC>
     <SC>
+        <key>record-count-in-1</key>
+        <seq>Shift+R</seq>
+    </SC>
+    <SC>
         <key>action://record/start</key>
         <seq>R</seq>
     </SC>

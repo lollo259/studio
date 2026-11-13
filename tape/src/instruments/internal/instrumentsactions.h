@@ -14,6 +14,10 @@
 
 #include <memory>
 
+#include <QTimer>
+
+#include "context/iglobalcontext.h"
+
 #include "instrumenttracks.h"
 
 namespace au::instruments {
@@ -22,6 +26,7 @@ class InstrumentsActions : public muse::ui::IUiActionsModule, public muse::actio
 {
     muse::ContextInject<muse::actions::IActionsDispatcher> dispatcher{ this };
     muse::ContextInject<muse::IInteractive> interactive{ this };
+    muse::ContextInject<au::context::IGlobalContext> globalContext{ this };
 
 public:
     InstrumentsActions(const muse::modularity::ContextPtr& ctx)
@@ -41,6 +46,8 @@ private:
     void panic();
     void newInstrumentTrack();
     void openInScore();
+    void recordWithCountIn(int bars);
+    std::unique_ptr<QTimer> m_countInPoll;
     InstrumentTracks& tracks();
 
     std::unique_ptr<InstrumentTracks> m_tracks;

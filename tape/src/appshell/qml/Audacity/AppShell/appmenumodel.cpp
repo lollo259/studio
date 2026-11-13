@@ -380,6 +380,8 @@ MenuItem* AppMenuModel::makeRecordMenu()
         makeMenuItem("record-on-new-track"),
         //! makeMenuItem("set-up-timed-recording"),
         makeMenuItem("action://record/lead-in-recording"),
+        makeMenuItem("record-count-in-1"),
+        makeMenuItem("record-count-in-2"),
         makeSeparator(),
         makeMenuItem("instruments"),
         makeMenuItem("sampler"),
