@@ -320,6 +320,34 @@ StyledDialogView {
                     toolTipTitle: qsTrc("instruments", "Remove the video from this project")
                     onClicked: panel.clearVideo()
                 }
+                // Studio: Live (OBS) - the film goes there as "Studio video", in step with Tape
+                FlatButton {
+                    text: panel.liveConnected ? qsTrc("instruments", "● Live") : qsTrc("instruments", "Live")
+                    accentButton: panel.liveConnected
+                    toolTipTitle: qsTrc("instruments", "Open Live (OBS): the film plays there with Tape")
+                    onClicked: panel.openLive()
+                }
+                FlatButton {
+                    visible: panel.liveConnected
+                    text: panel.liveStreaming ? qsTrc("instruments", "Stop stream") : qsTrc("instruments", "Stream")
+                    accentButton: panel.liveStreaming
+                    onClicked: panel.toggleStream()
+                }
+                FlatButton {
+                    visible: panel.liveConnected
+                    text: panel.liveRecording ? qsTrc("instruments", "Stop rec") : qsTrc("instruments", "Rec")
+                    accentButton: panel.liveRecording
+                    onClicked: panel.toggleRecord()
+                }
+                StyledDropdown {
+                    visible: panel.liveConnected && panel.liveScenes.length > 0
+                    Layout.preferredWidth: 140
+                    model: panel.liveScenes.map(function (n) { return { "text": n, "value": n } })
+                    currentIndex: panel.liveScenes.indexOf(panel.liveScene)
+                    onActivated: function (index, value) {
+                        panel.setLiveScene(value);
+                    }
+                }
                 FlatButton {
                     enabled: panel.hasVideo
                     text: qsTrc("instruments", "Full screen")

@@ -22,7 +22,7 @@ qt_add_qml_module(instruments_qml
 )
 
 # the Video window: QMediaPlayer (C++) drawing into a QML VideoOutput
-find_package(Qt6 REQUIRED COMPONENTS Multimedia)
-target_link_libraries(instruments_qml PRIVATE Qt6::Multimedia)
+find_package(Qt6 REQUIRED COMPONENTS Multimedia WebSockets)
+target_link_libraries(instruments_qml PRIVATE Qt6::Multimedia Qt6::WebSockets)
 
 fixup_qml_module_dependencies(instruments_qml)

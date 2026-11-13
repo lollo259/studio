@@ -41,6 +41,10 @@ Name: "assoc"; Description: "Open scores (.mscz) and Tape projects (.aup4) with 
 ; Mail is a whole Thunderbird: replace it, so files of an older version don't linger
 ; (accounts and mail live in the profile under %APPDATA%\LaurenceWho\Studio\MailProfile)
 Type: filesandordirs; Name: "{app}\Mail"
+; Live is a whole OBS: replace its program files (its settings in Live\config are kept)
+Type: filesandordirs; Name: "{app}\Live\bin"
+Type: filesandordirs; Name: "{app}\Live\data"
+Type: filesandordirs; Name: "{app}\Live\obs-plugins"
 
 [Files]
 ; everything: Score, Tape, Mail (Thunderbird + Studio's profile files), Sounds, launchers
@@ -52,6 +56,7 @@ Name: "{autoprograms}\Studio\Score"; Filename: "{app}\Score.exe"
 Name: "{autoprograms}\Studio\Tape"; Filename: "{app}\Tape.exe"
 Name: "{autoprograms}\Studio\Mail"; Filename: "{app}\Mail.exe"
 Name: "{autoprograms}\Studio\Sketch"; Filename: "{app}\Sketch.exe"
+Name: "{autoprograms}\Studio\Live"; Filename: "{app}\Live.exe"
 Name: "{autodesktop}\Studio"; Filename: "{app}\Studio.exe"; Tasks: desktopicon
 
 [Registry]

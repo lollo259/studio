@@ -4,6 +4,8 @@
  */
 #include "videopanelmodel.h"
 
+#include "instruments/internal/livelink.h"
+
 #include <algorithm>
 #include <cmath>
 #include <cstdlib>
@@ -78,6 +80,7 @@ VideoPanelModel::VideoPanelModel(QObject* parent)
     });
 
     connect(this, &VideoPanelModel::settingsChanged, this, &VideoPanelModel::markersChanged);
+    connect(LiveLink::instance(), &LiveLink::changed, this, &VideoPanelModel::liveChanged);
     connect(this, &VideoPanelModel::statusChanged, this, &VideoPanelModel::markersChanged);
     connect(this, &VideoPanelModel::videoChanged, this, &VideoPanelModel::markersChanged);
     connect(VideoStore::instance(), &VideoStore::changed, this, &VideoPanelModel::markersChanged);
@@ -118,6 +121,9 @@ void VideoPanelModel::subscribe()
         }
         sync(true);
         emit timeChanged();
+        if (m_settings.hasVideo()) {
+            LiveLink::instance()->syncPicture(VideoStore::instance()->pictureAt(tapePosition(), m_settings.offset), tapeRunning());
+        }
     }, muse::async::Asyncable::Mode::SetReplace);
 
     st->playbackPositionChanged().onReceive(this, [this](muse::secs_t) {
@@ -615,3 +621,26 @@ QVariantList VideoPanelModel::markers() const
     }
     return out;
 }
+
+// ── Studio: Live (OBS) ─────────────────────────────────────────────
+
+void VideoPanelModel::openLive()
+{
+    QString error;
+    if (!LiveLink::instance()->openLive(&error) && !error.isEmpty()) {
+        m_error = error;
+        emit statusChanged();
+    }
+    if (m_settings.hasVideo()) {
+        LiveLink::instance()->setPicture(m_settings.file);
+    }
+}
+
+void VideoPanelModel::toggleStream() { LiveLink::instance()->toggleStream(); }
+void VideoPanelModel::toggleRecord() { LiveLink::instance()->toggleRecord(); }
+void VideoPanelModel::setLiveScene(const QString& name) { LiveLink::instance()->setScene(name); }
+bool VideoPanelModel::liveConnected() const { return LiveLink::instance()->connected(); }
+bool VideoPanelModel::liveStreaming() const { return LiveLink::instance()->streaming(); }
+bool VideoPanelModel::liveRecording() const { return LiveLink::instance()->recording(); }
+QStringList VideoPanelModel::liveScenes() const { return LiveLink::instance()->scenes(); }
+QString VideoPanelModel::liveScene() const { return LiveLink::instance()->currentScene(); }

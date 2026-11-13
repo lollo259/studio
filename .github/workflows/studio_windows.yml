@@ -113,6 +113,10 @@ jobs:
           echo "1 ICON \"$GITHUB_WORKSPACE/studio/icons/sketch.ico\"" > sketch.rc
           x86_64-w64-mingw32-windres sketch.rc -O coff -o sketch.res
           x86_64-w64-mingw32-gcc -municode -mwindows -O2 -static '-DTARGET=L"Sketch\\blender.exe"' '-DEXTRA=L"--app-template sketch"' launcher.c sketch.res -o "$GITHUB_WORKSPACE/Studio/Sketch.exe"
+          # Live.exe: OBS Studio, portable, with Tape's remote control on
+          echo "1 ICON \"$GITHUB_WORKSPACE/studio/icons/live.ico\"" > live.rc
+          x86_64-w64-mingw32-windres live.rc -O coff -o live.res
+          x86_64-w64-mingw32-gcc -municode -mwindows -O2 -static '-DTARGET=L"Live\\bin\\64bit\\obs64.exe"' '-DEXTRA=L"--portable --disable-shutdown-check"' launcher.c live.res -o "$GITHUB_WORKSPACE/Studio/Live.exe"
         fi
         ls -la "$GITHUB_WORKSPACE/Studio"
 
@@ -175,6 +179,33 @@ jobs:
         cp -r sketch/template/. "Studio/Sketch/$vdir/scripts/startup/bl_app_templates_system/sketch/"
         echo "$ver" > Studio/Sketch/studio-blender-version.txt
         du -sh Studio/Sketch
+
+    - name: Live (OBS Studio)
+      shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        set -e
+        # the newest OBS Studio release for Windows (portable zip), from obsproject's GitHub releases
+        url=$(gh api repos/obsproject/obs-studio/releases/latest -q '.assets[].browser_download_url' | grep -E 'Windows(-x64)?\.zip$' | grep -viE 'pdb|arm' | head -1)
+        echo "OBS: $url"
+        test -n "$url"
+        mkdir -p dl/live Studio/Live
+        curl -fsSL --retry 5 --retry-delay 15 --retry-all-errors "$url" -o dl/live/obs.zip
+        unzip -q dl/live/obs.zip -d Studio/Live
+        # some zips have a top folder
+        if [ ! -f Studio/Live/bin/64bit/obs64.exe ]; then
+          top=$(ls Studio/Live | head -1)
+          mv "Studio/Live/$top"/* Studio/Live/ && rmdir "Studio/Live/$top"
+        fi
+        test -f Studio/Live/bin/64bit/obs64.exe
+        rm -rf dl/live
+        # portable: settings live next to it; obs-websocket on (localhost:4455, no password) so Tape drives it
+        touch Studio/Live/portable_mode.txt
+        mkdir -p Studio/Live/config/obs-studio/plugin_config/obs-websocket
+        printf '{"alerts_enabled":false,"auth_required":false,"first_load":false,"server_enabled":true,"server_password":"","server_port":4455}\n' > Studio/Live/config/obs-studio/plugin_config/obs-websocket/config.json
+        basename "$url" > Studio/Live/studio-obs-version.txt
+        du -sh Studio/Live
 
     - name: Sounds
       shell: bash

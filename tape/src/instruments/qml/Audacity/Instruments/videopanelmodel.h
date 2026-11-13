@@ -13,6 +13,7 @@
 #include <QObject>
 #include <QPointer>
 #include <QTimer>
+#include <QStringList>
 #include <QVariantList>
 #include <QtQml/qqmlregistration.h>
 
@@ -49,6 +50,11 @@ class VideoPanelModel : public QObject, public muse::async::Asyncable, public mu
     Q_PROPERTY(QString cueFlash READ cueFlash NOTIFY timeChanged)
     Q_PROPERTY(QVariantList markers READ markers NOTIFY markersChanged)
     Q_PROPERTY(int hitPointCount READ hitPointCount NOTIFY settingsChanged)
+    Q_PROPERTY(bool liveConnected READ liveConnected NOTIFY liveChanged)
+    Q_PROPERTY(bool liveStreaming READ liveStreaming NOTIFY liveChanged)
+    Q_PROPERTY(bool liveRecording READ liveRecording NOTIFY liveChanged)
+    Q_PROPERTY(QStringList liveScenes READ liveScenes NOTIFY liveChanged)
+    Q_PROPERTY(QString liveScene READ liveScene NOTIFY liveChanged)
 
     muse::ContextInject<au::context::IGlobalContext> globalContext{ this };
     muse::ContextInject<muse::IInteractive> interactive{ this };
@@ -68,6 +74,11 @@ public:
     //! Studio: a cue at the frame on screen (Score shows it in the bars); remove the nearest one
     Q_INVOKABLE void addHitPoint();
     Q_INVOKABLE void removeHitPoint();
+    //! Studio: Live (OBS)
+    Q_INVOKABLE void openLive();
+    Q_INVOKABLE void toggleStream();
+    Q_INVOKABLE void toggleRecord();
+    Q_INVOKABLE void setLiveScene(const QString& name);
     Q_INVOKABLE void restoreWindow(QObject* window);
     Q_INVOKABLE void saveWindow(QObject* window);
 
@@ -94,6 +105,11 @@ public:
     QString cueFlash() const;
     QVariantList markers() const;
     int hitPointCount() const { return int(m_settings.hitPoints.size()); }
+    bool liveConnected() const;
+    bool liveStreaming() const;
+    bool liveRecording() const;
+    QStringList liveScenes() const;
+    QString liveScene() const;
     bool playing() const;
 
     //! HH:MM:SS:FF (29.97 is counted non-drop); negative times get a leading minus
@@ -108,6 +124,7 @@ signals:
     void statusChanged();
     void timeChanged();
     void markersChanged();
+    void liveChanged();
 
 private:
     void subscribe();
