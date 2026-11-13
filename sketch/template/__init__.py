@@ -169,6 +169,33 @@ def factory_startup(_):
         screen.show_statusbar = True
 
 
+# ------------------------------------------------------------------ Select is on from the start (SketchUp)
+
+def _start_select():
+    """Start Sketch's Select tool in the first 3D view, as SketchUp starts with Select."""
+    wm = bpy.context.window_manager
+    for window in wm.windows:
+        for area in window.screen.areas:
+            if area.type != "VIEW_3D":
+                continue
+            region = next((r for r in area.regions if r.type == "WINDOW"), None)
+            if region is None:
+                continue
+            try:
+                with bpy.context.temp_override(window=window, area=area, region=region):
+                    bpy.ops.sketch.select_tool("INVOKE_DEFAULT")
+            except Exception as exc:
+                print(f"Sketch: could not start Select: {exc}")
+            return None
+    return 0.5  # no 3D view yet: try again shortly
+
+
+@persistent
+def start_select_on_load(_):
+    if not bpy.app.background:
+        bpy.app.timers.register(_start_select, first_interval=0.3)
+
+
 # ------------------------------------------------------------------ register
 
 _modules = (venue, scenography, objects, modelling, tools, layers, physics, fabric, ui)
@@ -185,6 +212,9 @@ def register():
     ui.install()
     bpy.types.VIEW3D_MT_add.prepend(ui.add_menu)
     bpy.app.handlers.load_factory_startup_post.append(factory_startup)
+    bpy.app.handlers.load_post.append(start_select_on_load)
+    if not bpy.app.background:
+        bpy.app.timers.register(_start_select, first_interval=1.0)
     apply_look()
 
 
@@ -192,6 +222,8 @@ def unregister():
     restore_look()
     if factory_startup in bpy.app.handlers.load_factory_startup_post:
         bpy.app.handlers.load_factory_startup_post.remove(factory_startup)
+    if start_select_on_load in bpy.app.handlers.load_post:
+        bpy.app.handlers.load_post.remove(start_select_on_load)
     bpy.types.VIEW3D_MT_add.remove(ui.add_menu)
     tools.unregister_keymaps()
     ui.uninstall()
