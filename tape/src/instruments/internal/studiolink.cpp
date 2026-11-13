@@ -7,6 +7,8 @@
 #include <cmath>
 
 #include "studiolinkpeer.h"
+#include "videostore.h"
+#include "tempostore.h"
 
 #include <QFileInfo>
 #include <QJsonArray>
@@ -33,7 +35,12 @@ void StudioLink::init()
     QObject::connect(&m_seekDebounce, &QTimer::timeout, m_peer.get(), [this]() { sendState("seek"); });
 
     subscribe();
-    globalContext()->currentProjectChanged().onNotify(this, [this]() { subscribe(); });
+    globalContext()->currentProjectChanged().onNotify(this, [this]() {
+        subscribe();
+        m_savedMutes.clear();
+        sendReplaced();
+        applyMutes();
+    });
 
     m_peer->start();
 }
@@ -58,6 +65,85 @@ void StudioLink::subscribe()
             m_seekDebounce.start();
         }
     }, muse::async::Asyncable::Mode::SetReplace);
+
+    // a track renamed to "... · recording" (or back), added or removed: tell Score, set the mutes
+    if (auto te = globalContext()->currentTrackeditProject()) {
+        te->trackChanged().onReceive(this, [this](const au::trackedit::Track&) {
+            sendReplaced();
+            applyMutes();
+        }, muse::async::Asyncable::Mode::SetReplace);
+        te->trackAdded().onReceive(this, [this](const au::trackedit::Track&) {
+            sendReplaced();
+            applyMutes();
+        }, muse::async::Asyncable::Mode::SetReplace);
+        te->trackRemoved().onReceive(this, [this](const au::trackedit::Track&) {
+            sendReplaced();
+        }, muse::async::Asyncable::Mode::SetReplace);
+    }
+}
+
+// the instruments that have a recording: tracks called "<instrument> · recording"
+QStringList StudioLink::replacedParts() const
+{
+    QStringList parts;
+    auto te = globalContext()->currentTrackeditProject();
+    for (const auto& t : te ? te->trackList() : std::vector<au::trackedit::Track> {}) {
+        const QString title = t.title.toQString();
+        if (title.endsWith(recordingSuffix())) {
+            parts << title.left(title.size() - recordingSuffix().size()).trimmed();
+        }
+    }
+    parts.removeDuplicates();
+    return parts;
+}
+
+void StudioLink::sendReplaced()
+{
+    QJsonArray arr;
+    for (const QString& p : replacedParts()) {
+        arr.append(p);
+    }
+    m_peer->send(QJsonObject { { "cmd", "replace" }, { "parts", arr } });
+}
+
+// Score's own rendering of a recorded instrument is muted in Tape; on the Score page, Tape plays
+// only the recordings (Score plays the rest), on the Tape page everything comes back as it was
+void StudioLink::applyMutes()
+{
+    auto te = globalContext()->currentTrackeditProject();
+    auto project = globalContext()->currentProject();
+    if (!te || !project || !trackPlayback()) {
+        return;
+    }
+    const QStringList parts = replacedParts();
+    const QString base = QFileInfo(project->path().toQString()).completeBaseName();
+    const bool scorePage = m_page == "score";
+    for (const auto& t : te->trackList()) {
+        const QString title = t.title.toQString();
+        const long id = long(t.id);
+        if (title.endsWith(recordingSuffix())) {
+            trackPlayback()->setMuted(id, false);
+            continue;
+        }
+        bool rendered = false;
+        for (const QString& p : parts) {
+            if (title == base + "-" + p) {
+                rendered = true;
+            }
+        }
+        if (rendered) {
+            trackPlayback()->setMuted(id, true); // the recording plays instead
+            continue;
+        }
+        if (scorePage && !parts.isEmpty()) {
+            if (!m_savedMutes.contains(id)) {
+                m_savedMutes.insert(id, trackPlayback()->muted(id));
+            }
+            trackPlayback()->setMuted(id, true); // Score plays these
+        } else if (m_savedMutes.contains(id)) {
+            trackPlayback()->setMuted(id, m_savedMutes.take(id));
+        }
+    }
 }
 
 bool StudioLink::isPlaying() const
@@ -144,7 +230,8 @@ void StudioLink::onMessage(const QJsonObject& msg)
     // Studio: only the page you see makes sound - on the Score page Tape just follows the cursor
     if (msg.value("cmd").toString() == "page" || msg.value("cmd").toString() == "show") {
         m_page = msg.value("page").toString();
-        if (m_page == "score" && isPlaying()) {
+        applyMutes();
+        if (m_page == "score" && isPlaying() && replacedParts().isEmpty()) {
             if (auto pl = playback() ? playback()->player() : nullptr) {
                 pl->pause();
             }
@@ -174,7 +261,8 @@ void StudioLink::onMessage(const QJsonObject& msg)
             player->pause();
         }
         player->seek(muse::secs_t(t));
-        if (m_page != "score") { // on the Score page, Score makes the sound
+        // on the Score page, Score makes the sound - except the recordings that replace instruments
+        if (m_page != "score" || !replacedParts().isEmpty()) {
             player->play();
             m_wasPlaying = true;
         }
@@ -188,9 +276,21 @@ void StudioLink::onMessage(const QJsonObject& msg)
         if (!isPlaying()) {
             player->seek(muse::secs_t(t));
         }
+    } else if (cmd == "tempo") {
+        TempoStore::instance()->setPoints(msg.value("points").toArray().toVariantList());
+        return;
+    } else if (cmd == "videocues") {
+        std::vector<VideoCue> cues;
+        for (const QJsonValue& v : msg.value("cues").toArray()) {
+            const QJsonObject o = v.toObject();
+            cues.push_back({ o.value("t").toDouble(), o.value("v").toDouble() });
+        }
+        VideoStore::instance()->setCues(cues);
+        return;
     } else if (cmd == "hello") {
         m_applied.invalidate();
         sendState(isPlaying() ? "play" : "stop");
+        sendReplaced();
     }
     m_lastSentPos = t;
 }

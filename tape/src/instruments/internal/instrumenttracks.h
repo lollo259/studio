@@ -52,6 +52,9 @@ public:
     bool exportToScenes(QString* error = nullptr);
     static QString findScenes();
     QString lastMidi() const { return m_lastMidi; }
+    //! where the last take started in the project (seconds) and on which track
+    double lastTakeStart() const { return m_lastTakeStart; }
+    trackedit::TrackId lastTakeTrack() const { return m_lastTakeTrack; }
 
 private:
     trackedit::TrackId targetTrack() const;
@@ -60,5 +63,7 @@ private:
     double m_takeStart = 0.0;
     bool m_startedPlayback = false;
     QString m_lastMidi;
+    double m_lastTakeStart = 0.0;
+    trackedit::TrackId m_lastTakeTrack = -1;
 };
 }

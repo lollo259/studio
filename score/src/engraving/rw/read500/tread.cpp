@@ -1015,6 +1015,8 @@ void TRead::read(Instrument* item, XmlReader& e, ReadContext& ctx, Part* part)
         if (tag == "singleNoteDynamics") {
             item->setSingleNoteDynamics(e.readBool());
             readSingleNoteDynamics = true;
+        } else if (tag == "studioTuning") {
+            item->setStudioTuning(e.readDouble());
         } else if (!readProperties(item, e, ctx, part, &customDrumset)) {
             e.unknown();
         }

@@ -90,6 +90,7 @@ Instrument::Instrument(const Instrument& i)
     m_midiActions  = i.m_midiActions;
     m_articulation = i.m_articulation;
     m_singleNoteDynamics = i.m_singleNoteDynamics;
+    m_studioTuning = i.m_studioTuning;
     m_channel.reserve(i.m_channel.size());
     for (InstrChannel* c : i.m_channel) {
         m_channel.push_back(new InstrChannel(*c));
@@ -123,6 +124,7 @@ void Instrument::operator=(const Instrument& i)
     m_midiActions  = i.m_midiActions;
     m_articulation = i.m_articulation;
     m_singleNoteDynamics = i.m_singleNoteDynamics;
+    m_studioTuning = i.m_studioTuning;
     m_channel.reserve(i.m_channel.size());
     for (InstrChannel* c : i.m_channel) {
         m_channel.push_back(new InstrChannel(*c));
@@ -844,6 +846,7 @@ bool Instrument::operator==(const Instrument& i) const
     equal &= i.m_clefType == m_clefType;
 
     equal &= i.m_singleNoteDynamics == m_singleNoteDynamics;
+    equal &= i.m_studioTuning == m_studioTuning;
 
     return equal;
 }

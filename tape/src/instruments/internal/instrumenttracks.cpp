@@ -122,6 +122,8 @@ QString InstrumentTracks::stopTake()
         return QString();
     }
     TakeResult r = s->synth()->stopTake();
+    m_lastTakeStart = m_takeStart;
+    m_lastTakeTrack = m_takeTrack;
     if (m_startedPlayback) {
         playbackController()->stop();
         m_startedPlayback = false;

@@ -5,6 +5,7 @@
 #pragma once
 
 #include <QElapsedTimer>
+#include <QJsonArray>
 #include <QJsonObject>
 #include <QSet>
 #include <QString>
@@ -18,6 +19,7 @@
 #include "audio/main/iplayback.h"
 #include "project/iexportprojectscenario.h"
 #include "project/iprojectsession.h"
+#include "project/iprojectcreator.h"
 
 namespace studiolink {
 class Peer;
@@ -32,6 +34,7 @@ class StudioLink : public muse::Contextable, public muse::async::Asyncable
     muse::ContextInject<muse::rcommand::ICommandDispatcher> commandDispatcher = { this };
     muse::ContextInject<project::IProjectSession> projectSession = { this };
     muse::ContextInject<project::IExportProjectScenario> exportProjectScenario = { this };
+    muse::GlobalInject<project::IProjectCreator> projectCreator;
 
 public:
     StudioLink(const muse::modularity::ContextPtr& ctx);
@@ -58,6 +61,13 @@ private:
     QString m_tapeProject; // Studio: this score's own Tape project
     // Studio: only the page you see makes sound - on the Tape page Score plays silently (cursor only)
     void setSilent(bool silent);
+    // Studio: instruments whose sound comes from a recording in Tape (muted here)
+    void applyReplaced(const QJsonArray& parts);
+public:
+    //! Studio: a Tape take (MIDI) written into the score as notes, from where it was played
+    bool writeTakeIntoScore(const QString& midiPath, double atSecs, const QString& partName, QString* error = nullptr);
+private:
+    QSet<QString> m_replacedParts;
     // several Score windows can be open (one per file): only the one used last answers play/stop/seek
     bool m_front = false;
     bool m_otherFront = false;

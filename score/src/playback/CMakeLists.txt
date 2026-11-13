@@ -49,6 +49,9 @@ target_sources(playback PRIVATE
     internal/knownaudiopluginsconfigurator.cpp
     internal/knownaudiopluginsconfigurator.h
     internal/studiolink.cpp
+    internal/studiocues.cpp
+    internal/studiotakes.cpp
+    internal/studiocues.h
     internal/studiolink.h
     internal/studiolinkpeer.cpp
     internal/studiolinkpeer.h

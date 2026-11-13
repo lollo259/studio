@@ -4,7 +4,7 @@
 # through its own PortAudio stream; no Audacity/MuseScore framework inside.
 #
 
-find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets Network)
+find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets Network Multimedia)
 
 set(SCENES_SRC
     main.cpp
@@ -19,6 +19,7 @@ set(SCENES_SRC
     scenes.qrc
     ${CMAKE_CURRENT_SOURCE_DIR}/../instruments/soundlibrary.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../instruments/internal/samplerkit.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../instruments/internal/sf2export.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../instruments/internal/engines.cpp
 )
 if (WIN32)
@@ -47,10 +48,10 @@ if (WIN32 AND TARGET portaudio::portaudio)
 endif()
 
 if (WIN32)
-    target_link_libraries(scenes PRIVATE Qt6::Core Qt6::Gui Qt6::Widgets Qt6::Network
+    target_link_libraries(scenes PRIVATE Qt6::Core Qt6::Gui Qt6::Widgets Qt6::Network Qt6::Multimedia
         sfizz::shared tape_fluidsynth portaudio::portaudio winmm)
     install(TARGETS scenes RUNTIME DESTINATION bin)
 else()
-    target_link_libraries(scenes PRIVATE Qt6::Core Qt6::Gui Qt6::Widgets Qt6::Network
+    target_link_libraries(scenes PRIVATE Qt6::Core Qt6::Gui Qt6::Widgets Qt6::Network Qt6::Multimedia
         sfizz::sfizz tape_fluidsynth portaudio::portaudio)
 endif()

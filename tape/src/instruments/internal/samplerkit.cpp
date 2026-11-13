@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: GPL-3.0-only
  */
 #include "samplerkit.h"
+#include "sf2export.h"
 #include "../soundlibrary.h"
 
 #include <algorithm>
@@ -198,7 +199,8 @@ void au::instruments::exportKitsToSounds()
     for (const QString& name : kitNames()) {
         const QString sfz = QString::fromStdString(defaultSoundsFolder()) + "/Sampler/" + safeKitName(name) + "/" + safeKitName(name) + ".sfz";
         SamplerKit kit;
-        if (!QFileInfo::exists(sfz) && loadKit(name, kit)) {
+        const QString sf2 = sfz.left(sfz.size() - 4) + ".sf2";
+        if ((!QFileInfo::exists(sfz) || !QFileInfo::exists(sf2)) && loadKit(name, kit)) {
             exportKitToSounds(kit);
         }
     }
@@ -441,6 +443,8 @@ static void exportKitToSounds(const SamplerKit& kit)
         sfz.write(au::instruments::makeSfz(copy).toUtf8());
         sfz.commit();
     }
+    // the same kit as a SoundFont, so Score can play it as an instrument (Mixer → sound → the kit's name)
+    au::instruments::writeKitSf2(kit, dir + "/" + au::instruments::safeKitName(kit.name) + ".sf2");
 }
 
 bool au::instruments::loadKit(const QString& kitName, SamplerKit& kit)

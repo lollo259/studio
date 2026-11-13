@@ -24,6 +24,8 @@
 
 #include "ui/view/widgetdialog.h"
 
+#include <QDoubleSpinBox>
+
 #include "ui_editstaff.h"
 
 #include "global/async/asyncable.h"
@@ -115,5 +117,6 @@ private:
     engraving::Fraction m_tick;
 
     EditStaffType* editStaffTypeDialog = nullptr;
+    QDoubleSpinBox* m_studioTuning = nullptr;
 };
 }

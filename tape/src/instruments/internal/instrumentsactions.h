@@ -17,6 +17,8 @@
 #include <QTimer>
 
 #include "context/iglobalcontext.h"
+#include "trackedit/iselectioncontroller.h"
+#include "trackedit/itrackeditinteraction.h"
 
 #include "instrumenttracks.h"
 
@@ -27,6 +29,8 @@ class InstrumentsActions : public muse::ui::IUiActionsModule, public muse::actio
     muse::ContextInject<muse::actions::IActionsDispatcher> dispatcher{ this };
     muse::ContextInject<muse::IInteractive> interactive{ this };
     muse::ContextInject<au::context::IGlobalContext> globalContext{ this };
+    muse::ContextInject<au::trackedit::ISelectionController> selectionController{ this };
+    muse::ContextInject<au::trackedit::ITrackeditInteraction> trackeditInteraction{ this };
 
 public:
     InstrumentsActions(const muse::modularity::ContextPtr& ctx)
@@ -48,6 +52,8 @@ private:
     void openInScore();
     void exportToScenes();
     void recordWithCountIn(int bars);
+    void playInScore();
+    void takeToScore();
     std::unique_ptr<QTimer> m_countInPoll;
     InstrumentTracks& tracks();
 

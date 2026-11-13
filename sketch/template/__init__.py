@@ -10,7 +10,8 @@ import os
 import bpy
 from bpy.app.handlers import persistent
 
-from . import fabric, geometry, layers, modelling, objects, physics, scenography, tools, ui, venue
+from . import (acoustics, fabric, geometry, layers, lights, modelling, objects, physics, rider, scenography,
+               tools, ui, venue)
 
 HERE = os.path.dirname(__file__)
 
@@ -169,9 +170,36 @@ def factory_startup(_):
         screen.show_statusbar = True
 
 
+# ------------------------------------------------------------------ Select is on from the start (SketchUp)
+
+def _start_select():
+    """Start Sketch's Select tool in the first 3D view, as SketchUp starts with Select."""
+    wm = bpy.context.window_manager
+    for window in wm.windows:
+        for area in window.screen.areas:
+            if area.type != "VIEW_3D":
+                continue
+            region = next((r for r in area.regions if r.type == "WINDOW"), None)
+            if region is None:
+                continue
+            try:
+                with bpy.context.temp_override(window=window, area=area, region=region):
+                    bpy.ops.sketch.select_tool("INVOKE_DEFAULT")
+            except Exception as exc:
+                print(f"Sketch: could not start Select: {exc}")
+            return None
+    return 0.5  # no 3D view yet: try again shortly
+
+
+@persistent
+def start_select_on_load(_):
+    if not bpy.app.background:
+        bpy.app.timers.register(_start_select, first_interval=0.3)
+
+
 # ------------------------------------------------------------------ register
 
-_modules = (venue, scenography, objects, modelling, tools, layers, physics, fabric, ui)
+_modules = (venue, scenography, objects, modelling, tools, layers, physics, fabric, acoustics, lights, rider, ui)
 
 
 def register():
@@ -181,10 +209,15 @@ def register():
     bpy.types.Scene.sketch_paint_color = bpy.props.FloatVectorProperty(
         name="Paint colour", subtype="COLOR", size=3, min=0.0, max=1.0, default=(0.85, 0.84, 0.81))
     layers.register_props()
+    for mod in (acoustics, lights, rider):
+        mod.register_props()
     tools.register_keymaps()
     ui.install()
     bpy.types.VIEW3D_MT_add.prepend(ui.add_menu)
     bpy.app.handlers.load_factory_startup_post.append(factory_startup)
+    bpy.app.handlers.load_post.append(start_select_on_load)
+    if not bpy.app.background:
+        bpy.app.timers.register(_start_select, first_interval=1.0)
     apply_look()
 
 
@@ -192,10 +225,14 @@ def unregister():
     restore_look()
     if factory_startup in bpy.app.handlers.load_factory_startup_post:
         bpy.app.handlers.load_factory_startup_post.remove(factory_startup)
+    if start_select_on_load in bpy.app.handlers.load_post:
+        bpy.app.handlers.load_post.remove(start_select_on_load)
     bpy.types.VIEW3D_MT_add.remove(ui.add_menu)
     tools.unregister_keymaps()
     ui.uninstall()
     layers.unregister_props()
+    for mod in (acoustics, lights, rider):
+        mod.unregister_props()
     del bpy.types.Scene.sketch_paint_color
     for mod in reversed(_modules):
         for cls in reversed(mod.classes):

@@ -84,6 +84,8 @@ target_sources(instruments PRIVATE
     internal/instrumenttracks.h
     internal/samplerkit.cpp
     internal/samplerkit.h
+    internal/sf2export.cpp
+    internal/sf2export.h
     internal/studiolink.cpp
     internal/studiolink.h
     internal/studiolinkpeer.cpp
@@ -93,6 +95,7 @@ target_sources(instruments PRIVATE
     internal/videoactions.h
     internal/videostore.cpp
     internal/videostore.h
+    internal/tempostore.h
     ../scenesapp/scenesformat.cpp
     ../scenesapp/scenesformat.h
 )
@@ -101,10 +104,10 @@ target_sources(instruments PRIVATE
 set_source_files_properties(../scenesapp/scenesformat.cpp PROPERTIES SKIP_UNITY_BUILD_INCLUSION ON)
 
 if (WIN32)
-    target_link_libraries(instruments PRIVATE sfizz::shared tape_fluidsynth portaudio::portaudio muse::midi Qt6::Network)
+    target_link_libraries(instruments PRIVATE sfizz::shared tape_fluidsynth portaudio::portaudio muse::midi Qt6::Network Qt6::Multimedia)
     install(TARGETS sfizz_shared RUNTIME DESTINATION bin)
 else()
-    target_link_libraries(instruments PRIVATE sfizz::sfizz tape_fluidsynth portaudio::portaudio muse::midi Qt6::Network)
+    target_link_libraries(instruments PRIVATE sfizz::sfizz tape_fluidsynth portaudio::portaudio muse::midi Qt6::Network Qt6::Multimedia)
 endif()
 
 add_subdirectory(qml/Audacity/Instruments)

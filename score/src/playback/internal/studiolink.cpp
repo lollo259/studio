@@ -16,6 +16,8 @@
 
 #include "engraving/dom/masterscore.h"
 #include "engraving/dom/part.h"
+#include "notation/inotationsolomutestate.h"
+#include "engraving/dom/instrument.h"
 #include "engraving/dom/staff.h"
 #include "notation/iexcerptnotation.h"
 #include "notation/imasternotation.h"
@@ -25,6 +27,9 @@
 #include <QUrl>
 #include <QCoreApplication>
 #include <QEvent>
+
+#include "studioclick.h"
+#include "studiocues.h"
 
 namespace {
 // any click or key press in this Score window makes it the one the transport talks to
@@ -188,9 +193,24 @@ void StudioLink::refreshTape()
             }
         }
     }
+    // the click follows tempo changes: rewrite it, and send it only when it changed
+    if (master->masterScore()) {
+        const QString click = m_tapeFolder + "/" + m_tapeTitle + "-Click.wav";
+        QFile old(click);
+        const QByteArray before = old.open(QIODevice::ReadOnly) ? old.readAll() : QByteArray();
+        old.close();
+        if (writeClickTrack(master->masterScore(), click)) {
+            QFile now(click);
+            if (now.open(QIODevice::ReadOnly) && now.readAll() != before) {
+                files << QDir::toNativeSeparators(click);
+            }
+        }
+    }
     m_dirtyParts.clear();
     m_rendering = false;
 
+    m_peer->send(QJsonObject { { "cmd", "tempo" }, { "points", studioTempoPoints(master) } });
+    m_peer->send(QJsonObject { { "cmd", "videocues" }, { "cues", studioVideoCues(master) } });
     if (!files.isEmpty()) {
         m_peer->send(QJsonObject { { "cmd", "reload" }, { "files", QJsonArray::fromStringList(files) }, { "tapeProject", m_tapeProject } });
     }
@@ -208,6 +228,39 @@ void StudioLink::setSilent(bool silent)
             audioPlayback()->setMasterControlParams(c);
         }
     });
+}
+
+void StudioLink::applyReplaced(const QJsonArray& parts)
+{
+    auto master = projectSession()->masterNotation();
+    if (!master || !master->notation() || !master->notation()->soloMuteState()) {
+        return;
+    }
+    QSet<QString> wanted;
+    for (const auto& v : parts) {
+        wanted.insert(v.toString());
+    }
+    auto smState = master->notation()->soloMuteState();
+    mu::engraving::MasterScore* score = master->masterScore();
+    for (const mu::engraving::Part* part : score ? score->parts() : std::vector<mu::engraving::Part*> {}) {
+        const QString name = QString::fromStdString(muse::io::escapeFileName(muse::io::path_t(part->partName())).toStdString());
+        const bool replaced = wanted.contains(name);
+        const bool wasOurs = m_replacedParts.contains(name);
+        if (!replaced && !wasOurs) {
+            continue; // never touch what the user muted by hand
+        }
+        for (const auto& [instrId, instr] : part->instruments()) {
+            Q_UNUSED(instrId);
+            mu::engraving::InstrumentTrackId id { part->id(), instr->id() };
+            auto st = smState->trackSoloMuteStateExists(id) ? smState->trackSoloMuteState(id)
+                      : notation::INotationSoloMuteState::SoloMuteState();
+            if (st.mute != replaced) {
+                st.mute = replaced;
+                smState->setTrackSoloMuteState(id, st);
+            }
+        }
+    }
+    m_replacedParts = wanted;
 }
 
 void StudioLink::becomeFront()
@@ -282,6 +335,20 @@ void StudioLink::onMessage(const QJsonObject& msg)
         watchScore();
         m_applied.invalidate();
         return;
+    } else if (cmd == "settempo") {
+        // Tape: a point on the tempo strip was dragged
+        if (studioSetTempo(projectSession()->masterNotation(), msg.value("tick").toInt(), msg.value("bpm").toDouble())) {
+            m_dirtyParts.insert("*");
+            m_peer->send(QJsonObject { { "cmd", "tempo" }, { "points", studioTempoPoints(projectSession()->masterNotation()) } });
+            refreshTape();
+        }
+        m_applied.invalidate();
+        return;
+    } else if (cmd == "notes") {
+        // Tape: "Write last take into the score"
+        writeTakeIntoScore(msg.value("midi").toString(), msg.value("at").toDouble(), msg.value("part").toString());
+        m_applied.invalidate();
+        return;
     } else if (cmd == "take") {
         // a take finished in Tape: open its notes as a score
         const QString midi = msg.value("midi").toString();
@@ -305,15 +372,25 @@ void StudioLink::onMessage(const QJsonObject& msg)
                     if (!m_tapeProject.isEmpty()) { // Tape shows this score's project
                         m_peer->send(QJsonObject { { "cmd", "project" }, { "tapeProject", m_tapeProject } });
                     }
+                    // the score's video cues drive Tape's video window
+                    m_peer->send(QJsonObject { { "cmd", "videocues" }, { "cues", studioVideoCues(projectSession()->masterNotation()) } });
+                    m_peer->send(QJsonObject { { "cmd", "tempo" }, { "points", studioTempoPoints(projectSession()->masterNotation()) } });
                     refreshTape();
                 }
             });
         }
         m_applied.invalidate();
         return;
+    } else if (cmd == "replace") {
+        // Studio: these instruments have a recording in Tape - Score mutes them, Tape plays the recordings
+        applyReplaced(msg.value("parts").toArray());
+        m_applied.invalidate();
+        return;
     } else if (cmd == "hello") {
         m_applied.invalidate();
         sendState(state()->isPlaying() ? "play" : "stop");
+        m_peer->send(QJsonObject { { "cmd", "videocues" }, { "cues", studioVideoCues(projectSession()->masterNotation()) } });
+        m_peer->send(QJsonObject { { "cmd", "tempo" }, { "points", studioTempoPoints(projectSession()->masterNotation()) } });
     }
     m_lastSentPos = t;
 }

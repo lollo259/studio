@@ -194,7 +194,7 @@ void VideoPanelModel::sync(bool force)
         return;
     }
     const qint64 duration = m_player.duration();
-    const double picture = tapePosition() - m_settings.offset;
+    const double picture = VideoStore::instance()->pictureAt(tapePosition(), m_settings.offset);
     const qint64 target = qint64(std::llround(picture * 1000.0));
     const bool inside = picture >= 0.0 && (duration <= 0 || target < duration);
 
@@ -441,7 +441,7 @@ QVariantList VideoPanelModel::fpsOptions() const
 
 QString VideoPanelModel::timecode() const
 {
-    return formatTimecode(tapePosition() - m_settings.offset, m_settings.fps);
+    return formatTimecode(VideoStore::instance()->pictureAt(tapePosition(), m_settings.offset), m_settings.fps);
 }
 
 QString VideoPanelModel::tapeTime() const
@@ -454,7 +454,7 @@ QString VideoPanelModel::pictureState() const
     if (!m_settings.hasVideo() || !m_error.isEmpty()) {
         return QString();
     }
-    const double picture = tapePosition() - m_settings.offset;
+    const double picture = VideoStore::instance()->pictureAt(tapePosition(), m_settings.offset);
     if (picture < 0.0) {
         return "BEFORE PICTURE";
     }

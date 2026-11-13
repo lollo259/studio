@@ -9,6 +9,7 @@ import Audacity.Project
 import Audacity.Playback
 import Audacity.Spectrogram
 import Audacity.Record
+import Audacity.Instruments
 
 Rectangle {
     id: root
@@ -358,6 +359,16 @@ Rectangle {
             height: 40
 
             navigationSection: root.timelineNavigationSection
+
+            // Studio: the score's tempo, under the ruler; drag a point to change it in Score
+            TempoStrip {
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.bottom: parent.bottom
+                height: 16
+                z: 5
+                context: timeline.context
+            }
 
             Timer {
                 id: playCursorReleaseTimer
