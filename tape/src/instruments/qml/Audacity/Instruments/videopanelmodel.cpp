@@ -6,6 +6,16 @@
 
 #include "instruments/internal/livelink.h"
 
+#include <QFile>
+
+#include <QStandardPaths>
+
+#include <QProcess>
+
+#include <QDir>
+
+#include <QCoreApplication>
+
 #include <algorithm>
 #include <cmath>
 #include <cstdlib>
@@ -644,3 +654,80 @@ bool VideoPanelModel::liveStreaming() const { return LiveLink::instance()->strea
 bool VideoPanelModel::liveRecording() const { return LiveLink::instance()->recording(); }
 QStringList VideoPanelModel::liveScenes() const { return LiveLink::instance()->scenes(); }
 QString VideoPanelModel::liveScene() const { return LiveLink::instance()->currentScene(); }
+
+// ── Studio: heavy video edits in Sketch (Blender's video editor) ───
+
+void VideoPanelModel::editInSketch()
+{
+    if (!m_settings.hasVideo()) {
+        return;
+    }
+    const QDir bin(QCoreApplication::applicationDirPath());
+    QString blender;
+    for (const QString& c : { QString("../../Sketch/blender.exe"), QString("../Sketch/blender.exe") }) {
+        if (QFileInfo::exists(bin.absoluteFilePath(c))) {
+            blender = QFileInfo(bin.absoluteFilePath(c)).absoluteFilePath();
+            break;
+        }
+    }
+    if (blender.isEmpty()) {
+        m_error = "Sketch isn't installed with this Studio.";
+        emit statusChanged();
+        return;
+    }
+    const QString outDir = QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation) + "/Studio/Sketch/Video";
+    QDir().mkpath(outDir);
+    const QString base = QFileInfo(m_settings.file).completeBaseName();
+    const QString script = QDir::tempPath() + "/studio-edit-in-sketch.py";
+    auto py = [](const QString& s) { QString r = s; r.replace('\\', '/'); r.replace('"', "\\\""); return r; };
+    QFile f(script);
+    if (!f.open(QIODevice::WriteOnly | QIODevice::Text)) {
+        return;
+    }
+    const double fps = m_settings.fps;
+    const int fpsNum = int(std::lround(fps));
+    const QString fpsBase = std::abs(fps - 29.97) < 0.01 ? QString("1.001") : QString("1.0");
+    const QString code = QString(R"PY(# Studio: Tape's film in Sketch's video editor
+import bpy
+VIDEO = "%1"
+OUT = "%2"
+START = %3
+
+def setup():
+    scene = bpy.data.scenes.new("Tape film")
+    bpy.context.window.scene = scene
+    scene.render.fps = %4
+    scene.render.fps_base = %5
+    se = scene.sequence_editor_create()
+    strips = se.strips if hasattr(se, "strips") else se.sequences
+    movie = strips.new_movie("Film", VIDEO, channel=2, frame_start=max(1, START + 1))
+    try:
+        strips.new_sound("Film sound", VIDEO, channel=1, frame_start=max(1, START + 1))
+    except Exception:
+        pass
+    scene.frame_start = 1
+    scene.frame_end = movie.frame_final_end
+    scene.render.resolution_x = movie.elements[0].orig_width if movie.elements else 1920
+    scene.render.resolution_y = movie.elements[0].orig_height if movie.elements else 1080
+    if hasattr(scene.render.image_settings, "media_type"):
+        scene.render.image_settings.media_type = "VIDEO"
+    scene.render.image_settings.file_format = "FFMPEG"
+    scene.render.ffmpeg.format = "MPEG4"
+    scene.render.ffmpeg.codec = "H264"
+    scene.render.ffmpeg.audio_codec = "AAC"
+    scene.render.filepath = OUT
+    # the biggest area becomes the video editor, the next one its preview
+    areas = sorted(bpy.context.window.screen.areas, key=lambda a: a.width * a.height, reverse=True)
+    if areas:
+        areas[0].type = "SEQUENCE_EDITOR"
+        areas[0].spaces[0].view_type = "SEQUENCER_PREVIEW"
+    return None
+
+bpy.app.timers.register(setup, first_interval=1.5)
+)PY").arg(py(m_settings.file), py(outDir + "/" + base + " (Sketch).mp4"))
+        .arg(int(std::lround(std::max(0.0, m_settings.offset) * fps)))
+        .arg(fpsNum).arg(fpsBase);
+    f.write(code.toUtf8());
+    f.close();
+    QProcess::startDetached(blender, { "--app-template", "sketch", "--python", script }, QFileInfo(blender).absolutePath());
+}

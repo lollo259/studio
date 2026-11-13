@@ -28,7 +28,9 @@ StudioLink::~StudioLink() = default;
 void StudioLink::init()
 {
     m_peer = std::make_unique<studiolink::Peer>("tape");
-    m_micCue = std::make_unique<MicCue>([this]() { m_peer->send(QJsonObject { { "cmd", "cue" } }); });
+    m_micCue = std::make_unique<MicCue>([this]() {
+        m_peer->send(QJsonObject { { "cmd", m_micCue && m_micCue->isContinuous() ? "onset" : "cue" } });
+    });
     QObject::connect(m_peer.get(), &studiolink::Peer::received, m_peer.get(), [this](const QJsonObject& m) { onMessage(m); });
 
     m_seekDebounce.setSingleShot(true);
@@ -298,8 +300,19 @@ void StudioLink::onMessage(const QJsonObject& msg)
         return;
     } else if (cmd == "waiting") {
         // Score stopped at a wait cue: a note on the mic sends the cue back
+        if (m_micCue->isContinuous()) {
+            return; // Follow me is listening already
+        }
         if (msg.value("on").toBool()) {
             m_micCue->start();
+        } else {
+            m_micCue->stop();
+        }
+        return;
+    } else if (cmd == "listen") {
+        // Score's Follow me: every note heard on the mic moves the score along
+        if (msg.value("on").toBool()) {
+            m_micCue->startContinuous();
         } else {
             m_micCue->stop();
         }

@@ -43,6 +43,7 @@ static bool isCueText(const EngravingItem* a)
 void StudioCues::init()
 {
     m_timer.setSingleShot(true);
+    studioOnset() = [this]() { onPlayed(true); };
     QObject::connect(&m_timer, &QTimer::timeout, [this]() {
         if (m_waitAt >= 0.0) {
             stopAtCue(m_waitAt);
@@ -77,8 +78,14 @@ void StudioCues::init()
             } else {
                 m_onsets.clear();
             }
+            if (studioMicListen()) {
+                studioMicListen()(!m_onsets.empty());
+            }
         } else {
             m_timer.stop();
+            if (studioMicListen() && !m_onsets.empty() && !m_waiting) {
+                studioMicListen()(false);
+            }
         }
     });
     state()->playbackPositionChanged().onReceive(this, [this](muse::audio::secs_t pos) {
@@ -95,31 +102,39 @@ void StudioCues::init()
         if (!key && !pedal) {
             return;
         }
-        if (m_waiting) {
-            resume();
+        onPlayed(key);
+    });
+}
+
+
+// a note played (MIDI key, pedal, or a note heard on the mic): goes on from a wait, or - Follow me -
+// jumps to your note when you play early (a chord counts once)
+void StudioCues::onPlayed(bool key)
+{
+    if (m_waiting) {
+        resume();
+        return;
+    }
+    // Follow me: you played early - playback jumps to your note (a chord counts once)
+    if (key && !m_onsets.empty() && state()->isPlaying()) {
+        const double now = double(QDateTime::currentMSecsSinceEpoch());
+        if (now - m_lastTrigger < 90.0) {
             return;
         }
-        // Follow me: you played early - playback jumps to your note (a chord counts once)
-        if (key && !m_onsets.empty() && state()->isPlaying()) {
-            const double now = double(QDateTime::currentMSecsSinceEpoch());
-            if (now - m_lastTrigger < 90.0) {
-                return;
+        const double pos = state()->playbackPosition();
+        for (double o : m_onsets) {
+            if (o <= m_resumedAt + 0.02 || o < pos - 0.02) {
+                continue;
             }
-            const double pos = state()->playbackPosition();
-            for (double o : m_onsets) {
-                if (o <= m_resumedAt + 0.02 || o < pos - 0.02) {
-                    continue;
-                }
-                if (o - pos <= 0.8) {
-                    m_lastTrigger = now;
-                    m_timer.stop();
-                    m_resumedAt = o;
-                    controller()->rewind(muse::secs_t(o));
-                }
-                break;
+            if (o - pos <= 0.8) {
+                m_lastTrigger = now;
+                m_timer.stop();
+                m_resumedAt = o;
+                controller()->rewind(muse::secs_t(o));
             }
+            break;
         }
-    });
+    }
 }
 
 void StudioCues::collect()
@@ -223,10 +238,10 @@ void StudioCues::stopAtCue(double at)
     if (!state()->isPlaying()) {
         return;
     }
-    controller()->pause();
-    controller()->rewind(muse::secs_t(at));
     m_waiting = true;
     studioCueWaiting() = true;
+    controller()->pause();
+    controller()->rewind(muse::secs_t(at));
     if (studioCueWaitingChanged()) {
         studioCueWaitingChanged()(true);
     }

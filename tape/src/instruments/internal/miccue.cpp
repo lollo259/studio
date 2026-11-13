@@ -29,7 +29,9 @@ MicCue::MicCue(std::function<void()> onCue)
     m_poll.setInterval(10);
     QObject::connect(&m_poll, &QTimer::timeout, [this]() {
         if (m_heard.exchange(false)) {
-            stop();
+            if (!m_continuous) {
+                stop();
+            }
             if (m_onCue) {
                 m_onCue();
             }
@@ -40,6 +42,16 @@ MicCue::MicCue(std::function<void()> onCue)
 MicCue::~MicCue()
 {
     stop();
+}
+
+void MicCue::startContinuous()
+{
+    if (m_stream && m_continuous) {
+        return;
+    }
+    stop();
+    m_continuous = true;
+    start();
 }
 
 void MicCue::start()
@@ -71,8 +83,10 @@ void MicCue::stop()
 {
     m_poll.stop();
     if (!m_stream) {
+        m_continuous = false;
         return;
     }
+    m_continuous = false;
     PaStream* s = static_cast<PaStream*>(m_stream);
     m_stream = nullptr;
     Pa_StopStream(s);
@@ -87,6 +101,17 @@ void MicCue::process(const float* in, unsigned long frames)
         sum += double(in[i]) * in[i];
     }
     const double rms = std::sqrt(sum / std::max<unsigned long>(1, frames));
+    if (m_continuous) {
+        // a note starts where the level jumps well above the last moments' level
+        if (m_armFrames > 0) {
+            m_armFrames -= long(frames);
+        } else if (rms > 0.015 && rms > m_recent * 1.8) {
+            m_heard = true;
+            m_armFrames = long(RATE * 0.12);
+        }
+        m_recent = m_recent * 0.7 + rms * 0.3;
+        return;
+    }
     if (m_armFrames > 0) {
         m_armFrames -= long(frames);
         m_floor = m_floor == 0.0 ? rms : m_floor * 0.8 + rms * 0.2;

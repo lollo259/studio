@@ -67,6 +67,11 @@ void StudioLink::init()
     m_peer = std::make_unique<studiolink::Peer>("score");
     QObject::connect(m_peer.get(), &studiolink::Peer::received, m_peer.get(), [this](const QJsonObject& m) { onMessage(m); });
     // a wait cue stopped playback (or playback went on): Tape listens to the mic meanwhile
+    studioMicListen() = [this](bool on) {
+        if (m_front || !m_otherFront) {
+            m_peer->send(QJsonObject { { "cmd", "listen" }, { "on", on } });
+        }
+    };
     studioCueWaitingChanged() = [this](bool waiting) {
         if (m_front || !m_otherFront) {
             m_peer->send(QJsonObject { { "cmd", "waiting" }, { "on", waiting } });
@@ -344,6 +349,13 @@ void StudioLink::onMessage(const QJsonObject& msg)
         m_tapeProject = msg.value("tapeProject").toString();
         m_dirtyParts.clear();
         watchScore();
+        m_applied.invalidate();
+        return;
+    } else if (cmd == "onset") {
+        // Follow me with a live instrument: Tape heard a note on the mic
+        if (studioOnset()) {
+            studioOnset()();
+        }
         m_applied.invalidate();
         return;
     } else if (cmd == "cue") {

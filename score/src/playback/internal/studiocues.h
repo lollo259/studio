@@ -47,6 +47,19 @@ inline std::function<void(bool)>& studioCueWaitingChanged()
     return f;
 }
 
+//! Follow me: Tape listens to the mic all the time while playing (on/off), and tells each note it hears
+inline std::function<void(bool)>& studioMicListen()
+{
+    static std::function<void(bool)> f;
+    return f;
+}
+
+inline std::function<void()>& studioOnset()
+{
+    static std::function<void()> f;
+    return f;
+}
+
 class StudioCues : public muse::Contextable, public muse::async::Asyncable
 {
     muse::ContextInject<IPlaybackController> controller = { this };
@@ -63,6 +76,7 @@ public:
 private:
     void collect();
     void collectFollow();
+    void onPlayed(bool key);
     void onPosition(double pos);
     void stopAtCue(double at);
     void resume();

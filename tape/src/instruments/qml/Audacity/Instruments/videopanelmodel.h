@@ -76,6 +76,8 @@ public:
     Q_INVOKABLE void removeHitPoint();
     //! Studio: Live (OBS)
     Q_INVOKABLE void openLive();
+    //! Studio: the film in Sketch's video editor (Blender), for heavy edits; it renders back to Documents/Studio/Sketch/Video
+    Q_INVOKABLE void editInSketch();
     Q_INVOKABLE void toggleStream();
     Q_INVOKABLE void toggleRecord();
     Q_INVOKABLE void setLiveScene(const QString& name);

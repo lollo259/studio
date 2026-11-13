@@ -18,6 +18,9 @@ public:
     ~MicCue();
 
     void start();
+    //! Follow me: keeps listening and reports every note it hears
+    void startContinuous();
+    bool isContinuous() const { return m_continuous && m_stream; }
     void stop();
     bool isListening() const { return m_stream != nullptr; }
 
@@ -29,6 +32,8 @@ private:
     void* m_stream = nullptr;
     std::atomic<bool> m_heard { false };
     double m_floor = 0.0;
+    double m_recent = 0.0;   // continuous: level of the last ~50 ms
+    bool m_continuous = false;
     long m_armFrames = 0;
     QTimer m_poll;
 };

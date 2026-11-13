@@ -320,6 +320,12 @@ StyledDialogView {
                     toolTipTitle: qsTrc("instruments", "Remove the video from this project")
                     onClicked: panel.clearVideo()
                 }
+                FlatButton {
+                    enabled: panel.hasVideo
+                    text: qsTrc("instruments", "Edit in Sketch")
+                    toolTipTitle: qsTrc("instruments", "Heavy edits in Sketch's video editor; render goes to Documents\\Studio\\Sketch\\Video, import it back here")
+                    onClicked: panel.editInSketch()
+                }
                 // Studio: Live (OBS) - the film goes there as "Studio video", in step with Tape
                 FlatButton {
                     text: panel.liveConnected ? qsTrc("instruments", "● Live") : qsTrc("instruments", "Live")
