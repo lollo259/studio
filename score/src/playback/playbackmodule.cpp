@@ -36,6 +36,7 @@
 #include "internal/knownaudiopluginsconfigurator.h"
 #include "internal/playbackcommandscontroller.h"
 #include "internal/studiolink.h"
+#include "internal/studiocues.h"
 
 using namespace mu::playback;
 using namespace muse;
@@ -115,6 +116,9 @@ void PlaybackContext::onInit(const IApplication::RunMode& mode)
     // Studio: play, stop and the cursor shared live with Tape
     m_studioLink = std::make_shared<StudioLink>(iocContext());
     m_studioLink->init();
+    // Studio: "wait for cue" / "cadenza" texts stop playback until a key, the pedal or play
+    m_studioCues = std::make_shared<StudioCues>(iocContext());
+    m_studioCues->init();
 }
 
 void PlaybackContext::onDeinit()
