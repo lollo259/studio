@@ -22,10 +22,6 @@
 
 #include "editstaff.h"
 
-#include <QDoubleSpinBox>
-#include <QGridLayout>
-#include <QLabel>
-
 #include "containers.h"
 #include "translation.h"
 #include "global/utils.h"
@@ -82,22 +78,6 @@ EditStaff::EditStaff(QWidget* parent)
     connect(minPitchPSelect,  &QPushButton::clicked, this, &EditStaff::minPitchPClicked);
     connect(maxPitchPSelect,  &QPushButton::clicked, this, &EditStaff::maxPitchPClicked);
     connect(editStringData,   &QPushButton::clicked, this, &EditStaff::editStringDataClicked);
-
-    // Studio: per-instrument tuning, in cents (e.g. a baroque A = 415 is about -100)
-    m_studioTuning = new QDoubleSpinBox(this);
-    m_studioTuning->setRange(-1200.0, 1200.0);
-    m_studioTuning->setDecimals(1);
-    m_studioTuning->setSingleStep(1.0);
-    m_studioTuning->setSuffix(" cents");
-    m_studioTuning->setToolTip("This instrument plays higher (+) or lower (-) than the rest of the score");
-    for (QGridLayout* grid : findChildren<QGridLayout*>()) {
-        if (grid->indexOf(instrumentNumber) >= 0) {
-            const int row = grid->rowCount();
-            grid->addWidget(new QLabel("Tuning:", this), row, 0);
-            grid->addWidget(m_studioTuning, row, 1);
-            break;
-        }
-    }
     connect(nextButton,       &QPushButton::clicked, this, &EditStaff::gotoNextStaff);
     connect(previousButton,   &QPushButton::clicked, this, &EditStaff::gotoPreviousStaff);
 
@@ -248,7 +228,6 @@ void EditStaff::updateInstrument()
     longName->setPlainText(m_instrument.nameAsPlainText());
     shortName->setPlainText(m_instrument.abbreviatureAsPlainText());
     instrumentNumber->setValue(m_instrument.number());
-    m_studioTuning->setValue(m_instrument.studioTuning());
 
     const InstrumentLabel& instrLabel = m_instrument.instrumentLabel();
     showNumberLong->setChecked(instrLabel.showNumberLong());
@@ -705,7 +684,6 @@ void EditStaff::applyPartProperties()
     m_instrument.setShortName(String::fromQString(sn));
     m_instrument.setLongName(String::fromQString(ln));
     m_instrument.setNumber(instrumentNumber->value());
-    m_instrument.setStudioTuning(m_studioTuning->value());
 
     InstrumentLabel& name = m_instrument.instrumentLabel();
     name.setShowNumberLong(showNumberLong->isChecked());

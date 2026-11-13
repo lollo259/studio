@@ -2012,9 +2012,6 @@ void TWrite::write(const Instrument* item, XmlWriter& xml, WriteContext&, const 
     if (item->singleNoteDynamics() != item->getSingleNoteDynamicsFromTemplate()) {
         xml.tag("singleNoteDynamics", item->singleNoteDynamics());
     }
-    if (item->studioTuning() != 0.0) {
-        xml.tag("studioTuning", item->studioTuning());
-    }
 
     if (item->glissandoStyle() != GlissandoStyle::CHROMATIC) {
         xml.tag("glissandoStyle", TConv::toXml(item->glissandoStyle()));

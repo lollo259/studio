@@ -365,9 +365,6 @@ public:
 
     bool singleNoteDynamics() const { return m_singleNoteDynamics; }
     void setSingleNoteDynamics(bool val) { m_singleNoteDynamics = val; }
-    // Studio: this instrument plays this many cents sharp (+) or flat (-) of the score's tuning
-    double studioTuning() const { return m_studioTuning; }
-    void setStudioTuning(double cents) { m_studioTuning = cents; }
     void setSingleNoteDynamicsFromTemplate();
     bool getSingleNoteDynamicsFromTemplate() const;
     void switchExpressive(MasterScore* score, Synthesizer* synth, bool expressive, bool force = false);
@@ -403,7 +400,6 @@ private:
     std::vector<ClefTypeList> m_clefType;
 
     bool m_singleNoteDynamics = false;
-    double m_studioTuning = 0.0;
 
     Trait m_trait;
     bool m_isPrimary = false;

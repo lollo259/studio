@@ -2729,13 +2729,7 @@ int Note::playingOctave() const
 
 double Note::playingTuning() const
 {
-    double studio = 0.0;
-    if (const Part* p = part()) {
-        if (const Instrument* in = p->instrument(tick())) {
-            studio = in->studioTuning();
-        }
-    }
-    return m_tuning + m_centOffset + studio;
+    return m_tuning + m_centOffset;
 }
 
 //---------------------------------------------------------
