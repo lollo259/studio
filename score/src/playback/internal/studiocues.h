@@ -39,11 +39,14 @@ public:
 
 private:
     void collect();
+    void collectFollow();
     void onPosition(double pos);
     void stopAtCue(double at);
     void resume();
 
     std::vector<double> m_waits; // seconds, in playing order
+    std::vector<double> m_onsets; // Follow me: the followed instrument's notes, seconds
+    double m_lastTrigger = -1.0;  // ms clock of the last note that moved playback (chords count once)
     bool m_dirty = true;
     bool m_waiting = false;
     double m_waitAt = -1.0;

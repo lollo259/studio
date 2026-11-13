@@ -6,6 +6,7 @@
 
 #include <algorithm>
 
+#include <QDateTime>
 #include <QJsonArray>
 #include <QJsonObject>
 #include <QStringList>
@@ -14,6 +15,9 @@
 #include "engraving/dom/repeatlist.h"
 #include "engraving/dom/segment.h"
 #include "engraving/dom/textbase.h"
+#include "engraving/dom/part.h"
+#include "engraving/dom/staff.h"
+#include "notation/studiofollow.h"
 #include "notation/imasternotation.h"
 #include "notation/inotation.h"
 #include "notation/inotationplayback.h"
@@ -56,6 +60,11 @@ void StudioCues::init()
             }
             m_resumedAt = state()->playbackPosition();
             m_waiting = false;
+            if (mu::notation::studio::followMeOn()) {
+                collectFollow();
+            } else {
+                m_onsets.clear();
+            }
         } else {
             m_timer.stop();
         }
@@ -65,14 +74,38 @@ void StudioCues::init()
     });
 
     midiInPort()->eventReceived().onReceive(this, [this](muse::midi::tick_t, const muse::midi::Event& e) {
-        if (!m_waiting || !e.isChannelVoice()) {
+        if (!e.isChannelVoice()) {
             return;
         }
         using Op = muse::midi::Event::Opcode;
         const bool key = e.opcode() == Op::NoteOn && e.velocity7() > 0;
         const bool pedal = e.opcode() == Op::ControlChange && e.index() == 64 && e.data() >= 64;
-        if (key || pedal) {
+        if (!key && !pedal) {
+            return;
+        }
+        if (m_waiting) {
             resume();
+            return;
+        }
+        // Follow me: you played early - playback jumps to your note (a chord counts once)
+        if (key && !m_onsets.empty() && state()->isPlaying()) {
+            const double now = double(QDateTime::currentMSecsSinceEpoch());
+            if (now - m_lastTrigger < 90.0) {
+                return;
+            }
+            const double pos = state()->playbackPosition();
+            for (double o : m_onsets) {
+                if (o <= m_resumedAt + 0.02 || o < pos - 0.02) {
+                    continue;
+                }
+                if (o - pos <= 0.8) {
+                    m_lastTrigger = now;
+                    m_timer.stop();
+                    m_resumedAt = o;
+                    controller()->rewind(muse::secs_t(o));
+                }
+                break;
+            }
         }
     });
 }
@@ -111,19 +144,66 @@ void StudioCues::collect()
 
 void StudioCues::onPosition(double pos)
 {
-    if (m_waits.empty() || !state()->isPlaying() || m_timer.isActive()) {
+    if ((m_waits.empty() && m_onsets.empty()) || !state()->isPlaying() || m_timer.isActive()) {
         return;
     }
-    for (double w : m_waits) {
-        if (w <= m_resumedAt + 0.02 || w < pos - 0.02) {
-            continue;
+    double next = -1.0;
+    for (const std::vector<double>* list : { &m_waits, &m_onsets }) {
+        for (double w : *list) {
+            if (w <= m_resumedAt + 0.02 || w < pos - 0.02) {
+                continue;
+            }
+            if (next < 0.0 || w < next) {
+                next = w;
+            }
+            break;
         }
-        if (w - pos <= 0.25) {
-            m_waitAt = w;
-            m_timer.start(std::max(0, int((w - pos) * 1000.0) - 5));
-        }
-        break;
     }
+    if (next >= 0.0 && next - pos <= 0.25) {
+        m_waitAt = next;
+        m_timer.start(std::max(0, int((next - pos) * 1000.0) - 5));
+    }
+}
+
+// Follow me: the notes of the instrument you play (the one selected, else the first)
+void StudioCues::collectFollow()
+{
+    m_onsets.clear();
+    auto master = projectSession()->masterNotation();
+    MasterScore* score = master ? master->masterScore() : nullptr;
+    if (!score || !master->playback() || score->parts().empty()) {
+        return;
+    }
+    const Part* part = score->parts().front();
+    if (const EngravingItem* sel = score->selection().element()) {
+        if (sel->part()) {
+            part = sel->part();
+        }
+    } else if (score->selection().isRange()) {
+        const staff_idx_t si = score->selection().staffStart();
+        if (si < score->nstaves()) {
+            part = score->staff(si)->part();
+        }
+    }
+    std::vector<int> ticks;
+    for (Segment* s = score->firstSegment(SegmentType::ChordRest); s; s = s->next1(SegmentType::ChordRest)) {
+        const TrackRange range = part->trackRange();
+        for (track_idx_t t = range.startTrack; t < range.endTrack; ++t) {
+            const EngravingItem* e = s->element(t);
+            if (e && e->isChord()) {
+                ticks.push_back(s->tick().ticks());
+                break;
+            }
+        }
+    }
+    for (const RepeatSegment* rs : score->repeatList()) {
+        for (int t : ticks) {
+            if (t >= rs->tick && t < rs->tick + rs->len()) {
+                m_onsets.push_back(double(master->playback()->playedTickToSec(t + rs->utick - rs->tick)));
+            }
+        }
+    }
+    std::sort(m_onsets.begin(), m_onsets.end());
 }
 
 void StudioCues::stopAtCue(double at)

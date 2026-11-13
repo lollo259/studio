@@ -52,6 +52,7 @@
 #include "qml/MuseScore/NotationScene/notationviewinputcontroller.h"
 
 #include "notation/studioslurpen.h"
+#include "notation/studiofollow.h"
 #include "../notationcommands.h"
 #include "../notationcommandsenums.h"
 #include "playback/playbackcommands.h"
@@ -258,6 +259,13 @@ void NotationActionController::init()
     registerCommand(CLUSTER_BLACK_COMMAND, [this]() { if (auto i = currentNotationInteraction()) { i->setClusterForSelection(2); } });
     registerCommand(CLUSTER_ALL_COMMAND, [this]() { if (auto i = currentNotationInteraction()) { i->setClusterForSelection(3); } });
     registerCommand(CLUSTER_NONE_COMMAND, [this]() { if (auto i = currentNotationInteraction()) { i->setClusterForSelection(0); } });
+    registerCommand(FOLLOW_ME_COMMAND, [this]() {
+        studio::followMeOn() = !studio::followMeOn();
+        interactive()->info(studio::followMeOn() ? "Follow me: on" : "Follow me: off",
+                            muse::IInteractive::Text(studio::followMeOn()
+                                                     ? "Select the instrument you play, press play: Score waits for each of your notes on the MIDI keyboard."
+                                                     : "Playback runs at the score's tempo again."));
+    });
     registerCommand(SLUR_PEN_COMMAND, []() { studio::slurPenOn() = !studio::slurPenOn(); studio::slurPenStroke().clear(); });
 
     registerCommand<AddNoteCommand>(&Controller::addNote);

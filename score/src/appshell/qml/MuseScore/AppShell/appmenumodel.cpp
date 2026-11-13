@@ -367,6 +367,7 @@ MenuItem* AppMenuModel::makeToolsMenu()
         makeMenuItem(STAFF_EXPLODE_COMMAND),
         makeMenuItem(STAFF_IMPLODE_COMMAND),
         makeMenuItem(OPEN_REALIZECHORDSYMBOLS_COMMAND),
+        makeMenuItem(FOLLOW_ME_COMMAND), // Studio
         makeMenu(TranslatableString("appshell/menu/tools", "&Voices"), {
             makeMenuItem(SWAP_VOICE_X12_COMMAND),
             makeMenuItem(SWAP_VOICE_X13_COMMAND),

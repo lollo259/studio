@@ -718,6 +718,13 @@ static const std::vector<CommandInfo> s_commandInfos = {
         Decoration()
     },
     CommandInfo{
+        FOLLOW_ME_COMMAND,
+        TranslatableString("action", "Follow me (MIDI keyboard)"),
+        TranslatableString("action", "On/off: playback waits for each of your notes in the selected instrument and keeps up when you play early"),
+        InputSchema(),
+        Decoration()
+    },
+    CommandInfo{
         SLUR_PEN_COMMAND,
         TranslatableString("action", "Draw slurs by hand"),
         TranslatableString("action", "Pen on/off: draw a curve over the notes and it becomes a slur shaped like it (Esc to stop)"),
